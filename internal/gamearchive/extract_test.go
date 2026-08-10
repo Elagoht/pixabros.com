@@ -115,3 +115,82 @@ func TestExtract_UnsupportedExtension(t *testing.T) {
 		t.Fatal("Extract() should reject an unsupported archive extension")
 	}
 }
+
+func TestExtract_PathTraversal_Rejected_TarGz(t *testing.T) {
+	data := buildTarGz(t, map[string]string{
+		"index.html":            "<html></html>",
+		"../../etc/passwd-evil": "malicious",
+	})
+	dest := t.TempDir()
+
+	if err := Extract(bytes.NewReader(data), "build.tar.gz", dest); err == nil {
+		t.Fatal("Extract() should reject a tar.gz archive with a path-traversal entry")
+	}
+	entries, err := os.ReadDir(dest)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("destDir should be empty after a failed tar.gz extract with path traversal, found %d entries", len(entries))
+	}
+}
+
+func TestExtract_OversizedArchive(t *testing.T) {
+	// Test with a very small limit to trigger rejection without needing huge data
+	origMaxArchiveSize := maxArchiveSize
+	origMaxExtractedSize := maxExtractedSize
+	defer func() {
+		maxArchiveSize = origMaxArchiveSize
+		maxExtractedSize = origMaxExtractedSize
+	}()
+
+	maxArchiveSize = 100 // 100 bytes limit
+	maxExtractedSize = origMaxExtractedSize
+
+	data := buildZip(t, map[string]string{
+		"index.html": "<html></html>",
+		"large.txt":  "x",
+	})
+	dest := t.TempDir()
+
+	if err := Extract(bytes.NewReader(data), "build.zip", dest); err == nil {
+		t.Fatal("Extract() should reject an archive exceeding the size limit")
+	}
+	entries, err := os.ReadDir(dest)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("destDir should be empty after a failed extract due to size, found %d entries", len(entries))
+	}
+}
+
+func TestExtract_OversizedDecompressed(t *testing.T) {
+	// Test with a very small decompressed limit to trigger rejection
+	origMaxArchiveSize := maxArchiveSize
+	origMaxExtractedSize := maxExtractedSize
+	defer func() {
+		maxArchiveSize = origMaxArchiveSize
+		maxExtractedSize = origMaxExtractedSize
+	}()
+
+	maxArchiveSize = origMaxArchiveSize
+	maxExtractedSize = 50 // 50 bytes limit for total decompressed output
+
+	data := buildZip(t, map[string]string{
+		"index.html": "<html></html>", // 14 bytes
+		"file.txt":   "this is extra content that exceeds the limit", // lots more bytes
+	})
+	dest := t.TempDir()
+
+	if err := Extract(bytes.NewReader(data), "build.zip", dest); err == nil {
+		t.Fatal("Extract() should reject archive when decompressed size exceeds the limit")
+	}
+	entries, err := os.ReadDir(dest)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("destDir should be empty after a failed extract due to size, found %d entries", len(entries))
+	}
+}

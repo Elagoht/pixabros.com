@@ -2,27 +2,36 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the React + Vite admin SPA *shell*: project scaffold, login page, a minimal authenticated shell/dashboard, a change-password screen, logout, and a Service Worker for app-shell asset caching — served by Plan A/B's Go backend at `/I-am-a-pixabro/*`. Adds the one missing backend primitive (`GET /api/admin/whoami`) the SPA needs to restore auth state after a page refresh, since the session cookie is `HttpOnly` and unreadable from JS.
+**Goal:** Stand up the React + Vite admin SPA *shell*, styled per the approved design spec: project scaffold, login page, a minimal authenticated shell/dashboard, a change-password screen, logout, and a Service Worker for app-shell asset caching — served by Plan A/B's Go backend at `/I-am-a-pixabro/*`. Adds the one missing backend primitive (`GET /api/admin/whoami`) the SPA needs to restore auth state after a page refresh, since the session cookie is `HttpOnly` and unreadable from JS.
 
-**Architecture:** A TypeScript React SPA (Vite-built), talking to the existing `/api/admin/*` JSON endpoints over `fetch` with `credentials: "include"`. Auth state lives in a React context that resolves once on mount by calling `whoami`. `react-router-dom` handles the (currently tiny) route tree so later per-module CRUD screens slot in without restructuring. A hand-written Service Worker caches only the built app-shell assets (cache-first) and never touches `/api/*`.
+**Architecture:** A TypeScript React SPA (Vite-built), talking to the existing `/api/admin/*` JSON endpoints over `fetch` with `credentials: "include"`. Auth state lives in a TanStack Query `whoami` query plus login/logout/change-password mutations that update that query's cache directly. `react-router-dom` handles the (currently tiny) route tree so later per-module CRUD screens slot in without restructuring. A hand-written Service Worker caches only the built app-shell assets (cache-first) and never touches `/api/*`. Visuals follow `docs/superpowers/specs/2026-08-10-frontend-design-and-stack.md` exactly: dark theme, fixed color tokens, Inter font, Tailwind CSS v3, shadcn/ui + Radix components, Formik + Yup forms, sonner toasts.
 
 **Architecture Decisions:**
 
-1. **TypeScript, not plain JS.** The user's global CLAUDE.md rule bans `any` everywhere, including TS. Adopting TypeScript makes that rule enforceable by the compiler and linter instead of by discipline alone — the exact discipline this codebase already has on the Go side (no `any`/`interface{}` misuse).
-2. **Auth state via a `whoami` probe.** Because `pixabros_session` is `HttpOnly`, no client-side check can tell the SPA "am I logged in?" after a refresh. Plan A's `internal/adminapi` already has the session-validating middleware (`RequireSession`) and everything `Whoami` needs (`AdminRepo.FindByID`, `AdminIDFromContext`) — adding a tiny `GET /api/admin/whoami` handler that reuses them is far simpler than any client-only alternative (e.g. a non-HttpOnly marker cookie, which would leak auth-state to JS unnecessarily).
-3. **`react-router-dom`, not conditional rendering.** A shell with 3 screens *could* be done with `if`/`else`, but every future per-module plan (Games, Members, Devlog, Awards, Contact, Site Settings, Media, regen-job status) needs its own URL for deep-linking and bookmarking inside the admin panel. Wiring `react-router-dom` now — even for 3 routes — means those plans add `<Route>` entries instead of restructuring the shell.
-4. **Hand-written Service Worker, not `vite-plugin-pwa`.** The caching rule is simple and fixed for the life of this shell: cache-first for built JS/CSS/HTML under `/I-am-a-pixabro/`, network-only (never touched) for `/api/*`. A 20-line hand-written `public/sw.js` makes that rule auditable in one file; `vite-plugin-pwa`'s generated Workbox config is a black box that would need `workbox-build` tuning to guarantee `/api/*` is never intercepted — extra dependency and indirection for no benefit at this scope.
-5. **Vitest + React Testing Library, real assertions.** Every component gets rendered with RTL and asserted against real DOM output (`getByText`, `getByRole`, form submission via `fireEvent`) — no snapshot placeholders. The typed API client is tested by mocking `global.fetch` and asserting on the parsed `ApiResult` shape. `AuthContext` is tested by mocking the API client module and asserting the exposed `status`/`username` transitions. The Service Worker's *behavioral* logic (which requests to intercept) is extracted into a plain, unit-testable function; the SW file itself is verified manually in a browser, since `jsdom` has no `ServiceWorkerGlobalScope`.
+1. **TypeScript, not plain JS.** The user's global CLAUDE.md rule bans `any` everywhere, including TS. Adopting TypeScript makes that rule enforceable by the compiler and linter instead of by discipline alone.
+2. **Auth state via TanStack Query's `whoami` query, not a client-readable marker cookie.** Because `pixabros_session` is `HttpOnly`, no client-side check can tell the SPA "am I logged in?" after a refresh. Plan A's `internal/adminapi` already has the session-validating middleware (`RequireSession`) and everything `Whoami` needs (`AdminRepo.FindByID`, `AdminIDFromContext`) — adding a tiny `GET /api/admin/whoami` handler that reuses them is far simpler than any client-only alternative.
+3. **`react-router-dom`, not conditional rendering.** A shell with 3 screens *could* be done with `if`/`else`, but every future per-module plan (Games, Members, Devlog, Awards, Contact, Site Settings, Media, regen-job status) needs its own URL for deep-linking and bookmarking inside the admin panel.
+4. **Hand-written Service Worker, not `vite-plugin-pwa`.** The caching rule is simple and fixed for the life of this shell: cache-first for built JS/CSS/HTML under `/I-am-a-pixabro/`, network-only (never touched) for `/api/*`. A 20-line hand-written `public/sw.js` makes that rule auditable in one file.
+5. **Vitest + React Testing Library, real assertions.** Every component is rendered and asserted against real DOM output — no snapshot placeholders. The Service Worker's *behavioral* logic (which requests to intercept) is extracted into a plain, unit-testable function; the SW file itself is verified manually in a browser, since `jsdom` has no `ServiceWorkerGlobalScope`.
+6. **Tailwind CSS v3 (the user's explicit choice).** Utility-first styling matches the setup shadcn/ui's generated components expect out of the box, and v3's stable JIT compiler needs no build-step complexity beyond the PostCSS pipeline Vite already runs.
+7. **Formik + Yup (the user's explicit choice).** A mature, widely used form/validation pair; Yup's schema mirrors the backend's own validation rules (e.g., the 8-character password minimum) so the user gets instant client-side feedback before a request ever fires.
+8. **TanStack Query (the user's explicit choice).** Removes hand-rolled loading/error/cache state for `whoami` and the three mutations; `queryClient.setQueryData` after login/logout keeps the cache in sync without a redundant network round-trip.
+9. **sonner (the user's explicit choice).** A lightweight toast library. It's used *alongside*, never instead of, inline error/status text — so tests can assert on visible DOM without touching a toast portal, while real users still get the transient toast affordance.
+10. **shadcn/ui + Radix, with `cssVariables: false`.** This project has exactly one fixed dark theme with no runtime switching, so components reference the named Tailwind tokens directly instead of an indirection layer of CSS variables. Components are copied into the repo (shadcn's standard workflow), not consumed as an opaque npm package, so the exact visual identity from the design spec stays fully under our control.
+11. **`classnames` (the user's explicit choice) + `tailwind-merge`.** `classnames` is the class-joining utility the user asked for; `tailwind-merge` is kept alongside it because it solves a distinct problem — deduplicating/overriding conflicting Tailwind utility classes when a consumer passes an extra `className` prop — that `classnames` doesn't address. Both are combined into one small `cn()` helper so every component calls one function, not two libraries directly.
 
-**Tech Stack:** Go 1.22+ (whoami addition only), Vite 5, React 18, TypeScript 5 (strict), `react-router-dom` 6, Vitest 2 + `@testing-library/react` + `@testing-library/jest-dom`, ESLint 8 + `@typescript-eslint` (with `no-explicit-any` as an error).
+**Tech Stack:** Go 1.22+ (whoami addition only), Vite 5, React 18, TypeScript 5 (strict), `react-router-dom` 6, Tailwind CSS v3, `@fontsource/inter`, Formik + Yup, TanStack Query (React Query) v5, sonner, `classnames` + `tailwind-merge`, shadcn/ui + Radix primitives (`@radix-ui/react-slot`, `@radix-ui/react-label`, `class-variance-authority`), Vitest 2 + `@testing-library/react` + `@testing-library/jest-dom`, ESLint 8 + `@typescript-eslint` (with `no-explicit-any` as an error).
 
-**Depends on:** `docs/superpowers/plans/2026-08-10-backend-core-data-model.md` (Plan A) and `docs/superpowers/plans/2026-08-10-content-rendering-pipelines.md` (Plan B) — this plan assumes both already exist and their tests pass, and it modifies the **post-Plan-B** state of `internal/httpserver/router.go` (`Dependencies{Admins, Sessions, Store, Files, AdminUIDir, PlayDir, AssetsDir}`) and relies on, but does not modify, `cmd/server/main.go`.
+**Depends on:** `docs/superpowers/plans/2026-08-10-backend-core-data-model.md` (Plan A), `docs/superpowers/plans/2026-08-10-content-rendering-pipelines.md` (Plan B), and `docs/superpowers/specs/2026-08-10-frontend-design-and-stack.md` (the design spec this plan implements). This plan assumes Plan A/B already exist and their tests pass, and it modifies the **post-Plan-B** state of `internal/httpserver/router.go` (`Dependencies{Admins, Sessions, Store, Files, AdminUIDir, PlayDir, AssetsDir}`) and relies on, but does not modify, `cmd/server/main.go`.
 
 ## Global Constraints
 
 - Never use TypeScript's `any` — use `unknown` + type guards, or precise generics, everywhere (user's global CLAUDE.md rule; enforced here via `@typescript-eslint/no-explicit-any: "error"`). Never use Go's `any` alias either (unchanged from Plan A/B).
 - Session cookie contract is fixed by Plan A: name `pixabros_session`, `HttpOnly, Secure, SameSite=Strict`. The SPA never reads it directly.
 - Every API response follows `{"error": {"code": "...", "message": "..."}}` on failure; the client's type guards must not assume any other shape.
+- Colors, typography, and every other visual token come from `docs/superpowers/specs/2026-08-10-frontend-design-and-stack.md` exactly — no ad-hoc colors. Background `#0F1115`, surface `#171A21`, text `#F1F1F3`, muted text `#9AA0AC`, border `#2A2E37`, accent `#E879F9` (hover `#C026D3`), success `#34D399`, error `#F87171`, warning `#FBBF24`. Font: Inter everywhere in the admin panel (the retro pixel font from the design spec is Play-page-only, on the public site, never in the admin panel).
+- This is a single, fixed dark theme — no runtime theme switching, no light-mode variant, no `cssVariables` indirection in shadcn's config.
+- Tailwind CSS **v3** specifically (not v4) — this is what the user asked for.
 - The SPA is mounted at `/I-am-a-pixabro/*` only — Vite's `base` and `react-router-dom`'s `basename` must both reflect that exact path.
 - The Service Worker's scope is `/I-am-a-pixabro/` (its own registration path); it must never intercept `/api/*` requests.
 - Per-module CRUD screens (Games, Members, Devlog, Awards, Contact inbox, Homepage/Site Settings, Media library, regen-job status) are **out of scope** — their backend APIs don't exist yet and land in later per-module plans.
@@ -30,10 +39,10 @@
 
 ## Scope
 
-This plan (Plan C of three) builds only the admin SPA shell: scaffold, login, minimal authenticated dashboard, change-password, logout, Service Worker, and the one backend addition (`whoami`) the shell needs. Out of scope, deferred to future per-module plans:
+This plan (Plan C of three) builds only the admin SPA shell: scaffold, login, minimal authenticated dashboard, change-password, logout, Service Worker, and the one backend addition (`whoami`) the shell needs — now built with the confirmed design language and library stack instead of unstyled placeholders. Out of scope, deferred to future per-module plans:
 - Any Games/Members/Devlog/Awards/Contact/Site-Settings/Media/regen-job CRUD screens or their backend REST endpoints.
 - Contact-form honeypot/rate-limiting (that's public-site scope, not admin).
-- Public-site MPA rendering (separate, already covered by Plan B).
+- Public-site MPA rendering and its plain-CSS styling (separate, covered by Plan B + the design spec's public-site section).
 
 ---
 
@@ -54,6 +63,9 @@ admin-ui/
   .eslintrc.cjs
   .gitignore
   index.html
+  tailwind.config.js
+  postcss.config.js
+  components.json
   public/
     sw.js
   src/
@@ -63,17 +75,25 @@ admin-ui/
     App.test.tsx
     index.css
     setupTests.ts
+    testUtils.tsx
     registerServiceWorker.ts
     registerServiceWorker.test.ts
+    lib/
+      utils.ts
     api/
       client.ts
       client.test.ts
     auth/
-      AuthContext.tsx
-      AuthContext.test.tsx
+      queries.ts
+      queries.test.tsx
     components/
       ProtectedRoute.tsx
       ProtectedRoute.test.tsx
+      ui/
+        button.tsx
+        input.tsx
+        label.tsx
+        ui.test.tsx
     pages/
       LoginPage.tsx
       LoginPage.test.tsx
@@ -86,7 +106,7 @@ Makefile               # (create) admin-build target
 .gitignore              # (modify) ignore admin-ui/node_modules
 ```
 
-Each `admin-ui/src/*` directory owns one concern (typed API access, auth state, route guarding, screens). `internal/adminapi` and `internal/httpserver` get small, additive modifications — no existing Plan A/B behavior changes.
+Each `admin-ui/src/*` directory owns one concern (typed API access, auth query/mutation hooks, shadcn UI primitives, route guarding, screens). `internal/adminapi` and `internal/httpserver` get small, additive modifications — no existing Plan A/B behavior changes.
 
 ---
 
@@ -242,7 +262,9 @@ git commit -m "feat: add admin whoami endpoint for session restoration"
 
 ---
 
-### Task 2: Vite + React + TypeScript scaffold
+### Task 2: Vite + React + TypeScript scaffold (with the full dependency set)
+
+This scaffold's `package.json` declares **every** dependency used across the whole plan up front — Tailwind, shadcn's building blocks, Formik/Yup, TanStack Query, sonner, classnames — so later tasks never need a second `npm install`; they only add files and config.
 
 **Files:**
 - Create: `admin-ui/package.json`
@@ -256,13 +278,13 @@ git commit -m "feat: add admin whoami endpoint for session restoration"
 - Create: `admin-ui/src/setupTests.ts`
 - Create: `admin-ui/src/App.tsx`
 - Create: `admin-ui/src/App.test.tsx`
-- Create: `admin-ui/src/main.tsx` (placeholder; rewritten in Task 7 to add real routing, and again in Task 8 to add SW registration)
+- Create: `admin-ui/src/main.tsx` (placeholder; rewritten in Task 6, then Task 10)
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks
 - Produces: a buildable, testable Vite project — `npm run build`, `npm test`, `npm run lint` all work
 
-- [ ] **Step 1: Create the project directory and `package.json`**
+- [ ] **Step 1: Create `package.json` with the full dependency set**
 
 `admin-ui/package.json`:
 
@@ -280,9 +302,19 @@ git commit -m "feat: add admin whoami endpoint for session restoration"
     "lint": "eslint . --ext ts,tsx"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.1.0",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@tanstack/react-query": "^5.59.0",
+    "class-variance-authority": "^0.7.0",
+    "classnames": "^2.5.1",
+    "formik": "^2.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^6.26.2",
+    "sonner": "^1.5.0",
+    "tailwind-merge": "^2.5.2",
+    "yup": "^1.4.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
@@ -293,16 +325,21 @@ git commit -m "feat: add admin whoami endpoint for session restoration"
     "@typescript-eslint/eslint-plugin": "^7.16.1",
     "@typescript-eslint/parser": "^7.16.1",
     "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.12",
     "jsdom": "^25.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
     "vite": "^5.4.9",
     "vitest": "^2.1.2"
   }
 }
 ```
+
+Every dependency any later task imports is already listed here: `tailwindcss`/`postcss`/`autoprefixer` (Task 3), `@fontsource/inter` (Task 3), `@radix-ui/react-label`/`@radix-ui/react-slot`/`class-variance-authority`/`classnames`/`tailwind-merge` (Task 5), `@tanstack/react-query`/`sonner` (Task 6), `formik`/`yup` (Tasks 7–8), `react-router-dom` (Task 9). No later task needs a second `npm install` for a *new* package — only `npm install` re-runs (idempotent, no-op if lockfile unchanged) as part of `make admin-build` (Task 11).
 
 - [ ] **Step 2: Install dependencies**
 
@@ -323,7 +360,7 @@ dist/
 *.local
 ```
 
-- [ ] **Step 4: Add TypeScript config**
+- [ ] **Step 4: Add TypeScript config, with the `@/*` alias shadcn's generated components expect**
 
 `admin-ui/tsconfig.json`:
 
@@ -346,6 +383,8 @@ dist/
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
     "types": ["@testing-library/jest-dom"]
   },
   "include": ["src", "vite.config.ts"]
@@ -376,7 +415,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 6: Add Vite config (base path, output dir, Vitest settings)**
+- [ ] **Step 6: Add Vite config (base path, output dir, `@/*` alias, Vitest settings)**
 
 `admin-ui/vite.config.ts`:
 
@@ -392,6 +431,11 @@ const outDir = process.env.ADMIN_UI_OUT_DIR
 export default defineConfig({
   base: "/I-am-a-pixabro/",
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   build: {
     outDir,
     emptyOutDir: true,
@@ -423,7 +467,7 @@ export default defineConfig({
 </html>
 ```
 
-- [ ] **Step 8: Add `vite-env.d.ts` and `index.css`**
+- [ ] **Step 8: Add `vite-env.d.ts` and a minimal `index.css`**
 
 `admin-ui/src/vite-env.d.ts`:
 
@@ -431,16 +475,12 @@ export default defineConfig({
 /// <reference types="vite/client" />
 ```
 
-`admin-ui/src/index.css`:
+`admin-ui/src/index.css` (placeholder — fully replaced in Task 3 with Tailwind directives and the design tokens):
 
 ```css
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
-}
-
 body {
   margin: 0;
+  font-family: system-ui, sans-serif;
 }
 ```
 
@@ -454,7 +494,7 @@ import "@testing-library/jest-dom/vitest";
 
 - [ ] **Step 10: Write the failing smoke test**
 
-`admin-ui/src/App.test.tsx`:
+`admin-ui/src/App.test.tsx` (placeholder — fully replaced in Task 9 to cover real routing):
 
 ```tsx
 import { describe, expect, it } from "vitest";
@@ -480,7 +520,7 @@ Expected: FAIL — `./App` does not exist yet.
 
 - [ ] **Step 12: Implement the placeholder `App` and entrypoint**
 
-`admin-ui/src/App.tsx` (this placeholder is fully replaced in Task 7 with real routing — kept minimal here to prove the toolchain end-to-end):
+`admin-ui/src/App.tsx` (placeholder — fully replaced in Task 9 with real routing; kept minimal here to prove the toolchain end-to-end):
 
 ```tsx
 export default function App() {
@@ -488,7 +528,7 @@ export default function App() {
 }
 ```
 
-`admin-ui/src/main.tsx`:
+`admin-ui/src/main.tsx` (placeholder — modified in Task 3 for fonts, Task 6 for TanStack Query + sonner, Task 10 for Service Worker registration):
 
 ```tsx
 import { StrictMode } from "react";
@@ -529,12 +569,154 @@ Expected: `npm run build` produces `../data/admin-dist/index.html` + a hashed `a
 
 ```bash
 git add admin-ui
-git commit -m "feat: scaffold vite react typescript admin ui project"
+git commit -m "feat: scaffold vite react typescript admin ui project with full dependency set"
 ```
 
 ---
 
-### Task 3: Typed API client
+### Task 3: Tailwind CSS v3 setup — design tokens + Inter font
+
+**Files:**
+- Create: `admin-ui/tailwind.config.js`
+- Create: `admin-ui/postcss.config.js`
+- Modify: `admin-ui/src/index.css`
+- Modify: `admin-ui/src/main.tsx`
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks besides the scaffold
+- Produces: Tailwind utility classes `bg-background`, `bg-surface`, `text-text`, `text-muted`, `border-border`, `bg-accent` / `hover:bg-accent-dark` / `text-accent-foreground`, `bg-success`/`text-success`, `bg-error`/`text-error`, `bg-warning`/`text-warning`, and the `font-sans` family set to Inter
+
+- [ ] **Step 1: Write the CSS that should fail to compile into real utility classes without a Tailwind config**
+
+Modify `admin-ui/src/index.css`:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-text font-sans antialiased;
+    margin: 0;
+  }
+}
+```
+
+Modify `admin-ui/src/main.tsx` (add the self-hosted Inter font imports; everything else unchanged from Task 2):
+
+```tsx
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("root element not found");
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+- [ ] **Step 2: Build and confirm the tokens are NOT yet compiled (no Tailwind/PostCSS config exists)**
+
+```bash
+cd admin-ui
+npm run build
+grep -ri "0f1115" data/admin-dist/assets/*.css 2>/dev/null || grep -ri "0f1115" ../data/admin-dist/assets/*.css
+```
+
+Expected: FAIL to find the token — either the build errors on the unrecognized `@apply`/`@tailwind` at-rules, or it succeeds but emits them uninterpreted, so no compiled `#0f1115` rule exists in the output CSS yet.
+
+- [ ] **Step 3: Add the Tailwind config with the exact design-spec tokens**
+
+`admin-ui/tailwind.config.js`:
+
+```js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        background: "#0F1115",
+        surface: "#171A21",
+        text: "#F1F1F3",
+        muted: "#9AA0AC",
+        border: "#2A2E37",
+        accent: {
+          DEFAULT: "#E879F9",
+          dark: "#C026D3",
+          foreground: "#0F1115",
+        },
+        success: "#34D399",
+        error: "#F87171",
+        warning: "#FBBF24",
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
+    },
+  },
+  plugins: [],
+};
+```
+
+- [ ] **Step 4: Add the PostCSS config wiring Tailwind + Autoprefixer**
+
+`admin-ui/postcss.config.js`:
+
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+- [ ] **Step 5: Rebuild and confirm the tokens now compile into real CSS**
+
+```bash
+npm run build
+grep -ri "0f1115" ../data/admin-dist/assets/*.css
+grep -ri "e879f9" ../data/admin-dist/assets/*.css
+```
+
+Expected: PASS — both hex tokens appear in the compiled CSS asset (Tailwind lowercases hex output), because `index.css`'s `@layer base` block applies `bg-background`/`text-text` directly on `body`, guaranteeing those utilities are never purged even before other components use them.
+
+- [ ] **Step 6: Run the frontend test suite (unaffected by CSS, should still pass)**
+
+```bash
+npm test
+```
+
+Expected: PASS
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add admin-ui/tailwind.config.js admin-ui/postcss.config.js admin-ui/src/index.css admin-ui/src/main.tsx
+git commit -m "feat: add tailwind css v3 with design-spec color tokens and inter font"
+```
+
+---
+
+### Task 4: Typed API client
+
+Unchanged in shape from the pre-stack-decision version of this plan — this file is a plain `fetch` wrapper with no UI framework dependency, so the stack change doesn't affect it. It's the seam every later TanStack Query hook is built on.
 
 **Files:**
 - Create: `admin-ui/src/api/client.ts`
@@ -763,43 +945,304 @@ git commit -m "feat: add typed api client for admin auth endpoints"
 
 ---
 
-### Task 4: Auth context and `useAuth` hook
+### Task 5: shadcn/ui setup — `cn()` helper, `Button`, `Input`, `Label`
 
 **Files:**
-- Create: `admin-ui/src/auth/AuthContext.tsx`
-- Create: `admin-ui/src/auth/AuthContext.test.tsx`
+- Create: `admin-ui/components.json`
+- Create: `admin-ui/src/lib/utils.ts`
+- Create: `admin-ui/src/components/ui/button.tsx`
+- Create: `admin-ui/src/components/ui/input.tsx`
+- Create: `admin-ui/src/components/ui/label.tsx`
+- Create: `admin-ui/src/components/ui/ui.test.tsx`
 
 **Interfaces:**
-- Consumes: `login`, `logout`, `whoami`, `changePassword`, `ApiError` (Task 3)
-- Produces: `AuthProvider`, `useAuth(): AuthState`, `AuthState{status, username, login, logout, changePassword}`
+- Consumes: Tailwind tokens from Task 3 (`accent`, `accent-dark`, `accent-foreground`, `surface`, `border`, `text`, `muted`, `background`)
+- Produces: `cn(...inputs: ClassValue[]): string`; `Button`, `Input`, `Label` components under `src/components/ui/`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Add the shadcn config file**
 
-`admin-ui/src/auth/AuthContext.test.tsx`:
+`admin-ui/components.json` (recorded as if generated by `npx shadcn init`, with `cssVariables: false` because this project has exactly one fixed dark theme — no runtime theme switching — so components reference the named Tailwind tokens directly instead of an indirection layer of CSS variables):
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "src/index.css",
+    "baseColor": "slate",
+    "cssVariables": false,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui"
+  }
+}
+```
+
+- [ ] **Step 2: Write the failing tests for `Button`, `Input`, `Label`**
+
+`admin-ui/src/components/ui/ui.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Label } from "./label";
+
+describe("Button", () => {
+  it("renders as a button with the given label and responds to clicks", () => {
+    let clicked = false;
+    render(<Button onClick={() => (clicked = true)}>Sign in</Button>);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(clicked).toBe(true);
+  });
+
+  it("applies the accent background class by default", () => {
+    render(<Button>Save</Button>);
+    expect(screen.getByRole("button", { name: "Save" }).className).toContain("bg-accent");
+  });
+});
+
+describe("Input and Label", () => {
+  it("associates a label with its input via htmlFor/id", () => {
+    render(
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" onChange={() => undefined} />
+      </div>,
+    );
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+  });
+
+  it("reflects typed input value", () => {
+    render(<Input aria-label="Username" onChange={() => undefined} />);
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "furkan" } });
+    expect(screen.getByLabelText("Username")).toHaveValue("furkan");
+  });
+});
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+```bash
+npm test -- src/components/ui/ui.test.tsx
+```
+
+Expected: FAIL — `./button`, `./input`, `./label` do not exist yet.
+
+- [ ] **Step 4: Add the `cn()` helper**
+
+`admin-ui/src/lib/utils.ts` — standardizes on `classnames` (the library the user explicitly named) instead of `clsx` for joining class strings, but keeps `tailwind-merge` because it solves a different problem (deduplicating/overriding conflicting Tailwind utility classes when a consumer passes an extra `className` prop) that `classnames` doesn't address:
+
+```ts
+import classNames from "classnames";
+import { twMerge } from "tailwind-merge";
+
+export type ClassValue = string | number | boolean | null | undefined | Record<string, boolean | null | undefined>;
+
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(classNames(...inputs));
+}
+```
+
+- [ ] **Step 5: Implement `Button`**
+
+`admin-ui/src/components/ui/button.tsx`:
+
+```tsx
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-accent text-accent-foreground hover:bg-accent-dark",
+        outline: "border border-border bg-transparent text-text hover:bg-surface",
+        ghost: "bg-transparent text-text hover:bg-surface",
+        destructive: "bg-error text-background hover:bg-error/90",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />;
+  },
+);
+Button.displayName = "Button";
+
+export { Button, buttonVariants };
+```
+
+- [ ] **Step 6: Implement `Input`**
+
+`admin-ui/src/components/ui/input.tsx`:
+
+```tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
+  return (
+    <input
+      type={type}
+      className={cn(
+        "flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      ref={ref}
+      {...props}
+    />
+  );
+});
+Input.displayName = "Input";
+
+export { Input };
+```
+
+- [ ] **Step 7: Implement `Label`**
+
+`admin-ui/src/components/ui/label.tsx`:
+
+```tsx
+import * as React from "react";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { cn } from "@/lib/utils";
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root ref={ref} className={cn("text-sm font-medium leading-none text-text", className)} {...props} />
+));
+Label.displayName = LabelPrimitive.Root.displayName;
+
+export { Label };
+```
+
+- [ ] **Step 8: Run tests to verify they pass**
+
+```bash
+npm test -- src/components/ui/ui.test.tsx
+```
+
+Expected: PASS
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add admin-ui/components.json admin-ui/src/lib admin-ui/src/components/ui
+git commit -m "feat: add shadcn/ui config and button, input, label components"
+```
+
+---
+
+### Task 6: TanStack Query provider + auth query/mutation hooks
+
+**Files:**
+- Create: `admin-ui/src/testUtils.tsx`
+- Create: `admin-ui/src/auth/queries.ts`
+- Create: `admin-ui/src/auth/queries.test.tsx`
+- Modify: `admin-ui/src/main.tsx`
+
+**Interfaces:**
+- Consumes: `login`, `logout`, `whoami`, `changePassword`, `ApiResult`, `WhoamiResponse` (Task 4)
+- Produces: `createTestQueryClient()`, `renderWithQueryClient(ui, options?)`, `whoamiQueryKey`, `useWhoamiStatus(): { status: "loading" | "authenticated" | "anonymous"; username: string | null }`, `useLoginMutation()`, `useLogoutMutation()`, `useChangePasswordMutation()`
+
+- [ ] **Step 1: Add the test-utils helper (fresh `QueryClient` per test, per standard TanStack Query testing practice)**
+
+`admin-ui/src/testUtils.tsx`:
+
+```tsx
+import type { ReactElement, ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, type RenderResult } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+export function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+}
+
+export function renderWithQueryClient(
+  ui: ReactElement,
+  options: { route?: string; queryClient?: QueryClient } = {},
+): RenderResult {
+  const queryClient = options.queryClient ?? createTestQueryClient();
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[options.route ?? "/"]}>{children}</MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+  return render(ui, { wrapper: Wrapper });
+}
+```
+
+This is created now because it's the first task that needs a `QueryClientProvider` in tests; every later page/route test (Tasks 7–9) reuses it instead of redefining a wrapper.
+
+- [ ] **Step 2: Write the failing tests for the auth query/mutation hooks**
+
+`admin-ui/src/auth/queries.test.tsx`:
 
 ```tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { AuthProvider, useAuth } from "./AuthContext";
+import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { createTestQueryClient } from "../testUtils";
+import { useChangePasswordMutation, useLoginMutation, useLogoutMutation, useWhoamiStatus } from "./queries";
 import * as client from "../api/client";
 
 vi.mock("../api/client");
-
-function Probe() {
-  const { status, username } = useAuth();
-  return (
-    <div>
-      <p data-testid="status">{status}</p>
-      <p data-testid="username">{username ?? "none"}</p>
-    </div>
-  );
-}
 
 afterEach(() => {
   vi.resetAllMocks();
 });
 
-describe("AuthProvider", () => {
+function makeWrapper() {
+  const queryClient = createTestQueryClient();
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+  return Wrapper;
+}
+
+describe("useWhoamiStatus", () => {
   it("resolves to anonymous when whoami fails", async () => {
     vi.mocked(client.whoami).mockResolvedValue({
       ok: false,
@@ -807,44 +1250,25 @@ describe("AuthProvider", () => {
       error: { code: "unauthorized", message: "not logged in" },
     });
 
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
-    );
+    const { result } = renderHook(() => useWhoamiStatus(), { wrapper: makeWrapper() });
 
-    expect(screen.getByTestId("status").textContent).toBe("loading");
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("anonymous"));
-    expect(screen.getByTestId("username").textContent).toBe("none");
+    expect(result.current.status).toBe("loading");
+    await waitFor(() => expect(result.current.status).toBe("anonymous"));
+    expect(result.current.username).toBeNull();
   });
 
   it("resolves to authenticated when whoami succeeds", async () => {
     vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
 
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
-    );
+    const { result } = renderHook(() => useWhoamiStatus(), { wrapper: makeWrapper() });
 
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("authenticated"));
-    expect(screen.getByTestId("username").textContent).toBe("furkan");
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.username).toBe("furkan");
   });
 });
 
-function LoginProbe() {
-  const { status, username, login } = useAuth();
-  return (
-    <div>
-      <p data-testid="status">{status}</p>
-      <p data-testid="username">{username ?? "none"}</p>
-      <button onClick={() => void login("furkan", "s3cret-password")}>log in</button>
-    </div>
-  );
-}
-
-describe("useAuth login/logout", () => {
-  it("updates status and username after a successful login", async () => {
+describe("useLoginMutation", () => {
+  it("updates the cached whoami status after a successful login, without a second whoami call", async () => {
     vi.mocked(client.whoami).mockResolvedValue({
       ok: false,
       status: 401,
@@ -852,149 +1276,249 @@ describe("useAuth login/logout", () => {
     });
     vi.mocked(client.login).mockResolvedValue({ ok: true, data: { username: "furkan" } });
 
-    render(
-      <AuthProvider>
-        <LoginProbe />
-      </AuthProvider>,
-    );
+    const wrapper = makeWrapper();
+    const { result: statusResult } = renderHook(() => useWhoamiStatus(), { wrapper });
+    const { result: loginResult } = renderHook(() => useLoginMutation(), { wrapper });
 
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("anonymous"));
-    screen.getByText("log in").click();
+    await waitFor(() => expect(statusResult.current.status).toBe("anonymous"));
+    const whoamiCallsBeforeLogin = vi.mocked(client.whoami).mock.calls.length;
 
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("authenticated"));
-    expect(screen.getByTestId("username").textContent).toBe("furkan");
+    loginResult.current.mutate({ username: "furkan", password: "s3cret-password" });
+
+    await waitFor(() => expect(statusResult.current.status).toBe("authenticated"));
+    expect(statusResult.current.username).toBe("furkan");
+    expect(vi.mocked(client.whoami).mock.calls.length).toBe(whoamiCallsBeforeLogin);
+  });
+
+  it("leaves the cached whoami status anonymous when login fails", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({
+      ok: false,
+      status: 401,
+      error: { code: "unauthorized", message: "not logged in" },
+    });
+    vi.mocked(client.login).mockResolvedValue({
+      ok: false,
+      status: 401,
+      error: { code: "invalid_credentials", message: "username or password is incorrect" },
+    });
+
+    const wrapper = makeWrapper();
+    const { result: statusResult } = renderHook(() => useWhoamiStatus(), { wrapper });
+    const { result: loginResult } = renderHook(() => useLoginMutation(), { wrapper });
+
+    await waitFor(() => expect(statusResult.current.status).toBe("anonymous"));
+    loginResult.current.mutate({ username: "furkan", password: "wrong" });
+
+    await waitFor(() => expect(loginResult.current.data?.ok).toBe(false));
+    expect(statusResult.current.status).toBe("anonymous");
+  });
+});
+
+describe("useLogoutMutation", () => {
+  it("updates the cached whoami status to anonymous after logout", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
+    vi.mocked(client.logout).mockResolvedValue({ ok: true, data: undefined });
+
+    const wrapper = makeWrapper();
+    const { result: statusResult } = renderHook(() => useWhoamiStatus(), { wrapper });
+    const { result: logoutResult } = renderHook(() => useLogoutMutation(), { wrapper });
+
+    await waitFor(() => expect(statusResult.current.status).toBe("authenticated"));
+    logoutResult.current.mutate();
+
+    await waitFor(() => expect(statusResult.current.status).toBe("anonymous"));
+  });
+});
+
+describe("useChangePasswordMutation", () => {
+  it("resolves ok on success", async () => {
+    vi.mocked(client.changePassword).mockResolvedValue({ ok: true, data: undefined });
+
+    const { result } = renderHook(() => useChangePasswordMutation(), { wrapper: makeWrapper() });
+    result.current.mutate({ current_password: "old", new_password: "new-password-123" });
+
+    await waitFor(() => expect(result.current.data?.ok).toBe(true));
   });
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 3: Run tests to verify they fail**
 
 ```bash
-npm test -- src/auth/AuthContext.test.tsx
+npm test -- src/auth/queries.test.tsx
 ```
 
-Expected: FAIL — `./AuthContext` does not exist yet.
+Expected: FAIL — `./queries` does not exist yet.
 
-- [ ] **Step 3: Implement the auth context**
+- [ ] **Step 4: Implement the auth query/mutation hooks**
 
-`admin-ui/src/auth/AuthContext.tsx`:
+`admin-ui/src/auth/queries.ts`:
 
-```tsx
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+```ts
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   changePassword as apiChangePassword,
   login as apiLogin,
   logout as apiLogout,
   whoami as apiWhoami,
-  type ApiError,
+  type ApiResult,
+  type WhoamiResponse,
 } from "../api/client";
+
+export const whoamiQueryKey = ["whoami"] as const;
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";
 
-export interface AuthState {
+export interface AuthStatusResult {
   status: AuthStatus;
   username: string | null;
-  login: (username: string, password: string) => Promise<ApiError | null>;
-  logout: () => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<ApiError | null>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+export function useWhoamiStatus(): AuthStatusResult {
+  const query = useQuery({
+    queryKey: whoamiQueryKey,
+    queryFn: apiWhoami,
+  });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  const [username, setUsername] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void apiWhoami().then((result) => {
-      if (cancelled) {
-        return;
-      }
-      if (result.ok) {
-        setUsername(result.data.username);
-        setStatus("authenticated");
-      } else {
-        setUsername(null);
-        setStatus("anonymous");
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const login = useCallback(async (usernameInput: string, password: string): Promise<ApiError | null> => {
-    const result = await apiLogin({ username: usernameInput, password });
-    if (!result.ok) {
-      return result.error;
-    }
-    setUsername(result.data.username);
-    setStatus("authenticated");
-    return null;
-  }, []);
-
-  const logout = useCallback(async (): Promise<void> => {
-    await apiLogout();
-    setUsername(null);
-    setStatus("anonymous");
-  }, []);
-
-  const changePassword = useCallback(
-    async (currentPassword: string, newPassword: string): Promise<ApiError | null> => {
-      const result = await apiChangePassword({
-        current_password: currentPassword,
-        new_password: newPassword,
-      });
-      if (!result.ok) {
-        return result.error;
-      }
-      return null;
-    },
-    [],
-  );
-
-  return (
-    <AuthContext.Provider value={{ status, username, login, logout, changePassword }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
+  if (query.isPending) {
+    return { status: "loading", username: null };
   }
-  return ctx;
+  if (query.data?.ok) {
+    return { status: "authenticated", username: query.data.data.username };
+  }
+  return { status: "anonymous", username: null };
+}
+
+export function useLoginMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: apiLogin,
+    onSuccess: (result) => {
+      if (result.ok) {
+        queryClient.setQueryData<ApiResult<WhoamiResponse>>(whoamiQueryKey, {
+          ok: true,
+          data: { username: result.data.username },
+        });
+        toast.success("Signed in.");
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+  });
+}
+
+export function useLogoutMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: apiLogout,
+    onSuccess: (result) => {
+      if (result.ok) {
+        queryClient.setQueryData<ApiResult<WhoamiResponse>>(whoamiQueryKey, {
+          ok: false,
+          status: 401,
+          error: { code: "unauthorized", message: "not logged in" },
+        });
+        toast.success("Signed out.");
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+  });
+}
+
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: apiChangePassword,
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success("Password updated.");
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+  });
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+Note on cache updates: `login`/`logout`/`changePassword` never *reject* (Task 4's `client.ts` always resolves an `ApiResult`, even on a 4xx), so `onSuccess` is where both the happy path and the API-error path are handled — there is no separate `onError` here for API-level failures, only for genuine network exceptions (which `mutationFn` would let propagate, entering TanStack Query's real `onError`/`isError` state; out of scope for this shell, same as the original plan's `AuthContext`).
+
+- [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
-npm test -- src/auth/AuthContext.test.tsx
+npm test -- src/auth/queries.test.tsx
 ```
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Wire `QueryClientProvider` and `<Toaster />` into the entrypoint**
+
+Modify `admin-ui/src/main.tsx` (adds the query client and toaster on top of Task 3's font imports; Service Worker registration is added in Task 10):
+
+```tsx
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import App from "./App";
+import "./index.css";
+
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("root element not found");
+}
+
+const queryClient = new QueryClient();
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <Toaster
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: "#171A21",
+            color: "#F1F1F3",
+            border: "1px solid #2A2E37",
+          },
+        }}
+      />
+    </QueryClientProvider>
+  </StrictMode>,
+);
+```
+
+`App` itself (Task 9) does **not** create its own `QueryClientProvider` — the client lives once at the true app root here in `main.tsx`, which is why `App.test.tsx` (Task 9) and every page test (Tasks 7–9) supply their own via `testUtils.tsx` when rendering `App`/pages in isolation.
+
+- [ ] **Step 7: Run the full frontend test suite**
 
 ```bash
-git add admin-ui/src/auth
-git commit -m "feat: add auth context resolving session state via whoami"
+npm test
+```
+
+Expected: PASS (the Task 2 `App.test.tsx` smoke test still passes since `App.tsx` is unchanged until Task 9).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add admin-ui/src/testUtils.tsx admin-ui/src/auth admin-ui/src/main.tsx
+git commit -m "feat: add tanstack query provider and auth query/mutation hooks"
 ```
 
 ---
 
-### Task 5: Login page
+### Task 7: Login page (Formik + Yup + shadcn + TanStack Query + sonner)
 
 **Files:**
 - Create: `admin-ui/src/pages/LoginPage.tsx`
 - Create: `admin-ui/src/pages/LoginPage.test.tsx`
 
 **Interfaces:**
-- Consumes: `useAuth` (Task 4)
+- Consumes: `useLoginMutation` (Task 6), `Button`/`Input`/`Label` (Task 5), `cn` (Task 5)
 - Produces: `LoginPage` (default export component)
 
 - [ ] **Step 1: Write the failing tests**
@@ -1003,21 +1527,21 @@ git commit -m "feat: add auth context resolving session state via whoami"
 
 ```tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
 import LoginPage from "./LoginPage";
-import * as authModule from "../auth/AuthContext";
+import { renderWithQueryClient } from "../testUtils";
+import * as client from "../api/client";
 
-vi.mock("../auth/AuthContext");
+vi.mock("../api/client");
 
 function renderLoginPage() {
-  render(
-    <MemoryRouter initialEntries={["/login"]}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<p>Dashboard Home</p>} />
-      </Routes>
-    </MemoryRouter>,
+  return renderWithQueryClient(
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<p>Dashboard Home</p>} />
+    </Routes>,
+    { route: "/login" },
   );
 }
 
@@ -1027,14 +1551,7 @@ afterEach(() => {
 
 describe("LoginPage", () => {
   it("submits the entered credentials and navigates on success", async () => {
-    const login = vi.fn().mockResolvedValue(null);
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "anonymous",
-      username: null,
-      login,
-      logout: vi.fn(),
-      changePassword: vi.fn(),
-    });
+    vi.mocked(client.login).mockResolvedValue({ ok: true, data: { username: "furkan" } });
 
     renderLoginPage();
 
@@ -1042,18 +1559,28 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "s3cret-password" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await waitFor(() => expect(login).toHaveBeenCalledWith("furkan", "s3cret-password"));
+    await waitFor(() =>
+      expect(client.login).toHaveBeenCalledWith({ username: "furkan", password: "s3cret-password" }),
+    );
     await waitFor(() => expect(screen.getByText("Dashboard Home")).toBeInTheDocument());
   });
 
-  it("shows the error message on failed login", async () => {
-    const login = vi.fn().mockResolvedValue({ code: "invalid_credentials", message: "username or password is incorrect" });
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "anonymous",
-      username: null,
-      login,
-      logout: vi.fn(),
-      changePassword: vi.fn(),
+  it("shows a client-side validation error and never calls login when the password is left empty", async () => {
+    renderLoginPage();
+
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "furkan" } });
+    fireEvent.blur(screen.getByLabelText("Password"));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(screen.getByText("Password is required.")).toBeInTheDocument());
+    expect(client.login).not.toHaveBeenCalled();
+  });
+
+  it("shows the server error message on failed login", async () => {
+    vi.mocked(client.login).mockResolvedValue({
+      ok: false,
+      status: 401,
+      error: { code: "invalid_credentials", message: "username or password is incorrect" },
     });
 
     renderLoginPage();
@@ -1082,63 +1609,95 @@ Expected: FAIL — `./LoginPage` does not exist yet.
 `admin-ui/src/pages/LoginPage.tsx`:
 
 ```tsx
-import { useState, type FormEvent } from "react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useLoginMutation } from "../auth/queries";
+import { cn } from "../lib/utils";
+
+const loginSchema = Yup.object({
+  username: Yup.string().required("Username is required."),
+  password: Yup.string().required("Password is required."),
+});
 
 export default function LoginPage() {
-  const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const loginMutation = useLoginMutation();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    const apiError = await login(username, password);
-    setSubmitting(false);
-    if (apiError) {
-      setError(apiError.message);
-      return;
-    }
-    navigate("/", { replace: true });
-  }
+  const formik = useFormik({
+    initialValues: { username: "", password: "" },
+    validationSchema: loginSchema,
+    onSubmit: async (values) => {
+      const result = await loginMutation.mutateAsync(values);
+      if (result.ok) {
+        navigate("/", { replace: true });
+      }
+    },
+  });
+
+  const serverError =
+    loginMutation.data && !loginMutation.data.ok ? loginMutation.data.error.message : null;
 
   return (
-    <main className="login-page">
-      <h1>Pixabros Admin</h1>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="username">Username</label>
-        <input
-          id="username"
-          name="username"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          autoComplete="username"
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          required
-        />
-        {error ? <p role="alert">{error}</p> : null}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 shadow-lg">
+        <h1 className="mb-6 text-xl font-semibold text-text">Pixabros Admin</h1>
+        <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
+          <div className="space-y-1.5">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              name="username"
+              autoComplete="username"
+              value={formik.values.username}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+            {formik.touched.username && formik.errors.username ? (
+              <p className="text-sm text-error">{formik.errors.username}</p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={formik.values.password}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+            {formik.touched.password && formik.errors.password ? (
+              <p className="text-sm text-error">{formik.errors.password}</p>
+            ) : null}
+          </div>
+          {serverError ? (
+            <p
+              role="alert"
+              className="rounded-md border border-error/40 bg-error/10 px-3 py-2 text-sm text-error"
+            >
+              {serverError}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={formik.isSubmitting}
+            className={cn("w-full", formik.isSubmitting && "opacity-70")}
+          >
+            {formik.isSubmitting ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </div>
     </main>
   );
 }
 ```
+
+`serverError` reads `loginMutation.data` directly rather than a separate local `useState` — because `useLoginMutation` never rejects on a 4xx (Task 6), `mutation.data` holds the last resolved `ApiResult` regardless of `ok`, so both success and failure are readable from the same reactive value without a redundant copy of it in component state. The inline `<p role="alert">` (asserted by tests) exists alongside — not instead of — the `toast.error(...)` call already wired into `useLoginMutation`'s `onSuccess` branch in Task 6.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1152,19 +1711,19 @@ Expected: PASS
 
 ```bash
 git add admin-ui/src/pages/LoginPage.tsx admin-ui/src/pages/LoginPage.test.tsx
-git commit -m "feat: add login page"
+git commit -m "feat: add login page with formik, yup, shadcn components, and tanstack query"
 ```
 
 ---
 
-### Task 6: Change-password page
+### Task 8: Change-password page (Formik + Yup + shadcn + TanStack Query + sonner)
 
 **Files:**
 - Create: `admin-ui/src/pages/ChangePasswordPage.tsx`
 - Create: `admin-ui/src/pages/ChangePasswordPage.test.tsx`
 
 **Interfaces:**
-- Consumes: `useAuth().changePassword` (Task 4)
+- Consumes: `useChangePasswordMutation` (Task 6), `Button`/`Input`/`Label` (Task 5), `cn` (Task 5)
 - Produces: `ChangePasswordPage` (default export component)
 
 - [ ] **Step 1: Write the failing tests**
@@ -1173,11 +1732,12 @@ git commit -m "feat: add login page"
 
 ```tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import ChangePasswordPage from "./ChangePasswordPage";
-import * as authModule from "../auth/AuthContext";
+import { renderWithQueryClient } from "../testUtils";
+import * as client from "../api/client";
 
-vi.mock("../auth/AuthContext");
+vi.mock("../api/client");
 
 afterEach(() => {
   vi.resetAllMocks();
@@ -1185,45 +1745,49 @@ afterEach(() => {
 
 describe("ChangePasswordPage", () => {
   it("shows a success message and clears the fields after a successful change", async () => {
-    const changePassword = vi.fn().mockResolvedValue(null);
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "authenticated",
-      username: "furkan",
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword,
-    });
+    vi.mocked(client.changePassword).mockResolvedValue({ ok: true, data: undefined });
 
-    render(<ChangePasswordPage />);
+    renderWithQueryClient(<ChangePasswordPage />);
 
     fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "old-password-1" } });
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "new-password-123" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
-      expect(changePassword).toHaveBeenCalledWith("old-password-1", "new-password-123"),
+      expect(client.changePassword).toHaveBeenCalledWith({
+        current_password: "old-password-1",
+        new_password: "new-password-123",
+      }),
     );
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Password updated."));
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByLabelText("New password")).toHaveValue("");
   });
 
-  it("shows the weak_password error", async () => {
-    const changePassword = vi
-      .fn()
-      .mockResolvedValue({ code: "weak_password", message: "new password must be at least 8 characters" });
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "authenticated",
-      username: "furkan",
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword,
-    });
-
-    render(<ChangePasswordPage />);
+  it("shows a client-side validation error for a short new password and never calls the API", async () => {
+    renderWithQueryClient(<ChangePasswordPage />);
 
     fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "old-password-1" } });
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "short" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("new password must be at least 8 characters")).toBeInTheDocument(),
+    );
+    expect(client.changePassword).not.toHaveBeenCalled();
+  });
+
+  it("shows the server-side weak_password error", async () => {
+    vi.mocked(client.changePassword).mockResolvedValue({
+      ok: false,
+      status: 400,
+      error: { code: "weak_password", message: "new password must be at least 8 characters" },
+    });
+
+    renderWithQueryClient(<ChangePasswordPage />);
+
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "old-password-1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "longenough" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
@@ -1232,6 +1796,8 @@ describe("ChangePasswordPage", () => {
   });
 });
 ```
+
+The second test proves Yup's client-side rule (mirroring the backend's 8-character `weak_password` minimum) fires before any request goes out; the third test proves the real backend error still renders correctly on its own path — both are needed since one is UX-only and the other is the actual source of truth (per this plan's Global Constraints).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -1246,65 +1812,95 @@ Expected: FAIL — `./ChangePasswordPage` does not exist yet.
 `admin-ui/src/pages/ChangePasswordPage.tsx`:
 
 ```tsx
-import { useState, type FormEvent } from "react";
-import { useAuth } from "../auth/AuthContext";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useChangePasswordMutation } from "../auth/queries";
+import { cn } from "../lib/utils";
+
+const changePasswordSchema = Yup.object({
+  current_password: Yup.string().required("Current password is required."),
+  new_password: Yup.string()
+    .required("New password is required.")
+    .min(8, "new password must be at least 8 characters"),
+});
 
 export default function ChangePasswordPage() {
-  const { changePassword } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const changePasswordMutation = useChangePasswordMutation();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    setSuccess(false);
-    const apiError = await changePassword(currentPassword, newPassword);
-    setSubmitting(false);
-    if (apiError) {
-      setError(apiError.message);
-      return;
-    }
-    setSuccess(true);
-    setCurrentPassword("");
-    setNewPassword("");
-  }
+  const formik = useFormik({
+    initialValues: { current_password: "", new_password: "" },
+    validationSchema: changePasswordSchema,
+    onSubmit: async (values, helpers) => {
+      const result = await changePasswordMutation.mutateAsync(values);
+      if (result.ok) {
+        helpers.resetForm();
+      }
+    },
+  });
+
+  const serverError =
+    changePasswordMutation.data && !changePasswordMutation.data.ok
+      ? changePasswordMutation.data.error.message
+      : null;
+  const succeeded = changePasswordMutation.data?.ok === true;
 
   return (
-    <section>
-      <h1>Change password</h1>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="current-password">Current password</label>
-        <input
-          id="current-password"
-          type="password"
-          value={currentPassword}
-          onChange={(event) => setCurrentPassword(event.target.value)}
-          autoComplete="current-password"
-          required
-        />
-        <label htmlFor="new-password">New password</label>
-        <input
-          id="new-password"
-          type="password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          autoComplete="new-password"
-          required
-        />
-        {error ? <p role="alert">{error}</p> : null}
-        {success ? <p role="status">Password updated.</p> : null}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Saving…" : "Save"}
-        </button>
+    <section className="mx-auto max-w-md">
+      <h1 className="mb-6 text-xl font-semibold text-text">Change password</h1>
+      <form
+        onSubmit={formik.handleSubmit}
+        className="space-y-4 rounded-lg border border-border bg-surface p-6"
+        noValidate
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="current-password">Current password</Label>
+          <Input
+            id="current-password"
+            name="current_password"
+            type="password"
+            autoComplete="current-password"
+            value={formik.values.current_password}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+          />
+          {formik.touched.current_password && formik.errors.current_password ? (
+            <p className="text-sm text-error">{formik.errors.current_password}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="new-password">New password</Label>
+          <Input
+            id="new-password"
+            name="new_password"
+            type="password"
+            autoComplete="new-password"
+            value={formik.values.new_password}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+          />
+          {formik.touched.new_password && formik.errors.new_password ? (
+            <p className="text-sm text-error">{formik.errors.new_password}</p>
+          ) : null}
+        </div>
+        {serverError ? <p role="alert" className="text-sm text-error">{serverError}</p> : null}
+        {succeeded ? <p role="status" className="text-sm text-success">Password updated.</p> : null}
+        <Button
+          type="submit"
+          disabled={formik.isSubmitting}
+          className={cn("w-full", formik.isSubmitting && "opacity-70")}
+        >
+          {formik.isSubmitting ? "Saving…" : "Save"}
+        </Button>
       </form>
     </section>
   );
 }
 ```
+
+Field `name`s (`current_password`, `new_password`) match `ChangePasswordRequest`'s JSON keys exactly, so `formik.values` can be passed straight to `changePasswordMutation.mutateAsync(values)` with no remapping.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1318,12 +1914,12 @@ Expected: PASS
 
 ```bash
 git add admin-ui/src/pages/ChangePasswordPage.tsx admin-ui/src/pages/ChangePasswordPage.test.tsx
-git commit -m "feat: add change-password page"
+git commit -m "feat: add change-password page with formik, yup, shadcn components, and tanstack query"
 ```
 
 ---
 
-### Task 7: Routing, protected-route guard, shell, and dashboard placeholder
+### Task 9: Routing — `ProtectedRoute`, `Shell`, `DashboardPage`, `App` wiring
 
 **Files:**
 - Create: `admin-ui/src/components/ProtectedRoute.tsx`
@@ -1335,7 +1931,7 @@ git commit -m "feat: add change-password page"
 - Modify: `admin-ui/src/App.test.tsx`
 
 **Interfaces:**
-- Consumes: `useAuth` (Task 4), `LoginPage` (Task 5), `ChangePasswordPage` (Task 6)
+- Consumes: `useWhoamiStatus`, `useLogoutMutation` (Task 6), `LoginPage` (Task 7), `ChangePasswordPage` (Task 8)
 - Produces: `ProtectedRoute`, `Shell`, `DashboardPage`, the real `App` route tree (basename `/I-am-a-pixabro`)
 
 - [ ] **Step 1: Write the failing test for `ProtectedRoute`**
@@ -1344,70 +1940,57 @@ git commit -m "feat: add change-password page"
 
 ```tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { screen, waitFor } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
-import * as authModule from "../auth/AuthContext";
+import { renderWithQueryClient } from "../testUtils";
+import * as client from "../api/client";
+import type { ApiResult, WhoamiResponse } from "../api/client";
 
-vi.mock("../auth/AuthContext");
-
-function renderGuarded() {
-  render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Routes>
-        <Route path="/login" element={<p>Login Screen</p>} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <p>Protected Content</p>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
+vi.mock("../api/client");
 
 afterEach(() => {
   vi.resetAllMocks();
 });
 
+function renderGuarded() {
+  return renderWithQueryClient(
+    <Routes>
+      <Route path="/login" element={<p>Login Screen</p>} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <p>Protected Content</p>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>,
+    { route: "/" },
+  );
+}
+
 describe("ProtectedRoute", () => {
-  it("shows a loading indicator while status is loading", () => {
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "loading",
-      username: null,
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword: vi.fn(),
-    });
+  it("shows a loading indicator while the whoami query is pending", () => {
+    vi.mocked(client.whoami).mockReturnValue(new Promise<ApiResult<WhoamiResponse>>(() => {}));
     renderGuarded();
     expect(screen.getByRole("status")).toHaveTextContent("Checking session…");
   });
 
-  it("redirects to /login when anonymous", () => {
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "anonymous",
-      username: null,
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword: vi.fn(),
+  it("redirects to /login when anonymous", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({
+      ok: false,
+      status: 401,
+      error: { code: "unauthorized", message: "not logged in" },
     });
     renderGuarded();
-    expect(screen.getByText("Login Screen")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Login Screen")).toBeInTheDocument());
   });
 
-  it("renders children when authenticated", () => {
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "authenticated",
-      username: "furkan",
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword: vi.fn(),
-    });
+  it("renders children when authenticated", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
     renderGuarded();
-    expect(screen.getByText("Protected Content")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Protected Content")).toBeInTheDocument());
   });
 });
 ```
@@ -1427,13 +2010,19 @@ Expected: FAIL — `./ProtectedRoute` does not exist yet.
 ```tsx
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useWhoamiStatus } from "../auth/queries";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { status } = useAuth();
+  const { status } = useWhoamiStatus();
 
   if (status === "loading") {
-    return <p role="status">Checking session…</p>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p role="status" className="text-sm text-muted">
+          Checking session…
+        </p>
+      </div>
+    );
   }
   if (status === "anonymous") {
     return <Navigate to="/login" replace />;
@@ -1456,64 +2045,51 @@ Expected: PASS
 
 ```tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
 import Shell from "./Shell";
-import * as authModule from "../auth/AuthContext";
+import { renderWithQueryClient } from "../testUtils";
+import * as client from "../api/client";
 
-vi.mock("../auth/AuthContext");
+vi.mock("../api/client");
 
 afterEach(() => {
   vi.resetAllMocks();
 });
 
+function renderShell() {
+  return renderWithQueryClient(
+    <Routes>
+      <Route path="/" element={<Shell />}>
+        <Route index element={<p>Dashboard Body</p>} />
+      </Route>
+    </Routes>,
+    { route: "/" },
+  );
+}
+
 describe("Shell", () => {
-  it("shows the signed-in username and a logout control", () => {
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "authenticated",
-      username: "furkan",
-      login: vi.fn(),
-      logout: vi.fn(),
-      changePassword: vi.fn(),
-    });
+  it("shows the signed-in username, nav links, and the routed dashboard body", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<Shell />}>
-            <Route index element={<p>Dashboard Body</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell();
 
-    expect(screen.getByText("Signed in as furkan")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Signed in as furkan")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Change password" })).toBeInTheDocument();
     expect(screen.getByText("Dashboard Body")).toBeInTheDocument();
   });
 
-  it("calls logout when the button is clicked", () => {
-    const logout = vi.fn();
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      status: "authenticated",
-      username: "furkan",
-      login: vi.fn(),
-      logout,
-      changePassword: vi.fn(),
-    });
+  it("calls the logout endpoint when Log out is clicked", async () => {
+    vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
+    vi.mocked(client.logout).mockResolvedValue({ ok: true, data: undefined });
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<Shell />}>
-            <Route index element={<p>Dashboard Body</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell();
 
-    screen.getByRole("button", { name: "Log out" }).click();
-    expect(logout).toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText("Signed in as furkan")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Log out" }));
+
+    await waitFor(() => expect(client.logout).toHaveBeenCalled());
   });
 });
 ```
@@ -1532,24 +2108,38 @@ Expected: FAIL — `./Shell` does not exist yet.
 
 ```tsx
 import { Link, Outlet } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useLogoutMutation, useWhoamiStatus } from "../auth/queries";
+import { cn } from "../lib/utils";
 
 export default function Shell() {
-  const { username, logout } = useAuth();
+  const { username } = useWhoamiStatus();
+  const logoutMutation = useLogoutMutation();
 
   return (
-    <div className="shell">
-      <header>
-        <span>Signed in as {username}</span>
-        <nav>
-          <Link to="/">Dashboard</Link>
-          <Link to="/change-password">Change password</Link>
+    <div className="min-h-screen bg-background text-text">
+      <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+        <span className="text-sm text-muted">Signed in as {username}</span>
+        <nav className="flex items-center gap-4 text-sm">
+          <Link to="/" className="text-text transition-colors hover:text-accent">
+            Dashboard
+          </Link>
+          <Link to="/change-password" className="text-text transition-colors hover:text-accent">
+            Change password
+          </Link>
         </nav>
-        <button type="button" onClick={() => void logout()}>
-          Log out
+        <button
+          type="button"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          className={cn(
+            "rounded-md border border-border px-3 py-1.5 text-sm text-text transition-colors hover:bg-background",
+            logoutMutation.isPending && "opacity-50",
+          )}
+        >
+          {logoutMutation.isPending ? "Logging out…" : "Log out"}
         </button>
       </header>
-      <main>
+      <main className="px-6 py-8">
         <Outlet />
       </main>
     </div>
@@ -1563,8 +2153,10 @@ export default function Shell() {
 export default function DashboardPage() {
   return (
     <section>
-      <h1>Dashboard</h1>
-      <p>Module screens (Games, Members, Devlog, Awards, Contact, Site Settings, Media) land here in later plans.</p>
+      <h1 className="text-2xl font-semibold text-text">Dashboard</h1>
+      <p className="mt-2 text-sm text-muted">
+        Module screens (Games, Members, Devlog, Awards, Contact, Site Settings, Media) land here in later plans.
+      </p>
     </section>
   );
 }
@@ -1584,7 +2176,6 @@ Expected: PASS
 
 ```tsx
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import Shell from "./pages/Shell";
@@ -1593,39 +2184,41 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter basename="/I-am-a-pixabro">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Shell />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="change-password" element={<ChangePasswordPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter basename="/I-am-a-pixabro">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Shell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="change-password" element={<ChangePasswordPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 ```
 
+`App` has no `QueryClientProvider` of its own — that lives once at the real app root in `main.tsx` (Task 6). Tests that render `App` directly must supply their own, as below.
+
 - [ ] **Step 10: Rewrite `App.test.tsx` to cover both auth states**
 
-`App` renders a `BrowserRouter` with `basename="/I-am-a-pixabro"`, but jsdom's default test location is `/`, which does not start with that basename — react-router would fail to match any route. Point the test's location at the basename before each render and restore it afterward:
+`App` renders a `BrowserRouter` with `basename="/I-am-a-pixabro"`, but jsdom's default test location is `/`, which does not start with that basename — react-router would fail to match any route. Point the test's location at the basename before each render and restore it afterward. Also wrap in a fresh `QueryClient` per test, since `App` no longer provides one itself.
 
 `admin-ui/src/App.test.tsx`:
 
 ```tsx
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import { createTestQueryClient } from "./testUtils";
 import * as client from "./api/client";
 
 vi.mock("./api/client");
@@ -1639,6 +2232,15 @@ afterEach(() => {
   window.history.pushState({}, "", "/");
 });
 
+function renderApp() {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>,
+  );
+}
+
 describe("App", () => {
   it("shows the login page when anonymous", async () => {
     vi.mocked(client.whoami).mockResolvedValue({
@@ -1647,7 +2249,7 @@ describe("App", () => {
       error: { code: "unauthorized", message: "not logged in" },
     });
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument());
   });
@@ -1655,7 +2257,7 @@ describe("App", () => {
   it("shows the dashboard when authenticated", async () => {
     vi.mocked(client.whoami).mockResolvedValue({ ok: true, data: { username: "furkan" } });
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => expect(screen.getByText("Signed in as furkan")).toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
@@ -1671,7 +2273,15 @@ npm test
 
 Expected: PASS for every test file.
 
-- [ ] **Step 12: Commit**
+- [ ] **Step 12: Run lint**
+
+```bash
+npm run lint
+```
+
+Expected: zero errors, in particular zero `@typescript-eslint/no-explicit-any` violations.
+
+- [ ] **Step 13: Commit**
 
 ```bash
 git add admin-ui/src/App.tsx admin-ui/src/App.test.tsx admin-ui/src/components admin-ui/src/pages/Shell.tsx admin-ui/src/pages/Shell.test.tsx admin-ui/src/pages/DashboardPage.tsx
@@ -1680,7 +2290,7 @@ git commit -m "feat: add routing, protected-route guard, shell, and dashboard pl
 
 ---
 
-### Task 8: Service Worker for app-shell asset caching
+### Task 10: Service Worker for app-shell asset caching
 
 **Files:**
 - Create: `admin-ui/public/sw.js`
@@ -1815,11 +2425,16 @@ self.addEventListener("fetch", (event) => {
 
 - [ ] **Step 6: Wire registration into the entrypoint**
 
-Modify `admin-ui/src/main.tsx`:
+Modify `admin-ui/src/main.tsx` (final version — Task 3's font imports, Task 6's `QueryClientProvider`/`Toaster`, and this task's Service Worker registration all together):
 
 ```tsx
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import App from "./App";
 import { registerServiceWorker } from "./registerServiceWorker";
 import "./index.css";
@@ -1829,9 +2444,23 @@ if (!rootElement) {
   throw new Error("root element not found");
 }
 
+const queryClient = new QueryClient();
+
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <Toaster
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: "#171A21",
+            color: "#F1F1F3",
+            border: "1px solid #2A2E37",
+          },
+        }}
+      />
+    </QueryClientProvider>
   </StrictMode>,
 );
 
@@ -1840,7 +2469,7 @@ registerServiceWorker();
 
 - [ ] **Step 7: Manual browser verification**
 
-`jsdom` has no `ServiceWorkerGlobalScope`, so the SW's `fetch`-interception behavior cannot be unit tested — verify it manually once the shell is built and served (after Task 10's server is running):
+`jsdom` has no `ServiceWorkerGlobalScope`, so the SW's `fetch`-interception behavior cannot be unit tested — verify it manually once the shell is built and served (after Task 12's server is running):
 
 ```bash
 open http://localhost:8080/I-am-a-pixabro/
@@ -1865,14 +2494,14 @@ git commit -m "feat: add service worker for app-shell asset caching"
 
 ---
 
-### Task 9: Build output wiring into the Go server's expected directory
+### Task 11: Build output wiring into the Go server's expected directory
 
 **Files:**
 - Create: `Makefile`
 - Modify: `.gitignore` (repo root, from Plan A)
 
 **Interfaces:**
-- Consumes: `admin-ui`'s `npm run build` (Task 2's `vite.config.ts` `outDir` logic)
+- Consumes: `admin-ui`'s `npm run build` (Task 2's `vite.config.ts` `outDir` logic; Task 3's Tailwind/PostCSS config runs automatically as part of the same `vite build` — there is no separate CSS build step to wire in)
 - Produces: `make admin-build` — builds the SPA straight into the exact directory `cmd/server/main.go` serves from (`{DataDir}/admin-dist`, default `./data/admin-dist`)
 
 - [ ] **Step 1: Add a root Makefile target**
@@ -1892,6 +2521,8 @@ admin-build:
 ADMIN_UI_OUT_DIR=/srv/pixabros/data/admin-dist make admin-build
 ```
 
+`npm run build` is `tsc -b && vite build` (Task 2's `package.json`); Vite's own PostCSS pipeline picks up `postcss.config.js`/`tailwind.config.js` (Task 3) automatically for any imported CSS, so `make admin-build` alone produces fully Tailwind-compiled CSS — there is no separate "run Tailwind" step to remember or forget.
+
 - [ ] **Step 2: Extend the root `.gitignore`**
 
 Append to `.gitignore` (from Plan A Task 1 — it already ignores `/data/`, which covers the build *output* since it lands under `./data/admin-dist`; this adds the frontend's own build tooling artifacts):
@@ -1905,9 +2536,10 @@ Append to `.gitignore` (from Plan A Task 1 — it already ignores `/data/`, whic
 ```bash
 make admin-build
 ls data/admin-dist
+ls data/admin-dist/assets
 ```
 
-Expected: `data/admin-dist/index.html` and `data/admin-dist/assets/` (containing content-hashed `.js`/`.css` files) and `data/admin-dist/sw.js` all exist.
+Expected: `data/admin-dist/index.html`, `data/admin-dist/sw.js`, and `data/admin-dist/assets/` (containing content-hashed `.js`/`.css` files) all exist.
 
 - [ ] **Step 4: Verify the base path is baked into the built HTML**
 
@@ -1917,7 +2549,16 @@ grep -o '/I-am-a-pixabro/assets/[^"]*\.js' data/admin-dist/index.html
 
 Expected: at least one match — confirms Vite's `base: "/I-am-a-pixabro/"` (Task 2 Step 6) was applied to the production build's asset URLs.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify Tailwind's compiled CSS is part of the same build output**
+
+```bash
+grep -il "0f1115" data/admin-dist/assets/*.css
+grep -il "e879f9" data/admin-dist/assets/*.css
+```
+
+Expected: both design-spec hex tokens are present in the same `assets/*.css` file that `make admin-build` produced — proof that Tailwind/PostCSS ran inside `npm run build`, not as a separate manual step.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add Makefile .gitignore
@@ -1926,13 +2567,13 @@ git commit -m "feat: add make target building the admin ui into the server's exp
 
 ---
 
-### Task 10: End-to-end verification against the Go server
+### Task 12: End-to-end verification against the Go server
 
 **Files:**
 - None (verification only)
 
 **Interfaces:**
-- Consumes: everything from Tasks 1–9
+- Consumes: everything from Tasks 1–11
 
 - [ ] **Step 1: Build both halves of the system**
 
@@ -1969,7 +2610,7 @@ curl -i -b /tmp/pixabros-cookies.txt http://localhost:8080/api/admin/whoami
 curl -i -b /tmp/pixabros-cookies.txt http://localhost:8080/I-am-a-pixabro/sw.js
 ```
 
-Expected: login returns `200` with `Set-Cookie: pixabros_session=...; HttpOnly; Secure; SameSite=Strict` and body `{"username":"furkan"}`; the second `whoami` call returns `200` with the same body; the `sw.js` request returns `200` with the Service Worker source from Task 8.
+Expected: login returns `200` with `Set-Cookie: pixabros_session=...; HttpOnly; Secure; SameSite=Strict` and body `{"username":"furkan"}`; the second `whoami` call returns `200` with the same body; the `sw.js` request returns `200` with the Service Worker source from Task 10.
 
 - [ ] **Step 5: Verify the change-password and logout flow**
 
@@ -1983,13 +2624,18 @@ curl -i -b /tmp/pixabros-cookies.txt http://localhost:8080/api/admin/whoami
 
 Expected: change-password returns `204`; logout returns `204` and clears the cookie; the final `whoami` call (cookie now invalid) returns `401`.
 
-- [ ] **Step 6: Open the SPA in a real browser and click through it**
+- [ ] **Step 6: Open the SPA in a real browser and click through it, confirming the design spec's visuals and toasts**
 
 ```bash
 open http://localhost:8080/I-am-a-pixabro/
 ```
 
-Log in with `furkan` / `a-different-strong-password-2`, confirm the dashboard placeholder renders with "Signed in as furkan", navigate to "Change password", submit a new password, then click "Log out" and confirm you land back on the login screen. Complete Task 8 Step 7's DevTools Service Worker check here too.
+Walk through, confirming at each step:
+- **Login screen:** dark background (`#0F1115`), a card surface (`#171A21`) with a visible border, Inter-rendered text (not a system-font fallback — check via DevTools → Elements → Computed → `font-family` on the heading), and an accent-magenta (`#E879F9`) "Sign in" button that visibly darkens (`#C026D3`) on hover.
+- Log in with `furkan` / `a-different-strong-password-2`; confirm a **sonner toast** ("Signed in.") appears in the corner, styled with the dark surface/border/text colors from Task 6's `<Toaster />` config, and the dashboard placeholder renders with "Signed in as furkan".
+- Navigate to "Change password", submit a new password; confirm both the inline "Password updated." status text **and** a success toast appear.
+- Click "Log out"; confirm a "Signed out." toast appears and you land back on the login screen.
+- Complete Task 10 Step 7's DevTools Service Worker check here too (scope `/I-am-a-pixabro/`, hashed assets served `(ServiceWorker)` on reload, `/api/admin/*` never served from cache).
 
 - [ ] **Step 7: Stop the server and run the full test suites one last time**
 
@@ -1997,9 +2643,10 @@ Log in with `furkan` / `a-different-strong-password-2`, confirm the dashboard pl
 kill %1
 go test ./...
 (cd admin-ui && npm test)
+(cd admin-ui && npm run lint)
 ```
 
-Expected: PASS for every Go package and every Vitest file.
+Expected: PASS for every Go package, every Vitest file, and zero lint errors.
 
 - [ ] **Step 8: Final commit (only if any stray files remain from verification)**
 
@@ -2007,14 +2654,15 @@ Expected: PASS for every Go package and every Vitest file.
 git status
 ```
 
-If everything from Tasks 1–9 is already committed, there is nothing left to commit here — this task is verification-only.
+If everything from Tasks 1–11 is already committed, there is nothing left to commit here — this task is verification-only.
 
 ---
 
 ## Definition of Done
 
 - `go build ./...` and `go test ./...` succeed, including the new `Whoami` handler and router tests.
-- `cd admin-ui && npm test` passes with no skipped files; `npm run lint` reports zero errors (in particular, zero `@typescript-eslint/no-explicit-any` violations).
-- `make admin-build` produces `data/admin-dist/index.html` + a content-hashed `assets/` bundle + `sw.js`, with `/I-am-a-pixabro/` baked into every asset URL.
+- `cd admin-ui && npm test` passes with no skipped files — covering the typed API client, the TanStack Query auth hooks (`useWhoamiStatus`/`useLoginMutation`/`useLogoutMutation`/`useChangePasswordMutation`), the shadcn `Button`/`Input`/`Label` primitives, both Formik+Yup forms (client-side Yup errors *and* server-side `ApiError` messages asserted separately), `ProtectedRoute`, `Shell`, `App`, and the Service Worker registration logic.
+- `npm run lint` reports zero errors, in particular zero `@typescript-eslint/no-explicit-any` violations.
+- `make admin-build` produces `data/admin-dist/index.html` + a content-hashed `assets/` bundle (containing compiled Tailwind CSS with the design spec's exact color tokens) + `sw.js`, with `/I-am-a-pixabro/` baked into every asset URL — all from a single `npm run build`, with no separate manual Tailwind step.
 - Against a running `cmd/server`: an anonymous `GET /api/admin/whoami` returns `401`; `POST /api/admin/login` with valid credentials sets the `pixabros_session` cookie and a subsequent `whoami` returns `200` with the username; `POST /api/admin/change-password` and `POST /api/admin/logout` behave per their Plan A contracts; the logged-out session's `whoami` call returns `401` again.
-- In a real browser at `http://localhost:8080/I-am-a-pixabro/`: login → dashboard → change-password → logout all work end-to-end, and DevTools confirms the Service Worker is active with scope `/I-am-a-pixabro/`, serves hashed JS/CSS from cache on repeat loads, and never serves `/api/*` from cache.
+- In a real browser at `http://localhost:8080/I-am-a-pixabro/`: login → dashboard → change-password → logout all work end-to-end; the dark theme, accent color (default and hover), and Inter font are visually confirmed; a sonner toast appears on login, change-password, and logout; and DevTools confirms the Service Worker is active with scope `/I-am-a-pixabro/`, serves hashed JS/CSS from cache on repeat loads, and never serves `/api/*` from cache.

@@ -20,5 +20,7 @@ func Open(path string) (*sql.DB, error) {
 	if _, err := conn.Exec(`PRAGMA journal_mode = WAL;`); err != nil {
 		return nil, err
 	}
+	// foreign_keys is a per-connection pragma; pin pool to this connection to ensure it applies to all queries.
+	conn.SetMaxOpenConns(1)
 	return conn, nil
 }

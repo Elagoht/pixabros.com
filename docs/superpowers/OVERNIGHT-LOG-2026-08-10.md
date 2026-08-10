@@ -6,7 +6,8 @@ User went to sleep and asked for the full remaining pipeline (Plan B finish → 
 
 - [x] Plan B Task 11 fix round (server timeouts + graceful shutdown) — fixed, re-reviewed clean
 - [x] Plan B final whole-branch review (opus) — 0 Critical, 11 Important findings, verdict "Ready to merge: With fixes"
-- [ ] Plan B final-review fixes (dispatched, in progress) + finish/merge to main
+- [x] Plan B final-review fixes (commit `4c9c28e`) — scoped re-review clean, verdict "Ready to merge to main: Yes"
+- [x] Plan B merged to `main` (fast-forward `5dcc303..f55f519`), tests green, worktree + branch cleaned up
 - [ ] Plan C worktree setup + SDD execution (12 tasks) + final review + finish/merge
 - [ ] Plan D worktree setup + SDD execution (8 tasks) + final review + finish/merge
 

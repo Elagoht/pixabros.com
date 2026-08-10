@@ -100,8 +100,8 @@ func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
 		return
 	}
-	if len(req.NewPassword) < 8 {
-		httpapi.WriteError(w, http.StatusBadRequest, "weak_password", "new password must be at least 8 characters")
+	if err := auth.ValidatePassword(req.NewPassword); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "weak_password", err.Error())
 		return
 	}
 

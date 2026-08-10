@@ -51,6 +51,10 @@ func createAdmin(username, password string) error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
+	if err := auth.ValidatePassword(password); err != nil {
+		return fmt.Errorf("invalid password: %w", err)
+	}
+
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)

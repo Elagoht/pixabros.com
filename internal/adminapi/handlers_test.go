@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pixabros/internal/auth"
@@ -200,6 +201,40 @@ func TestChangePassword_InvalidatesAllSessionsForAdmin(t *testing.T) {
 	}
 	if _, err := sessions.Validate(callerToken); err == nil {
 		t.Error("caller's own session token should also be invalid after password change")
+	}
+}
+
+func TestChangePassword_TooLongNewPasswordReturnsWeakPassword(t *testing.T) {
+	handlers, sessions, _, adminID := setupHandlers(t)
+	token, _, err := sessions.Create(adminID)
+	if err != nil {
+		t.Fatalf("sessions.Create() error = %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "s3cret-password",
+		"new_password":      strings.Repeat("a", 73),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	req = req.WithContext(withAdminID(req.Context(), adminID))
+	rec := httptest.NewRecorder()
+
+	handlers.ChangePassword(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	var body2 struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body2); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body2.Error.Code != "weak_password" {
+		t.Errorf("error.code = %q, want %q", body2.Error.Code, "weak_password")
 	}
 }
 

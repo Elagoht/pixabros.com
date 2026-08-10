@@ -37,6 +37,15 @@ func TestCreateAdmin(t *testing.T) {
 	}
 }
 
+func TestCreateAdmin_ShortPasswordFails(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	t.Setenv("PIXABROS_DB_PATH", dbPath)
+
+	if err := createAdmin("furkan", "short"); err == nil {
+		t.Error("createAdmin() with a password under 8 characters should return an error")
+	}
+}
+
 func TestCreateAdmin_DuplicateUsernameFails(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	t.Setenv("PIXABROS_DB_PATH", dbPath)

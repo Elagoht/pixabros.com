@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"pixabros/internal/auth"
 	"pixabros/internal/config"
@@ -38,8 +39,16 @@ func main() {
 		PublicDir:  cfg.DataDir + "/rendered",
 	})
 
+	srv := &http.Server{
+		Addr:         cfg.Addr,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
 	log.Printf("listening on %s", cfg.Addr)
-	if err := http.ListenAndServe(cfg.Addr, handler); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("serve: %v", err)
 	}
 }

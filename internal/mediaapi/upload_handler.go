@@ -63,6 +63,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	m, err := h.repo.Create(key, target.Width, target.Height)
 	if err != nil {
+		_ = h.files.Delete(key) // best-effort cleanup of the orphaned storage object
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not save media record")
 		return
 	}

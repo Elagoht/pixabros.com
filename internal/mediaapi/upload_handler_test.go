@@ -9,7 +9,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pixabros/internal/db"
@@ -111,5 +113,49 @@ func TestUpload_UnknownTarget(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUpload_CleanupOnCreateFailure(t *testing.T) {
+	tempDir := t.TempDir()
+	conn, err := db.Open(filepath.Join(tempDir, "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	repo := media.NewRepo(conn)
+	files := storage.NewLocalDisk(tempDir, "/media")
+	handler := NewUploadHandler(repo, files)
+
+	// Close DB before upload so that repo.Create will fail
+	conn.Close()
+
+	req := multipartUploadRequest(t, "avatar", solidPNG(t, 800, 400))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	// Should return 500 error
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+
+	// Verify cleanup: no WebP files should remain in storage
+	mediaDir := filepath.Join(tempDir, "media")
+	var foundWebP bool
+	filepath.Walk(mediaDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info == nil || info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".webp") {
+			foundWebP = true
+		}
+		return nil
+	})
+
+	if foundWebP {
+		t.Error("expected WebP file to be cleaned up after Create failure")
 	}
 }

@@ -30,6 +30,17 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
+	for _, dir := range []string{
+		cfg.DataDir + "/admin-dist",
+		cfg.DataDir + "/games",
+		cfg.DataDir + "/assets",
+		cfg.DataDir + "/rendered-store",
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+
 	renderedFiles := storage.NewLocalDisk(cfg.DataDir+"/rendered-store", "/rendered")
 	store := render.NewStore(conn, renderedFiles)
 	registry := render.NewRegistry()
@@ -37,8 +48,17 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	worker := render.NewWorker(conn, registry, store, 2*time.Second)
-	go worker.Run(ctx)
+	// All registry population must happen before this point: Registry's mutex
+	// makes concurrent access safe, but registration stays a startup-only
+	// phase by convention.
+	worker := render.NewWorker(conn, registry, store, 2*time.Second, render.WithErrorLogger(func(err error) {
+		log.Printf("render worker: %v", err)
+	}))
+	workerDone := make(chan struct{})
+	go func() {
+		worker.Run(ctx)
+		close(workerDone)
+	}()
 
 	handler := httpserver.New(httpserver.Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
@@ -69,4 +89,8 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("serve: %v", err)
 	}
+
+	// Join the worker so no render is still running against conn when the
+	// deferred conn.Close() fires.
+	<-workerDone
 }

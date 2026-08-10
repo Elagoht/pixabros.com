@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -30,7 +31,14 @@ type uploadResponse struct {
 	Height int    `json:"height"`
 }
 
+// maxUploadBodyBytes bounds the whole request body, with headroom over
+// imaging's own 20 MiB decode cap for multipart overhead. It is a var
+// (matching gamearchive's own size limits) so tests can shrink it.
+var maxUploadBodyBytes int64 = 24 << 20
+
 func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBodyBytes)
+
 	targetName := r.URL.Query().Get("target")
 	target, ok := imaging.LookupTarget(targetName)
 	if !ok {
@@ -40,6 +48,11 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			httpapi.WriteError(w, http.StatusRequestEntityTooLarge, "file_too_large", "uploaded file exceeds the maximum allowed size")
+			return
+		}
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_file", "a file field is required")
 		return
 	}

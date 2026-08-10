@@ -19,8 +19,14 @@ func NewStore(db *sql.DB, files storage.Storage) *Store {
 }
 
 // RenderAndPersist calls renderer, writes the resulting HTML via Storage
-// (keyed by pageKey), and replaces rendered_pages/page_tags bookkeeping for
-// pageKey with the renderer's freshly declared dependencies.
+// (content-addressed by its ETag), and replaces rendered_pages/page_tags
+// bookkeeping for pageKey with the renderer's freshly declared dependencies.
+//
+// Writing under an etag-derived key keeps the file store and the database
+// consistent even if the transaction below fails: the new file is simply an
+// orphan and rendered_pages still points at the previous etag, whose file is
+// untouched. It also means page keys that are path prefixes of one another
+// (e.g. "games" and "games/pixel-quest") can never collide on disk.
 func (s *Store) RenderAndPersist(pageKey string, renderer Renderer) (string, error) {
 	html, tags, err := renderer(pageKey)
 	if err != nil {
@@ -29,7 +35,7 @@ func (s *Store) RenderAndPersist(pageKey string, renderer Renderer) (string, err
 
 	etag := computeETag(html)
 
-	if err := s.files.Put(renderedFileKey(pageKey), bytes.NewReader(html)); err != nil {
+	if err := s.files.Put(renderedFileKey(etag), bytes.NewReader(html)); err != nil {
 		return "", err
 	}
 
@@ -71,7 +77,7 @@ func (s *Store) ETag(pageKey string) (string, bool, error) {
 }
 
 func (s *Store) PageKeysForTag(tag string) ([]string, error) {
-	rows, err := s.db.Query(`SELECT page_key FROM page_tags WHERE tag = ?;`, tag)
+	rows, err := s.db.Query(`SELECT page_key FROM page_tags WHERE tag = ? ORDER BY page_key;`, tag)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +94,8 @@ func (s *Store) PageKeysForTag(tag string) ([]string, error) {
 	return pageKeys, rows.Err()
 }
 
-func renderedFileKey(pageKey string) string {
-	return "rendered/" + pageKey
+func renderedFileKey(etag string) string {
+	return "rendered/" + etag + ".html"
 }
 
 func computeETag(html []byte) string {

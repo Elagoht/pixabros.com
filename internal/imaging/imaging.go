@@ -10,24 +10,45 @@ import (
 	"io"
 
 	"golang.org/x/image/draw"
-	"golang.org/x/image/webp"
+	// Imported for its side effect of registering the WebP decoder with the
+	// standard image package.
+	_ "golang.org/x/image/webp"
 
 	webpenc "github.com/mayahiro/go-webp"
 )
 
+const (
+	// maxUploadBytes bounds how much of an uploaded image Decode will read
+	// into memory before giving up.
+	maxUploadBytes = 20 << 20 // 20 MiB
+	// maxImageDimension bounds decoded width/height, checked via
+	// image.DecodeConfig before the full pixel decode allocates anything.
+	maxImageDimension = 8192
+)
+
 // Decode reads a JPEG, PNG, GIF, or WebP image from r.
 func Decode(r io.Reader) (image.Image, error) {
-	data, err := io.ReadAll(r)
+	data, err := io.ReadAll(io.LimitReader(r, maxUploadBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read image: %w", err)
 	}
-	if img, _, err := image.Decode(bytes.NewReader(data)); err == nil {
-		return img, nil
+	if len(data) > maxUploadBytes {
+		return nil, fmt.Errorf("image exceeds the %d byte upload limit", maxUploadBytes)
 	}
-	if img, err := webp.Decode(bytes.NewReader(data)); err == nil {
-		return img, nil
+
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("decode image: %w", err)
 	}
-	return nil, fmt.Errorf("unsupported or corrupt image format")
+	if cfg.Width > maxImageDimension || cfg.Height > maxImageDimension {
+		return nil, fmt.Errorf("image dimensions %dx%d exceed the maximum of %dx%d", cfg.Width, cfg.Height, maxImageDimension, maxImageDimension)
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("decode image: %w", err)
+	}
+	return img, nil
 }
 
 // ResizeCropFill center-crops src to the target aspect ratio, then scales it

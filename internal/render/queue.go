@@ -18,10 +18,23 @@ type Worker struct {
 	registry     *Registry
 	store        *Store
 	pollInterval time.Duration
+	onError      func(error)
 }
 
-func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.Duration) *Worker {
-	return &Worker{db: db, registry: registry, store: store, pollInterval: pollInterval}
+type WorkerOption func(*Worker)
+
+// WithErrorLogger registers a callback invoked with any error encountered
+// while polling or processing jobs. The default is a no-op.
+func WithErrorLogger(onError func(error)) WorkerOption {
+	return func(w *Worker) { w.onError = onError }
+}
+
+func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.Duration, opts ...WorkerOption) *Worker {
+	w := &Worker{db: db, registry: registry, store: store, pollInterval: pollInterval, onError: func(error) {}}
+	for _, opt := range opts {
+		opt(w)
+	}
+	return w
 }
 
 // ProcessOnce drains every pending regen job once. It returns the number of
@@ -56,7 +69,7 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 		}
 
 		if _, err := w.db.Exec(`UPDATE regen_jobs SET status = 'processing' WHERE id = ?;`, j.id); err != nil {
-			return 0, err
+			return processed, errors.Join(append(statusErrs, err)...)
 		}
 		if err := w.processTag(j.tag); err != nil {
 			if _, upErr := w.db.Exec(
@@ -105,10 +118,14 @@ func (w *Worker) recoverStaleJobs() error {
 }
 
 // Run recovers any stale jobs, then polls for pending jobs every pollInterval
-// until ctx is cancelled.
+// until ctx is cancelled. Errors are reported to the callback registered via
+// WithErrorLogger, since failed jobs are not auto-retried and would otherwise
+// leave no signal at all.
 func (w *Worker) Run(ctx context.Context) {
 	// Recover any jobs stuck in processing from a previous crash.
-	w.recoverStaleJobs()
+	if err := w.recoverStaleJobs(); err != nil {
+		w.onError(fmt.Errorf("recoverStaleJobs: %w", err))
+	}
 
 	ticker := time.NewTicker(w.pollInterval)
 	defer ticker.Stop()
@@ -117,7 +134,9 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			w.ProcessOnce(ctx)
+			if _, err := w.ProcessOnce(ctx); err != nil {
+				w.onError(fmt.Errorf("ProcessOnce: %w", err))
+			}
 		}
 	}
 }

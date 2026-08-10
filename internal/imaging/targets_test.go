@@ -4,8 +4,8 @@ import "testing"
 
 func TestLookupTarget_KnownAndUnknown(t *testing.T) {
 	cases := []struct {
-		name          string
-		wantW, wantH  int
+		name         string
+		wantW, wantH int
 	}{
 		{"avatar", 400, 400},
 		{"cd_cover_art", 600, 600},

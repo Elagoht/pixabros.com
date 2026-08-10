@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -85,6 +86,53 @@ func TestUpload_InvalidArchiveReturnsBadRequest(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUpload_OversizedBodyRejected(t *testing.T) {
+	orig := maxUploadBodyBytes
+	t.Cleanup(func() { maxUploadBodyBytes = orig })
+	maxUploadBodyBytes = 64 // far smaller than any real multipart upload
+
+	gamesDir := t.TempDir()
+	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+
+	req := uploadRequest(t, "pixel-quest", zipWithIndex(t))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusRequestEntityTooLarge, rec.Body.String())
+	}
+}
+
+func TestUpload_InvalidArchiveLogsErrorWithoutLeakingPaths(t *testing.T) {
+	gamesDir := t.TempDir()
+	var captured error
+	handler := NewHandler(gamesDir, func(slug string) error { return nil }, WithErrorLogger(func(err error) {
+		captured = err
+	}))
+
+	req := uploadRequest(t, "pixel-quest", []byte("not a real archive"))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if captured == nil {
+		t.Fatal("expected WithErrorLogger's callback to receive the underlying extraction error")
+	}
+	if !strings.Contains(captured.Error(), "pixel-quest") {
+		t.Errorf("captured error = %q, want it to name the slug", captured.Error())
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, gamesDir) {
+		t.Errorf("response body = %q, must not contain the server-side destination path", body)
+	}
+	if strings.Contains(body, "/") {
+		t.Errorf("response body = %q, must not contain any filesystem path fragment", body)
 	}
 }
 

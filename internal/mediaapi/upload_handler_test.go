@@ -116,6 +116,30 @@ func TestUpload_UnknownTarget(t *testing.T) {
 	}
 }
 
+func TestUpload_OversizedBodyRejected(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	orig := maxUploadBodyBytes
+	t.Cleanup(func() { maxUploadBodyBytes = orig })
+	maxUploadBodyBytes = 64 // far smaller than any real multipart upload
+
+	handler := NewUploadHandler(media.NewRepo(conn), storage.NewLocalDisk(t.TempDir(), "/media"))
+	req := multipartUploadRequest(t, "avatar", solidPNG(t, 200, 200))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusRequestEntityTooLarge, rec.Body.String())
+	}
+}
+
 func TestUpload_CleanupOnCreateFailure(t *testing.T) {
 	tempDir := t.TempDir()
 	conn, err := db.Open(filepath.Join(tempDir, "test.db"))

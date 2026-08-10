@@ -36,7 +36,7 @@ func New(deps Dependencies) http.Handler {
 
 	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", noDirListing(deps.AdminUIDir)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
-	mux.Handle("/assets/", http.StripPrefix("/assets/", render.ServeImmutableAssets(deps.AssetsDir)))
+	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
 	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
 
 	return mux
@@ -58,4 +58,37 @@ func noDirListing(dir string) http.Handler {
 		}
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+// serveImmutableAssets serves static files (content-hashed CSS/JS) from dir
+// with a long-lived immutable Cache-Control header, applied only to
+// successful responses so a missing asset's 404 is never cached as if it
+// were a permanent answer.
+func serveImmutableAssets(dir string) http.Handler {
+	base := noDirListing(dir)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		base.ServeHTTP(&immutableCacheWriter{ResponseWriter: w}, r)
+	})
+}
+
+type immutableCacheWriter struct {
+	http.ResponseWriter
+	wroteHeader bool
+}
+
+func (w *immutableCacheWriter) WriteHeader(status int) {
+	if !w.wroteHeader {
+		w.wroteHeader = true
+		if status >= 200 && status < 300 {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
+	}
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *immutableCacheWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
 }

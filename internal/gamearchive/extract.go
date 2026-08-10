@@ -125,6 +125,10 @@ func extractTarReader(tr *tar.Reader, destDir string, budget *int64) error {
 			if err := writeFile(target, tr, budget); err != nil {
 				return err
 			}
+		case tar.TypeSymlink, tar.TypeLink:
+			// Links can point outside destDir or alias unexpected files, so
+			// they are rejected outright rather than silently dropped.
+			return fmt.Errorf("archive entry %q is a symlink or hard link, which is not supported", hdr.Name)
 		}
 	}
 }

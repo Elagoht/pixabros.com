@@ -14,6 +14,11 @@ import (
 // "index.html".
 func ServePages(store *Store, files storage.Storage) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
 		pageKey := strings.TrimPrefix(r.URL.Path, "/")
 		if pageKey == "" {
 			pageKey = "index.html"
@@ -29,15 +34,18 @@ func ServePages(store *Store, files storage.Storage) http.Handler {
 			return
 		}
 
-		w.Header().Set("ETag", etag)
+		// RFC 9110 §8.8.3 requires an entity-tag to be a quoted string; an
+		// intermediary may normalize or drop a bare one.
+		quoted := `"` + etag + `"`
+		w.Header().Set("ETag", quoted)
 		w.Header().Set("Cache-Control", "no-cache")
 
-		if r.Header.Get("If-None-Match") == etag {
+		if ifNoneMatchHas(r.Header.Get("If-None-Match"), quoted) {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
 
-		body, err := files.Get(renderedFileKey(pageKey))
+		body, err := files.Get(renderedFileKey(etag))
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -49,12 +57,19 @@ func ServePages(store *Store, files storage.Storage) http.Handler {
 	})
 }
 
-// ServeImmutableAssets serves static files (content-hashed CSS/JS) from dir
-// with a long-lived immutable Cache-Control header.
-func ServeImmutableAssets(dir string) http.Handler {
-	fileServer := http.FileServer(http.Dir(dir))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		fileServer.ServeHTTP(w, r)
-	})
+// ifNoneMatchHas reports whether header (a comma-separated If-None-Match
+// list, each entry optionally weak-prefixed with "W/") contains quoted,
+// or is the wildcard "*".
+func ifNoneMatchHas(header, quoted string) bool {
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		if part == "*" {
+			return true
+		}
+		part = strings.TrimPrefix(part, "W/")
+		if part == quoted {
+			return true
+		}
+	}
+	return false
 }

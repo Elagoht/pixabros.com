@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -309,5 +310,118 @@ func TestWorker_ProcessOnce_StopsOnContextCancellation(t *testing.T) {
 	}
 	if failedCount != 0 {
 		t.Errorf("failed jobs = %d, want 0", failedCount)
+	}
+}
+
+// TestWorker_Run_ReportsErrorsToErrorLogger proves the injectable error
+// callback actually fires: without it, a render pipeline failure produces no
+// signal at all in production.
+func TestWorker_Run_ReportsErrorsToErrorLogger(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := NewStore(conn, files)
+
+	// Close the connection so every DB statement the worker issues fails.
+	conn.Close()
+
+	errCh := make(chan error, 16)
+	worker := NewWorker(conn, NewRegistry(), store, time.Millisecond, WithErrorLogger(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		worker.Run(ctx)
+		close(done)
+	}()
+
+	deadline := time.After(2 * time.Second)
+	sawProcessOnce := false
+	for !sawProcessOnce {
+		select {
+		case reported := <-errCh:
+			if strings.Contains(reported.Error(), "ProcessOnce") {
+				sawProcessOnce = true
+			}
+		case <-deadline:
+			t.Fatal("no ProcessOnce error was reported to the error logger")
+		}
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Run() did not return after context cancellation")
+	}
+}
+
+// TestWorker_ProcessOnce_ReportsPartialProgressWhenMarkProcessingFails uses a
+// SQLite trigger to make exactly the mark-processing UPDATE fail on the second
+// job of a two-job batch, and asserts the returned count still reflects the
+// job that completed before the failure.
+func TestWorker_ProcessOnce_ReportsPartialProgressWhenMarkProcessingFails(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := NewStore(conn, files)
+	registry := NewRegistry()
+	registry.Register("page1.html", func(pageKey string) ([]byte, []string, error) {
+		return []byte("<h1>page 1</h1>"), []string{"good-tag"}, nil
+	})
+	if _, err := store.RenderAndPersist("page1.html", registry.exact["page1.html"]); err != nil {
+		t.Fatalf("seed page1: %v", err)
+	}
+
+	if _, err := conn.Exec(`
+		CREATE TRIGGER fail_mark_processing BEFORE UPDATE OF status ON regen_jobs
+		WHEN NEW.status = 'processing' AND OLD.tag = 'boom-tag'
+		BEGIN
+			SELECT RAISE(ABORT, 'simulated failure marking job processing');
+		END;`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	if err := EnqueueRegen(conn, "good-tag"); err != nil {
+		t.Fatalf("EnqueueRegen(good-tag): %v", err)
+	}
+	if err := EnqueueRegen(conn, "boom-tag"); err != nil {
+		t.Fatalf("EnqueueRegen(boom-tag): %v", err)
+	}
+
+	worker := NewWorker(conn, registry, store, 10*time.Millisecond)
+	processed, err := worker.ProcessOnce(context.Background())
+	if err == nil {
+		t.Fatal("ProcessOnce() should return the mark-processing failure")
+	}
+	if processed != 1 {
+		t.Errorf("processed = %d, want 1 (the job completed before the failure)", processed)
+	}
+
+	var status string
+	if err := conn.QueryRow(`SELECT status FROM regen_jobs WHERE tag = 'good-tag';`).Scan(&status); err != nil {
+		t.Fatalf("query good-tag job status: %v", err)
+	}
+	if status != "done" {
+		t.Errorf("good-tag job status = %q, want %q", status, "done")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pixabros/internal/auth"
@@ -310,5 +311,59 @@ func TestRouter_PlayDirWithIndexHTMLServesIt(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+func TestServeImmutableAssets_SetsCacheControlOnSuccess(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.abc123.css"), []byte("body{}"), 0o644); err != nil {
+		t.Fatalf("write asset: %v", err)
+	}
+
+	handler := serveImmutableAssets(dir)
+	req := httptest.NewRequest(http.MethodGet, "/main.abc123.css", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	got := rec.Header().Get("Cache-Control")
+	if !strings.Contains(got, "immutable") || !strings.Contains(got, "max-age=31536000") {
+		t.Errorf("Cache-Control = %q, want it to contain immutable and max-age=31536000", got)
+	}
+}
+
+func TestServeImmutableAssets_DoesNotCacheNotFound(t *testing.T) {
+	handler := serveImmutableAssets(t.TempDir())
+	req := httptest.NewRequest(http.MethodGet, "/does-not-exist.css", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "" {
+		t.Errorf("Cache-Control = %q, want empty on a 404", got)
+	}
+}
+
+func TestServeImmutableAssets_DoesNotListDirectory(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "some-dir")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "file.css"), []byte("body{}"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	handler := serveImmutableAssets(dir)
+	req := httptest.NewRequest(http.MethodGet, "/some-dir/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (directory listing must not be exposed)", rec.Code, http.StatusNotFound)
 	}
 }

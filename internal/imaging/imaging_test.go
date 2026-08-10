@@ -5,7 +5,10 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"strings"
 	"testing"
+
+	"golang.org/x/image/webp"
 )
 
 func solidPNG(t *testing.T, w, h int, c color.RGBA) []byte {
@@ -102,14 +105,38 @@ func TestResizeCropFill_CropsCorrectRegion(t *testing.T) {
 	}
 }
 
+func TestDecode_RejectsOversizedUpload(t *testing.T) {
+	oversized := make([]byte, maxUploadBytes+1)
+	_, err := Decode(bytes.NewReader(oversized))
+	if err == nil {
+		t.Fatal("Decode() with an oversized input should return an error")
+	}
+	// The size cap must trip before any decode attempt, so the error has to
+	// name the limit rather than being a generic "corrupt image".
+	if !strings.Contains(err.Error(), "upload limit") {
+		t.Errorf("Decode() error = %v, want it to report the upload size limit", err)
+	}
+}
+
+func TestDecode_RejectsOversizedDimensions(t *testing.T) {
+	data := solidPNG(t, maxImageDimension+1, 10, color.RGBA{R: 255, A: 255})
+	if _, err := Decode(bytes.NewReader(data)); err == nil {
+		t.Error("Decode() with oversized dimensions should return an error")
+	}
+}
+
 func TestEncodeWebP_ProducesDecodableOutput(t *testing.T) {
 	src := image.NewRGBA(image.Rect(0, 0, 20, 20))
 	data, err := EncodeWebP(src)
 	if err != nil {
 		t.Fatalf("EncodeWebP() error = %v", err)
 	}
-	if len(data) == 0 {
-		t.Error("EncodeWebP() returned no bytes")
+	decoded, err := webp.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("webp.Decode() on EncodeWebP's output error = %v", err)
+	}
+	if decoded.Bounds().Dx() != 20 || decoded.Bounds().Dy() != 20 {
+		t.Errorf("decoded bounds = %v, want 20x20", decoded.Bounds())
 	}
 }
 

@@ -135,6 +135,36 @@ func TestExtract_PathTraversal_Rejected_TarGz(t *testing.T) {
 	}
 }
 
+func TestExtract_TarSymlinkEntry_Rejected(t *testing.T) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	index := "<html></html>"
+	if err := tw.WriteHeader(&tar.Header{Name: "index.html", Mode: 0o644, Size: int64(len(index)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatalf("tar WriteHeader(index.html): %v", err)
+	}
+	if _, err := tw.Write([]byte(index)); err != nil {
+		t.Fatalf("tar write(index.html): %v", err)
+	}
+	if err := tw.WriteHeader(&tar.Header{Name: "secrets", Mode: 0o777, Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"}); err != nil {
+		t.Fatalf("tar WriteHeader(symlink): %v", err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tar Close(): %v", err)
+	}
+
+	dest := t.TempDir()
+	if err := Extract(bytes.NewReader(buf.Bytes()), "build.tar", dest); err == nil {
+		t.Fatal("Extract() should reject a tar archive containing a symlink entry")
+	}
+	entries, err := os.ReadDir(dest)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("destDir should be empty after a rejected symlink entry, found %d entries", len(entries))
+	}
+}
+
 func TestExtract_OversizedArchive(t *testing.T) {
 	// Test with a very small limit to trigger rejection without needing huge data
 	origMaxArchiveSize := maxArchiveSize
@@ -178,7 +208,7 @@ func TestExtract_OversizedDecompressed(t *testing.T) {
 	maxExtractedSize = 50 // 50 bytes limit for total decompressed output
 
 	data := buildZip(t, map[string]string{
-		"index.html": "<html></html>", // 14 bytes
+		"index.html": "<html></html>",                                // 14 bytes
 		"file.txt":   "this is extra content that exceeds the limit", // lots more bytes
 	})
 	dest := t.TempDir()

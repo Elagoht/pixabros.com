@@ -2310,20 +2310,9 @@ func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.D
 	return &Worker{db: db, registry: registry, store: store, pollInterval: pollInterval}
 }
 
-// recoverStaleJobs resets any job left in 'processing' back to 'pending'.
-// Since this worker processes jobs one at a time, sequentially, a job can
-// only be found 'processing' at startup if a previous run crashed mid-job —
-// there is never a moment under normal operation where two jobs are
-// 'processing' at once.
-func (w *Worker) recoverStaleJobs() error {
-	_, err := w.db.Exec(`UPDATE regen_jobs SET status = 'pending' WHERE status = 'processing';`)
-	return err
-}
-
-// ProcessOnce drains every pending regen job once, stopping early (without
-// starting a new job) if ctx is cancelled between jobs. It returns the
-// number of jobs it processed (successfully or not) and any errors
-// encountered recording jobs' terminal status, joined together.
+// ProcessOnce drains every pending regen job once. It returns the number of
+// jobs it actually processed (successfully or not), and any errors encountered while
+// recording terminal job statuses (which are aggregated but do not stop processing).
 func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	rows, err := w.db.Query(`SELECT id, tag FROM regen_jobs WHERE status = 'pending' ORDER BY id;`)
 	if err != nil {
@@ -2344,35 +2333,36 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	}
 	rows.Close()
 
+	var statusErrs []error
 	processed := 0
-	var errs []error
 	for _, j := range jobs {
-		if ctx.Err() != nil {
-			break
+		// Allow context cancellation between jobs.
+		if err := ctx.Err(); err != nil {
+			return processed, errors.Join(statusErrs...)
 		}
+
 		if _, err := w.db.Exec(`UPDATE regen_jobs SET status = 'processing' WHERE id = ?;`, j.id); err != nil {
-			errs = append(errs, fmt.Errorf("mark job %d processing: %w", j.id, err))
-			continue
+			return 0, err
 		}
 		if err := w.processTag(j.tag); err != nil {
-			if _, execErr := w.db.Exec(
+			if _, upErr := w.db.Exec(
 				`UPDATE regen_jobs SET status = 'failed', processed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'), error = ? WHERE id = ?;`,
 				err.Error(), j.id,
-			); execErr != nil {
-				errs = append(errs, fmt.Errorf("mark job %d failed: %w", j.id, execErr))
+			); upErr != nil {
+				statusErrs = append(statusErrs, fmt.Errorf("mark job %d failed: %w", j.id, upErr))
 			}
 			processed++
 			continue
 		}
-		if _, execErr := w.db.Exec(
+		if _, upErr := w.db.Exec(
 			`UPDATE regen_jobs SET status = 'done', processed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
 			j.id,
-		); execErr != nil {
-			errs = append(errs, fmt.Errorf("mark job %d done: %w", j.id, execErr))
+		); upErr != nil {
+			statusErrs = append(statusErrs, fmt.Errorf("mark job %d done: %w", j.id, upErr))
 		}
 		processed++
 	}
-	return processed, errors.Join(errs...)
+	return processed, errors.Join(statusErrs...)
 }
 
 func (w *Worker) processTag(tag string) error {
@@ -2392,10 +2382,20 @@ func (w *Worker) processTag(tag string) error {
 	return nil
 }
 
-// Run recovers any jobs stuck in 'processing' from a prior crash, then polls
-// for pending jobs every pollInterval until ctx is cancelled.
+// recoverStaleJobs resets any jobs stuck in 'processing' status back to
+// 'pending', so they can be retried. This handles the case where a previous
+// worker invocation crashed mid-processTag.
+func (w *Worker) recoverStaleJobs() error {
+	_, err := w.db.Exec(`UPDATE regen_jobs SET status = 'pending' WHERE status = 'processing';`)
+	return err
+}
+
+// Run recovers any stale jobs, then polls for pending jobs every pollInterval
+// until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) {
+	// Recover any jobs stuck in processing from a previous crash.
 	w.recoverStaleJobs()
+
 	ticker := time.NewTicker(w.pollInterval)
 	defer ticker.Stop()
 	for {

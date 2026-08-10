@@ -87,3 +87,47 @@ func TestUpload_InvalidArchiveReturnsBadRequest(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 }
+
+func TestUpload_PathTraversalSlugRejected(t *testing.T) {
+	gamesDir := t.TempDir()
+	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+
+	req := uploadRequest(t, "../../etc", zipWithIndex(t))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	// Verify no directory was created outside gamesDir
+	entries, err := os.ReadDir(gamesDir)
+	if err != nil {
+		t.Fatalf("ReadDir gamesDir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("gamesDir should be empty, found %d entries", len(entries))
+	}
+}
+
+func TestUpload_SlugWithSlashRejected(t *testing.T) {
+	gamesDir := t.TempDir()
+	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+
+	req := uploadRequest(t, "foo/bar", zipWithIndex(t))
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	// Verify no directory was created
+	entries, err := os.ReadDir(gamesDir)
+	if err != nil {
+		t.Fatalf("ReadDir gamesDir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("gamesDir should be empty, found %d entries", len(entries))
+	}
+}

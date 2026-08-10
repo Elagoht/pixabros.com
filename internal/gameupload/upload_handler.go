@@ -24,6 +24,10 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_slug", "a game slug is required")
 		return
 	}
+	if slug != filepath.Base(slug) || slug == "." || slug == ".." {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_slug", "slug must be a single path segment")
+		return
+	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {

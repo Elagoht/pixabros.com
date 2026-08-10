@@ -169,6 +169,40 @@ func TestChangePassword_Success(t *testing.T) {
 	}
 }
 
+func TestChangePassword_InvalidatesAllSessionsForAdmin(t *testing.T) {
+	handlers, sessions, _, adminID := setupHandlers(t)
+	oldToken, _, err := sessions.Create(adminID)
+	if err != nil {
+		t.Fatalf("sessions.Create() error = %v", err)
+	}
+	callerToken, _, err := sessions.Create(adminID)
+	if err != nil {
+		t.Fatalf("sessions.Create() error = %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "s3cret-password",
+		"new_password":      "new-password-123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: callerToken})
+	req = req.WithContext(withAdminID(req.Context(), adminID))
+	rec := httptest.NewRecorder()
+
+	handlers.ChangePassword(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+
+	if _, err := sessions.Validate(oldToken); err == nil {
+		t.Error("old session token should be invalid after password change")
+	}
+	if _, err := sessions.Validate(callerToken); err == nil {
+		t.Error("caller's own session token should also be invalid after password change")
+	}
+}
+
 func TestChangePassword_WrongCurrentPassword(t *testing.T) {
 	handlers, sessions, _, adminID := setupHandlers(t)
 	token, _, err := sessions.Create(adminID)

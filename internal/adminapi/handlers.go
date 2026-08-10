@@ -64,7 +64,10 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		h.sessions.Delete(cookie.Value)
+		if err := h.sessions.Delete(cookie.Value); err != nil {
+			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not log out")
+			return
+		}
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -117,6 +120,10 @@ func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.admins.UpdatePasswordHash(adminID, newHash); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not update password")
+		return
+	}
+	if err := h.sessions.DeleteAllForAdmin(adminID); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not invalidate sessions")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

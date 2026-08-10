@@ -67,3 +67,29 @@ func TestSessionStore_ValidateRejectsUnknownToken(t *testing.T) {
 		t.Errorf("Validate() error = %v, want ErrSessionNotFound", err)
 	}
 }
+
+func TestSessionStore_DeleteAllForAdmin(t *testing.T) {
+	conn := setupTestDB(t)
+	adminID := seedAdmin(t, conn, "furkan", "hash")
+
+	store := NewSessionStore(conn)
+	token1, _, err := store.Create(adminID)
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	token2, _, err := store.Create(adminID)
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	if err := store.DeleteAllForAdmin(adminID); err != nil {
+		t.Fatalf("DeleteAllForAdmin() error = %v", err)
+	}
+
+	if _, err := store.Validate(token1); !errors.Is(err, ErrSessionNotFound) {
+		t.Errorf("Validate(token1) error = %v, want ErrSessionNotFound", err)
+	}
+	if _, err := store.Validate(token2); !errors.Is(err, ErrSessionNotFound) {
+		t.Errorf("Validate(token2) error = %v, want ErrSessionNotFound", err)
+	}
+}

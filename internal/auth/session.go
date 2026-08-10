@@ -70,6 +70,11 @@ func (s *SessionStore) Delete(token string) error {
 	return err
 }
 
+func (s *SessionStore) DeleteAllForAdmin(adminID int64) error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE admin_id = ?;`, adminID)
+	return err
+}
+
 func generateToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

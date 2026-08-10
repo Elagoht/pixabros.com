@@ -71,6 +71,37 @@ func TestResizeCropFill_PreservesSolidColor(t *testing.T) {
 	}
 }
 
+func TestResizeCropFill_CropsCorrectRegion(t *testing.T) {
+	// 800x400 source, left half red, right half blue. Center-cropping to a
+	// 400x400 (square) target should crop to x∈[200,600), i.e. keep the
+	// right portion of the red half and the left portion of the blue half —
+	// so the output's left edge should sample red-ish and right edge blue-ish.
+	src := image.NewRGBA(image.Rect(0, 0, 800, 400))
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	for y := 0; y < 400; y++ {
+		for x := 0; x < 800; x++ {
+			if x < 400 {
+				src.Set(x, y, red)
+			} else {
+				src.Set(x, y, blue)
+			}
+		}
+	}
+
+	out := ResizeCropFill(src, 400, 400)
+
+	leftR, _, leftB, _ := out.At(10, 200).RGBA()
+	rightR, _, rightB, _ := out.At(390, 200).RGBA()
+
+	if leftR == 0 || leftB != 0 {
+		t.Errorf("left edge of cropped output should sample red (from the retained middle-left portion), got r=%d b=%d", leftR, leftB)
+	}
+	if rightB == 0 || rightR != 0 {
+		t.Errorf("right edge of cropped output should sample blue (from the retained middle-right portion), got r=%d b=%d", rightR, rightB)
+	}
+}
+
 func TestEncodeWebP_ProducesDecodableOutput(t *testing.T) {
 	src := image.NewRGBA(image.Rect(0, 0, 20, 20))
 	data, err := EncodeWebP(src)

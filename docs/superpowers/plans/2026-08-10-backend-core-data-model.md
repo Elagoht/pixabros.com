@@ -282,25 +282,22 @@ import (
 )
 
 func Open(path string) (*sql.DB, error) {
-	conn, err := sql.Open("sqlite", path)
+	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
 	if err := conn.Ping(); err != nil {
 		return nil, err
 	}
-	if _, err := conn.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
-		return nil, err
-	}
 	if _, err := conn.Exec(`PRAGMA journal_mode = WAL;`); err != nil {
 		return nil, err
 	}
-	conn.SetMaxOpenConns(1)
 	return conn, nil
 }
 ```
 
-`SetMaxOpenConns(1)` pins the pool to the single connection these pragmas were just set on — `PRAGMA foreign_keys` is a per-connection setting in SQLite (unlike `journal_mode`, which is durably stored in the database file), so without this, `database/sql` could open a second pooled connection later with foreign-key enforcement silently off. A single connection also matches SQLite's single-writer model for this project.
+The `_pragma=foreign_keys(1)` DSN parameter (supported by `modernc.org/sqlite`) applies `PRAGMA foreign_keys = ON` to every connection the pool opens, not just the first — `PRAGMA foreign_keys` is a per-connection setting in SQLite (unlike `journal_mode`, which is durably stored in the database file), so a DSN-level pragma is what makes it durable across connection churn. This intentionally does *not* pin the pool to one connection (an earlier version of this task did, via `SetMaxOpenConns(1)`): a pool of one deadlocks the moment any later code holds an open `*sql.Rows` while issuing a second query without threading `context` through — a pattern later plans (content pipelines, per-module CRUD) are expected to write. `_pragma=busy_timeout(5000)` gives concurrent writers a 5-second retry window instead of an immediate `SQLITE_BUSY` error, which matters once the pool can hold more than one connection.
 
 - [ ] **Step 5: Run test to verify it passes**
 

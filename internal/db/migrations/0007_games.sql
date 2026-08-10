@@ -1,0 +1,21 @@
+CREATE TABLE games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    short_description TEXT NOT NULL DEFAULT '',
+    full_description TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '',
+    is_browser_playable INTEGER NOT NULL DEFAULT 0,
+    is_downloadable INTEGER NOT NULL DEFAULT 0,
+    is_for_sale INTEGER NOT NULL DEFAULT 0,
+    price_display TEXT,
+    external_links_json TEXT NOT NULL DEFAULT '[]',
+    cartridge_art_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    cd_cover_art_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    og_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    web_export_path TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    is_published INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

@@ -25,7 +25,7 @@ func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.D
 }
 
 // ProcessOnce drains every pending regen job once. It returns the number of
-// jobs it processed (successfully or not), and any errors encountered while
+// jobs it actually processed (successfully or not), and any errors encountered while
 // recording terminal job statuses (which are aggregated but do not stop processing).
 func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	rows, err := w.db.Query(`SELECT id, tag FROM regen_jobs WHERE status = 'pending' ORDER BY id;`)
@@ -48,10 +48,11 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	rows.Close()
 
 	var statusErrs []error
+	processed := 0
 	for _, j := range jobs {
 		// Allow context cancellation between jobs.
 		if err := ctx.Err(); err != nil {
-			return len(jobs), errors.Join(statusErrs...)
+			return processed, errors.Join(statusErrs...)
 		}
 
 		if _, err := w.db.Exec(`UPDATE regen_jobs SET status = 'processing' WHERE id = ?;`, j.id); err != nil {
@@ -64,6 +65,7 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 			); upErr != nil {
 				statusErrs = append(statusErrs, fmt.Errorf("mark job %d failed: %w", j.id, upErr))
 			}
+			processed++
 			continue
 		}
 		if _, upErr := w.db.Exec(
@@ -72,8 +74,9 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 		); upErr != nil {
 			statusErrs = append(statusErrs, fmt.Errorf("mark job %d done: %w", j.id, upErr))
 		}
+		processed++
 	}
-	return len(jobs), errors.Join(statusErrs...)
+	return processed, errors.Join(statusErrs...)
 }
 
 func (w *Worker) processTag(tag string) error {

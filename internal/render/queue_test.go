@@ -232,48 +232,82 @@ func TestWorker_ProcessOnce_StopsOnContextCancellation(t *testing.T) {
 	store := NewStore(conn, files)
 	registry := NewRegistry()
 
-	// Register a renderer.
-	registry.Register("index.html", func(pageKey string) ([]byte, []string, error) {
-		return []byte("<h1>home</h1>"), []string{"homepage"}, nil
+	// Register renderers for multiple pages.
+	registry.Register("page1.html", func(pageKey string) ([]byte, []string, error) {
+		return []byte("<h1>page 1</h1>"), []string{"my-tag"}, nil
 	})
-	registry.Register("about.html", func(pageKey string) ([]byte, []string, error) {
-		return []byte("<h1>about</h1>"), []string{"homepage"}, nil
+	registry.Register("page2.html", func(pageKey string) ([]byte, []string, error) {
+		return []byte("<h1>page 2</h1>"), []string{"my-tag"}, nil
+	})
+	registry.Register("page3.html", func(pageKey string) ([]byte, []string, error) {
+		return []byte("<h1>page 3</h1>"), []string{"my-tag"}, nil
 	})
 
-	// Seed both pages.
-	if _, err := store.RenderAndPersist("index.html", registry.exact["index.html"]); err != nil {
-		t.Fatalf("seed index: %v", err)
+	// Seed all pages so they exist in the database with tag dependencies.
+	if _, err := store.RenderAndPersist("page1.html", registry.exact["page1.html"]); err != nil {
+		t.Fatalf("seed page1: %v", err)
 	}
-	if _, err := store.RenderAndPersist("about.html", registry.exact["about.html"]); err != nil {
-		t.Fatalf("seed about: %v", err)
+	if _, err := store.RenderAndPersist("page2.html", registry.exact["page2.html"]); err != nil {
+		t.Fatalf("seed page2: %v", err)
+	}
+	if _, err := store.RenderAndPersist("page3.html", registry.exact["page3.html"]); err != nil {
+		t.Fatalf("seed page3: %v", err)
 	}
 
-	// Enqueue two jobs for the same tag.
-	if err := EnqueueRegen(conn, "homepage"); err != nil {
+	// Enqueue three jobs for the same tag.
+	if err := EnqueueRegen(conn, "my-tag"); err != nil {
 		t.Fatalf("EnqueueRegen first: %v", err)
 	}
-	if err := EnqueueRegen(conn, "homepage"); err != nil {
+	if err := EnqueueRegen(conn, "my-tag"); err != nil {
 		t.Fatalf("EnqueueRegen second: %v", err)
+	}
+	if err := EnqueueRegen(conn, "my-tag"); err != nil {
+		t.Fatalf("EnqueueRegen third: %v", err)
 	}
 
 	worker := NewWorker(conn, registry, store, 10*time.Millisecond)
 
-	// Process with a cancelled context to test mid-batch cancellation.
+	// Cancel context before calling ProcessOnce to guarantee 0 jobs are processed.
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately so ProcessOnce stops mid-batch.
+	cancel()
 
 	processed, err := worker.ProcessOnce(ctx)
 	if err != nil {
 		t.Fatalf("ProcessOnce() error = %v", err)
 	}
 
-	// With context cancelled before ProcessOnce starts iterating jobs,
-	// we expect it to stop early. The exact behavior depends on timing,
-	// but we should have processed fewer jobs than we enqueued (or 0).
-	// Since both jobs depend on "homepage" and were enqueued at the start,
-	// with context already cancelled, ProcessOnce should return without
-	// processing any jobs (or after the first, depending on timing).
-	if processed > 2 {
-		t.Errorf("processed %d jobs, expected <= 2 due to early cancellation", processed)
+	// With context already cancelled, no jobs should have been processed.
+	// The return value should be exactly 0, not len(jobs).
+	if processed != 0 {
+		t.Errorf("processed = %d, want exactly 0 (context was pre-cancelled)", processed)
+	}
+
+	// Verify that all jobs are still in 'pending' status, not 'processing' or 'done'.
+	// This proves the loop genuinely stopped early, not just returned with a wrong count.
+	var pendingCount, processingCount, doneCount, failedCount int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE status = 'pending';`).Scan(&pendingCount); err != nil {
+		t.Fatalf("query pending jobs: %v", err)
+	}
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE status = 'processing';`).Scan(&processingCount); err != nil {
+		t.Fatalf("query processing jobs: %v", err)
+	}
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE status = 'done';`).Scan(&doneCount); err != nil {
+		t.Fatalf("query done jobs: %v", err)
+	}
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE status = 'failed';`).Scan(&failedCount); err != nil {
+		t.Fatalf("query failed jobs: %v", err)
+	}
+
+	if pendingCount != 3 {
+		t.Errorf("pending jobs = %d, want 3", pendingCount)
+	}
+	if processingCount != 0 {
+		t.Errorf("processing jobs = %d, want 0", processingCount)
+	}
+	if doneCount != 0 {
+		t.Errorf("done jobs = %d, want 0", doneCount)
+	}
+	if failedCount != 0 {
+		t.Errorf("failed jobs = %d, want 0", failedCount)
 	}
 }

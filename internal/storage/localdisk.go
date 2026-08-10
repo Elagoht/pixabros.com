@@ -13,6 +13,8 @@ type LocalDisk struct {
 	baseURL string
 }
 
+var _ Storage = (*LocalDisk)(nil)
+
 func NewLocalDisk(root, baseURL string) *LocalDisk {
 	return &LocalDisk{root: root, baseURL: baseURL}
 }

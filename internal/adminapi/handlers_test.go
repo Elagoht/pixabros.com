@@ -148,7 +148,7 @@ func TestChangePassword_Success(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"current_password": "s3cret-password",
-		"new_password":      "new-password-123",
+		"new_password":     "new-password-123",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
@@ -183,7 +183,7 @@ func TestChangePassword_InvalidatesAllSessionsForAdmin(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"current_password": "s3cret-password",
-		"new_password":      "new-password-123",
+		"new_password":     "new-password-123",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: callerToken})
@@ -213,7 +213,7 @@ func TestChangePassword_TooLongNewPasswordReturnsWeakPassword(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"current_password": "s3cret-password",
-		"new_password":      strings.Repeat("a", 73),
+		"new_password":     strings.Repeat("a", 73),
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
@@ -247,7 +247,7 @@ func TestChangePassword_WrongCurrentPassword(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"current_password": "totally-wrong",
-		"new_password":      "new-password-123",
+		"new_password":     "new-password-123",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/change-password", bytes.NewReader(body))
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})

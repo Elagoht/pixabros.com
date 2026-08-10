@@ -12,24 +12,34 @@ import (
 	"strings"
 )
 
+var (
+	maxArchiveSize   int64 = 500 << 20 // 500 MiB — raw uploaded archive size
+	maxExtractedSize int64 = 2 << 30   // 2 GiB — total decompressed output across all entries
+)
+
 // Extract detects the archive format from filename's extension and extracts
 // archive into destDir. It requires an index.html at the extracted root and
 // rejects any entry whose path would escape destDir. On any failure, destDir
 // is left empty.
 func Extract(archive io.Reader, filename, destDir string) error {
-	data, err := io.ReadAll(archive)
+	limited := io.LimitReader(archive, maxArchiveSize+1)
+	data, err := io.ReadAll(limited)
 	if err != nil {
 		return fmt.Errorf("read archive: %w", err)
 	}
+	if int64(len(data)) > maxArchiveSize {
+		return fmt.Errorf("archive exceeds the %d byte size limit", maxArchiveSize)
+	}
 
+	budget := maxExtractedSize
 	var extractErr error
 	switch {
 	case strings.HasSuffix(filename, ".zip"):
-		extractErr = extractZip(data, destDir)
+		extractErr = extractZip(data, destDir, &budget)
 	case strings.HasSuffix(filename, ".tar.gz") || strings.HasSuffix(filename, ".tgz"):
-		extractErr = extractTarGz(data, destDir)
+		extractErr = extractTarGz(data, destDir, &budget)
 	case strings.HasSuffix(filename, ".tar"):
-		extractErr = extractTar(data, destDir)
+		extractErr = extractTar(data, destDir, &budget)
 	default:
 		return fmt.Errorf("unsupported archive extension for %q", filename)
 	}
@@ -45,7 +55,7 @@ func Extract(archive io.Reader, filename, destDir string) error {
 	return nil
 }
 
-func extractZip(data []byte, destDir string) error {
+func extractZip(data []byte, destDir string, budget *int64) error {
 	r, err := zip.NewReader(byteReaderAt(data), int64(len(data)))
 	if err != nil {
 		return fmt.Errorf("open zip: %w", err)
@@ -68,7 +78,7 @@ func extractZip(data []byte, destDir string) error {
 		if err != nil {
 			return err
 		}
-		if err := writeFile(target, src); err != nil {
+		if err := writeFile(target, src, budget); err != nil {
 			src.Close()
 			return err
 		}
@@ -77,20 +87,20 @@ func extractZip(data []byte, destDir string) error {
 	return nil
 }
 
-func extractTarGz(data []byte, destDir string) error {
+func extractTarGz(data []byte, destDir string, budget *int64) error {
 	gz, err := gzip.NewReader(byteReader(data))
 	if err != nil {
 		return fmt.Errorf("open gzip: %w", err)
 	}
 	defer gz.Close()
-	return extractTarReader(tar.NewReader(gz), destDir)
+	return extractTarReader(tar.NewReader(gz), destDir, budget)
 }
 
-func extractTar(data []byte, destDir string) error {
-	return extractTarReader(tar.NewReader(byteReader(data)), destDir)
+func extractTar(data []byte, destDir string, budget *int64) error {
+	return extractTarReader(tar.NewReader(byteReader(data)), destDir, budget)
 }
 
-func extractTarReader(tr *tar.Reader, destDir string) error {
+func extractTarReader(tr *tar.Reader, destDir string, budget *int64) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -112,7 +122,7 @@ func extractTarReader(tr *tar.Reader, destDir string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			if err := writeFile(target, tr); err != nil {
+			if err := writeFile(target, tr, budget); err != nil {
 				return err
 			}
 		}
@@ -128,14 +138,21 @@ func safeJoin(root, name string) (string, error) {
 	return full, nil
 }
 
-func writeFile(target string, r io.Reader) error {
+func writeFile(target string, r io.Reader, budget *int64) error {
 	f, err := os.Create(target)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = io.Copy(f, r)
-	return err
+	n, err := io.Copy(f, io.LimitReader(r, *budget+1))
+	if err != nil {
+		return err
+	}
+	*budget -= n
+	if *budget < 0 {
+		return fmt.Errorf("archive exceeds the %d byte decompressed size limit", maxExtractedSize)
+	}
+	return nil
 }
 
 func clearDir(dir string) {

@@ -295,9 +295,12 @@ func Open(path string) (*sql.DB, error) {
 	if _, err := conn.Exec(`PRAGMA journal_mode = WAL;`); err != nil {
 		return nil, err
 	}
+	conn.SetMaxOpenConns(1)
 	return conn, nil
 }
 ```
+
+`SetMaxOpenConns(1)` pins the pool to the single connection these pragmas were just set on — `PRAGMA foreign_keys` is a per-connection setting in SQLite (unlike `journal_mode`, which is durably stored in the database file), so without this, `database/sql` could open a second pooled connection later with foreign-key enforcement silently off. A single connection also matches SQLite's single-writer model for this project.
 
 - [ ] **Step 5: Run test to verify it passes**
 

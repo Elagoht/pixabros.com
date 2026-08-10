@@ -130,3 +130,23 @@ func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+type whoamiResponse struct {
+	Username string `json:"username"`
+}
+
+func (h *AuthHandlers) Whoami(w http.ResponseWriter, r *http.Request) {
+	adminID, ok := AdminIDFromContext(r.Context())
+	if !ok {
+		httpapi.WriteError(w, http.StatusUnauthorized, "unauthorized", "not logged in")
+		return
+	}
+
+	admin, err := h.admins.FindByID(adminID)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load admin")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, whoamiResponse{Username: admin.Username})
+}

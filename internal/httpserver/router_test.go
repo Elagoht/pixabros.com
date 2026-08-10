@@ -73,6 +73,27 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 		t.Fatal("expected a session cookie after login")
 	}
 
+	client := &http.Client{}
+	cookieReq, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/admin/whoami", nil)
+	for _, c := range loginResp.Cookies() {
+		cookieReq.AddCookie(c)
+	}
+	whoamiResp, err := client.Do(cookieReq)
+	if err != nil {
+		t.Fatalf("whoami request error = %v", err)
+	}
+	if whoamiResp.StatusCode != http.StatusOK {
+		t.Fatalf("whoami status = %d, want %d", whoamiResp.StatusCode, http.StatusOK)
+	}
+
+	anonResp, err := srv.Client().Get(srv.URL + "/api/admin/whoami")
+	if err != nil {
+		t.Fatalf("anonymous whoami request error = %v", err)
+	}
+	if anonResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anonymous whoami status = %d, want %d", anonResp.StatusCode, http.StatusUnauthorized)
+	}
+
 	adminResp, err := srv.Client().Get(srv.URL + "/I-am-a-pixabro/")
 	if err != nil {
 		t.Fatalf("admin UI request error = %v", err)

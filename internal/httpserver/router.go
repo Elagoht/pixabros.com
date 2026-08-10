@@ -29,6 +29,7 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/admin/login", authHandlers.Login)
 	mux.HandleFunc("POST /api/admin/logout", authHandlers.Logout)
 	mux.HandleFunc("POST /api/admin/change-password", adminapi.RequireSession(deps.Sessions, authHandlers.ChangePassword))
+	mux.HandleFunc("GET /api/admin/whoami", adminapi.RequireSession(deps.Sessions, authHandlers.Whoami))
 
 	mux.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")

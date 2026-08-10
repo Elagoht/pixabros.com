@@ -260,3 +260,43 @@ func TestChangePassword_WrongCurrentPassword(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestWhoami_Success(t *testing.T) {
+	handlers, sessions, _, adminID := setupHandlers(t)
+	token, _, err := sessions.Create(adminID)
+	if err != nil {
+		t.Fatalf("sessions.Create() error = %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/whoami", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	rec := httptest.NewRecorder()
+
+	RequireSession(sessions, handlers.Whoami)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var body struct {
+		Username string `json:"username"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if body.Username != "furkan" {
+		t.Errorf("username = %q, want %q", body.Username, "furkan")
+	}
+}
+
+func TestWhoami_Unauthorized(t *testing.T) {
+	handlers, sessions, _, _ := setupHandlers(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/whoami", nil)
+	rec := httptest.NewRecorder()
+
+	RequireSession(sessions, handlers.Whoami)(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}

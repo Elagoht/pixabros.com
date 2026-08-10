@@ -79,3 +79,175 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 		t.Fatalf("public status = %d, want %d", publicResp.StatusCode, http.StatusOK)
 	}
 }
+
+func TestRouter_UnmatchedAPIRouteReturnsJSONNotFound(t *testing.T) {
+	handler := New(Dependencies{
+		AdminUIDir: t.TempDir(),
+		PlayDir:    t.TempDir(),
+		PublicDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/api/admin/does-not-exist")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+
+	var body struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Error.Code != "not_found" {
+		t.Errorf("error.code = %q, want %q", body.Error.Code, "not_found")
+	}
+}
+
+// Note: with a "/" root file-server fallback already registered (as this
+// router does for the public site), a wrong-method request to an
+// exact-method pattern like "POST /api/admin/login" was already falling
+// through to that fallback *before* this catch-all was added -- Go's
+// ServeMux only synthesizes its own 405 when literally no other pattern
+// matches the request for any method, and here the "/" wildcard always
+// matches. So this case was never a real 405 in this router; adding the
+// /api/ catch-all just changes the fallback's content from a plain-text
+// file-server 404 to this project's JSON error envelope, which is the
+// improvement fix 2 asks for.
+func TestRouter_WrongMethodOnRegisteredRouteReturnsJSONNotFound(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		AdminUIDir: t.TempDir(),
+		PlayDir:    t.TempDir(),
+		PublicDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/api/admin/login")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Error.Code != "not_found" {
+		t.Errorf("error.code = %q, want %q", body.Error.Code, "not_found")
+	}
+}
+
+func TestRouter_CorrectMethodOnRegisteredRouteStillWorks(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		AdminUIDir: t.TempDir(),
+		PlayDir:    t.TempDir(),
+		PublicDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	body, _ := json.Marshal(map[string]string{"username": "nobody", "password": "wrong"})
+	resp, err := srv.Client().Post(srv.URL+"/api/admin/login", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	// The exact-method pattern must still win over the /api/ catch-all for
+	// a correctly-matched request; a wrong login gives 401, never 404.
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
+}
+
+func TestRouter_PlayDirWithoutIndexHTMLDoesNotListDirectory(t *testing.T) {
+	playDir := t.TempDir()
+	sub := filepath.Join(playDir, "some-game")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "data.bin"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	handler := New(Dependencies{
+		AdminUIDir: t.TempDir(),
+		PlayDir:    playDir,
+		PublicDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/play/some-game/")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (directory listing must not be exposed)", resp.StatusCode, http.StatusNotFound)
+	}
+}
+
+func TestRouter_PlayDirWithIndexHTMLServesIt(t *testing.T) {
+	playDir := t.TempDir()
+	sub := filepath.Join(playDir, "some-game")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "index.html"), []byte("<h1>game</h1>"), 0o644); err != nil {
+		t.Fatalf("write index.html: %v", err)
+	}
+
+	handler := New(Dependencies{
+		AdminUIDir: t.TempDir(),
+		PlayDir:    playDir,
+		PublicDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/play/some-game/")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+}

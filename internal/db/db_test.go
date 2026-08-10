@@ -44,3 +44,42 @@ func TestOpen_CreatesMissingParentDirectories(t *testing.T) {
 		t.Errorf("expected db file to exist at %q, stat error = %v", path, err)
 	}
 }
+
+func TestForeignKeys_AreEnforced(t *testing.T) {
+	conn, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := Migrate(conn); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	// Inserting a session with a nonexistent admin_id must fail.
+	_, err = conn.Exec(`INSERT INTO sessions (admin_id, token_hash, expires_at) VALUES (?, ?, ?);`,
+		999999, "deadbeef", "2099-01-01T00:00:00Z")
+	if err == nil {
+		t.Error("expected an error inserting a session with a nonexistent admin_id, got nil")
+	}
+
+	// Deleting an admin must cascade-delete their sessions (per the schema's ON DELETE CASCADE).
+	res, err := conn.Exec(`INSERT INTO admins (username, password_hash) VALUES (?, ?);`, "fktest", "hash")
+	if err != nil {
+		t.Fatalf("insert admin: %v", err)
+	}
+	adminID, _ := res.LastInsertId()
+	if _, err := conn.Exec(`INSERT INTO sessions (admin_id, token_hash, expires_at) VALUES (?, ?, ?);`,
+		adminID, "cafebabe", "2099-01-01T00:00:00Z"); err != nil {
+		t.Fatalf("insert session: %v", err)
+	}
+	if _, err := conn.Exec(`DELETE FROM admins WHERE id = ?;`, adminID); err != nil {
+		t.Fatalf("delete admin: %v", err)
+	}
+	var count int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM sessions WHERE admin_id = ?;`, adminID).Scan(&count); err != nil {
+		t.Fatalf("count sessions: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("sessions for deleted admin = %d, want 0 (ON DELETE CASCADE should have removed them)", count)
+	}
+}

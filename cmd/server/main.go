@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"pixabros/internal/auth"
 	"pixabros/internal/config"
@@ -21,6 +22,12 @@ func main() {
 
 	if err := db.Migrate(conn); err != nil {
 		log.Fatalf("migrate: %v", err)
+	}
+
+	for _, dir := range []string{cfg.DataDir + "/admin-dist", cfg.DataDir + "/games", cfg.DataDir + "/rendered"} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatalf("create static dir %s: %v", dir, err)
+		}
 	}
 
 	handler := httpserver.New(httpserver.Dependencies{

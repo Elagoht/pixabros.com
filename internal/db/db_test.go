@@ -1,6 +1,7 @@
 package db
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -27,5 +28,19 @@ func TestOpen_EnablesForeignKeysAndWAL(t *testing.T) {
 	}
 	if mode != "wal" {
 		t.Errorf("journal_mode = %q, want %q", mode, "wal")
+	}
+}
+
+func TestOpen_CreatesMissingParentDirectories(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nested", "sub", "test.db")
+
+	conn, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer conn.Close()
+
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("expected db file to exist at %q, stat error = %v", path, err)
 	}
 }

@@ -3,6 +3,8 @@ package media
 import (
 	"database/sql"
 	"errors"
+	"strings"
+	"time"
 )
 
 var ErrMediaNotFound = errors.New("media not found")
@@ -74,4 +76,40 @@ func (r *Repo) AllIDs() ([]int64, error) {
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+type mediaWithCreatedAt struct {
+	Media
+	CreatedAt time.Time
+}
+
+func (r *Repo) allWithCreatedAt() ([]mediaWithCreatedAt, error) {
+	rows, err := r.db.Query(`SELECT id, path, width, height, format, alt_text, created_at FROM media;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []mediaWithCreatedAt
+	for rows.Next() {
+		var m mediaWithCreatedAt
+		var createdAtStr string
+		if err := rows.Scan(&m.ID, &m.Path, &m.Width, &m.Height, &m.Format, &m.AltText, &createdAtStr); err != nil {
+			return nil, err
+		}
+		createdAt, err := time.Parse(time.RFC3339, normalizeTimestamp(createdAtStr))
+		if err != nil {
+			return nil, err
+		}
+		m.CreatedAt = createdAt
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+func normalizeTimestamp(s string) string {
+	if i := strings.Index(s, "."); i != -1 {
+		return s[:i] + "Z"
+	}
+	return s
 }

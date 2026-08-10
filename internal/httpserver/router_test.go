@@ -11,6 +11,8 @@ import (
 
 	"pixabros/internal/auth"
 	"pixabros/internal/db"
+	"pixabros/internal/render"
+	"pixabros/internal/storage"
 )
 
 func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
@@ -36,17 +38,24 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 		t.Fatalf("write admin index.html: %v", err)
 	}
 	playDir := t.TempDir()
-	publicDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(publicDir, "index.html"), []byte("<h1>public</h1>"), 0o644); err != nil {
-		t.Fatalf("write public index.html: %v", err)
+	renderedDir := t.TempDir()
+	files := storage.NewLocalDisk(renderedDir, "/rendered")
+	store := render.NewStore(conn, files)
+	_, err = store.RenderAndPersist("index.html", func(string) ([]byte, []string, error) {
+		return []byte("<h1>public</h1>"), []string{"public"}, nil
+	})
+	if err != nil {
+		t.Fatalf("RenderAndPersist() error = %v", err)
 	}
 
 	handler := New(Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
 		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      files,
 		AdminUIDir: adminDir,
 		PlayDir:    playDir,
-		PublicDir:  publicDir,
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -81,10 +90,24 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 }
 
 func TestRouter_UnmatchedAPIRouteReturnsJSONNotFound(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
 	handler := New(Dependencies{
+		Store:      store,
+		Files:      files,
 		AdminUIDir: t.TempDir(),
 		PlayDir:    t.TempDir(),
-		PublicDir:  t.TempDir(),
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -132,12 +155,17 @@ func TestRouter_WrongMethodOnRegisteredRouteReturnsJSONNotFound(t *testing.T) {
 		t.Fatalf("db.Migrate() error = %v", err)
 	}
 
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
 	handler := New(Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
 		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      files,
 		AdminUIDir: t.TempDir(),
 		PlayDir:    t.TempDir(),
-		PublicDir:  t.TempDir(),
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -173,12 +201,17 @@ func TestRouter_CorrectMethodOnRegisteredRouteStillWorks(t *testing.T) {
 		t.Fatalf("db.Migrate() error = %v", err)
 	}
 
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
 	handler := New(Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
 		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      files,
 		AdminUIDir: t.TempDir(),
 		PlayDir:    t.TempDir(),
-		PublicDir:  t.TempDir(),
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -197,6 +230,15 @@ func TestRouter_CorrectMethodOnRegisteredRouteStillWorks(t *testing.T) {
 }
 
 func TestRouter_PlayDirWithoutIndexHTMLDoesNotListDirectory(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
 	playDir := t.TempDir()
 	sub := filepath.Join(playDir, "some-game")
 	if err := os.MkdirAll(sub, 0o755); err != nil {
@@ -206,10 +248,15 @@ func TestRouter_PlayDirWithoutIndexHTMLDoesNotListDirectory(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
 	handler := New(Dependencies{
+		Store:      store,
+		Files:      files,
 		AdminUIDir: t.TempDir(),
 		PlayDir:    playDir,
-		PublicDir:  t.TempDir(),
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -225,6 +272,15 @@ func TestRouter_PlayDirWithoutIndexHTMLDoesNotListDirectory(t *testing.T) {
 }
 
 func TestRouter_PlayDirWithIndexHTMLServesIt(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
 	playDir := t.TempDir()
 	sub := filepath.Join(playDir, "some-game")
 	if err := os.MkdirAll(sub, 0o755); err != nil {
@@ -234,10 +290,15 @@ func TestRouter_PlayDirWithIndexHTMLServesIt(t *testing.T) {
 		t.Fatalf("write index.html: %v", err)
 	}
 
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
 	handler := New(Dependencies{
+		Store:      store,
+		Files:      files,
 		AdminUIDir: t.TempDir(),
 		PlayDir:    playDir,
-		PublicDir:  t.TempDir(),
+		AssetsDir:  t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

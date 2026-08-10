@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"pixabros/internal/auth"
 	"pixabros/internal/config"
 	"pixabros/internal/db"
 	"pixabros/internal/httpserver"
+	"pixabros/internal/render"
+	"pixabros/internal/storage"
 )
 
 func main() {
@@ -25,30 +27,30 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
-	for _, dir := range []string{cfg.DataDir + "/admin-dist", cfg.DataDir + "/games", cfg.DataDir + "/rendered"} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			log.Fatalf("create static dir %s: %v", dir, err)
-		}
-	}
+	files := storage.NewLocalDisk(cfg.DataDir+"/media", "/media")
+	renderedFiles := storage.NewLocalDisk(cfg.DataDir+"/rendered-store", "/rendered")
+	store := render.NewStore(conn, renderedFiles)
+	registry := render.NewRegistry()
+
+	worker := render.NewWorker(conn, registry, store, 2*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go worker.Run(ctx)
 
 	handler := httpserver.New(httpserver.Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
 		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      renderedFiles,
 		AdminUIDir: cfg.DataDir + "/admin-dist",
 		PlayDir:    cfg.DataDir + "/games",
-		PublicDir:  cfg.DataDir + "/rendered",
+		AssetsDir:  cfg.DataDir + "/assets",
 	})
 
-	srv := &http.Server{
-		Addr:         cfg.Addr,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	_ = files // wired for media/game uploads by the per-module phases that register their handlers here
 
 	log.Printf("listening on %s", cfg.Addr)
-	if err := srv.ListenAndServe(); err != nil {
+	if err := http.ListenAndServe(cfg.Addr, handler); err != nil {
 		log.Fatalf("serve: %v", err)
 	}
 }

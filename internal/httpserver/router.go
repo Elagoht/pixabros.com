@@ -8,14 +8,18 @@ import (
 	"pixabros/internal/adminapi"
 	"pixabros/internal/auth"
 	"pixabros/internal/httpapi"
+	"pixabros/internal/render"
+	"pixabros/internal/storage"
 )
 
 type Dependencies struct {
 	Admins     *auth.AdminRepo
 	Sessions   *auth.SessionStore
+	Store      *render.Store
+	Files      storage.Storage
 	AdminUIDir string
 	PlayDir    string
-	PublicDir  string
+	AssetsDir  string
 }
 
 func New(deps Dependencies) http.Handler {
@@ -32,7 +36,8 @@ func New(deps Dependencies) http.Handler {
 
 	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", noDirListing(deps.AdminUIDir)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
-	mux.Handle("/", http.FileServer(http.Dir(deps.PublicDir)))
+	mux.Handle("/assets/", http.StripPrefix("/assets/", render.ServeImmutableAssets(deps.AssetsDir)))
+	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
 
 	return mux
 }

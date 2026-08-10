@@ -2310,9 +2310,21 @@ func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.D
 	return &Worker{db: db, registry: registry, store: store, pollInterval: pollInterval}
 }
 
-// ProcessOnce drains every pending regen job once. It returns the number of
-// jobs it processed (successfully or not).
-func (w *Worker) ProcessOnce() (int, error) {
+// recoverStaleJobs resets any job left in 'processing' back to 'pending'.
+// Since this worker processes jobs one at a time, sequentially, a job can
+// only be found 'processing' at startup if a previous run crashed mid-job —
+// there is never a moment under normal operation where two jobs are
+// 'processing' at once.
+func (w *Worker) recoverStaleJobs() error {
+	_, err := w.db.Exec(`UPDATE regen_jobs SET status = 'pending' WHERE status = 'processing';`)
+	return err
+}
+
+// ProcessOnce drains every pending regen job once, stopping early (without
+// starting a new job) if ctx is cancelled between jobs. It returns the
+// number of jobs it processed (successfully or not) and any errors
+// encountered recording jobs' terminal status, joined together.
+func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	rows, err := w.db.Query(`SELECT id, tag FROM regen_jobs WHERE status = 'pending' ORDER BY id;`)
 	if err != nil {
 		return 0, err
@@ -2332,23 +2344,35 @@ func (w *Worker) ProcessOnce() (int, error) {
 	}
 	rows.Close()
 
+	processed := 0
+	var errs []error
 	for _, j := range jobs {
-		if _, err := w.db.Exec(`UPDATE regen_jobs SET status = 'processing' WHERE id = ?;`, j.id); err != nil {
-			return 0, err
+		if ctx.Err() != nil {
+			break
 		}
-		if err := w.processTag(j.tag); err != nil {
-			w.db.Exec(
-				`UPDATE regen_jobs SET status = 'failed', processed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'), error = ? WHERE id = ?;`,
-				err.Error(), j.id,
-			)
+		if _, err := w.db.Exec(`UPDATE regen_jobs SET status = 'processing' WHERE id = ?;`, j.id); err != nil {
+			errs = append(errs, fmt.Errorf("mark job %d processing: %w", j.id, err))
 			continue
 		}
-		w.db.Exec(
+		if err := w.processTag(j.tag); err != nil {
+			if _, execErr := w.db.Exec(
+				`UPDATE regen_jobs SET status = 'failed', processed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'), error = ? WHERE id = ?;`,
+				err.Error(), j.id,
+			); execErr != nil {
+				errs = append(errs, fmt.Errorf("mark job %d failed: %w", j.id, execErr))
+			}
+			processed++
+			continue
+		}
+		if _, execErr := w.db.Exec(
 			`UPDATE regen_jobs SET status = 'done', processed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
 			j.id,
-		)
+		); execErr != nil {
+			errs = append(errs, fmt.Errorf("mark job %d done: %w", j.id, execErr))
+		}
+		processed++
 	}
-	return len(jobs), nil
+	return processed, errors.Join(errs...)
 }
 
 func (w *Worker) processTag(tag string) error {
@@ -2368,8 +2392,10 @@ func (w *Worker) processTag(tag string) error {
 	return nil
 }
 
-// Run polls for pending jobs every pollInterval until ctx is cancelled.
+// Run recovers any jobs stuck in 'processing' from a prior crash, then polls
+// for pending jobs every pollInterval until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) {
+	w.recoverStaleJobs()
 	ticker := time.NewTicker(w.pollInterval)
 	defer ticker.Stop()
 	for {
@@ -2377,11 +2403,13 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			w.ProcessOnce()
+			w.ProcessOnce(ctx)
 		}
 	}
 }
 ```
+
+`ProcessOnce` takes a `context.Context` (not present in the original signature) so a batch of many pending jobs can be interrupted between jobs rather than only between poll ticks — full per-DB-call cancellation would require threading `context` through `Store`/`Registry` too, which is out of this task's scope. Add `"errors"` and `"fmt"` to `queue.go`'s import block alongside `"context"`, `"database/sql"`, and `"time"`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 

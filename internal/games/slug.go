@@ -9,8 +9,25 @@ import (
 
 var slugInvalidChars = regexp.MustCompile(`[^a-z0-9]+`)
 
+// slugTransliterations maps characters common in the languages this
+// project's content is actually written in (starting with Turkish) to a
+// plain-ASCII equivalent, applied before non-ASCII characters are simply
+// discarded. Slugs are immutable once assigned (see Update), so silently
+// dropping these characters instead of transliterating them would be a
+// permanent, unrecoverable defect for any non-English title.
+var slugTransliterations = strings.NewReplacer(
+	"ç", "c", "Ç", "c",
+	"ğ", "g", "Ğ", "g",
+	"ı", "i", "I", "i",
+	"İ", "i",
+	"ö", "o", "Ö", "o",
+	"ş", "s", "Ş", "s",
+	"ü", "u", "Ü", "u",
+)
+
 func Slugify(title string) string {
-	lower := strings.ToLower(title)
+	transliterated := slugTransliterations.Replace(title)
+	lower := strings.ToLower(transliterated)
 	slug := slugInvalidChars.ReplaceAllString(lower, "-")
 	slug = strings.Trim(slug, "-")
 	if slug == "" {

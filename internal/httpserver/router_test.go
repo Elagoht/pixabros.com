@@ -711,6 +711,59 @@ func TestServeImmutableAssets_DoesNotListDirectory(t *testing.T) {
 	}
 }
 
+// TestRouter_MediaRouteNotMountedWithoutMediaDir guards against
+// http.Dir("").Open rewriting "" to "." -- Dependencies{} literals that never
+// set MediaDir (several pre-existing ones in this package's other tests, and
+// any future caller) must never end up with /media/ transparently serving the
+// server process's current working directory. With MediaDir left unset, a
+// request under /media/ must not be answered as if it were a real,
+// filesystem-backed route: no 200, and no directory listing.
+func TestRouter_MediaRouteNotMountedWithoutMediaDir(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
+	handler := New(Dependencies{
+		Store:      store,
+		Files:      files,
+		AdminUIDir: t.TempDir(),
+		PlayDir:    t.TempDir(),
+		AssetsDir:  t.TempDir(),
+		// MediaDir intentionally left as the zero value "".
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	// router_test.go definitely exists in this package's working directory; if
+	// /media/ were ever mounted against http.Dir(""), this request would
+	// serve it (as a 200) instead of 404ing.
+	resp, err := srv.Client().Get(srv.URL + "/media/router_test.go")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (an empty MediaDir must never serve real files)", resp.StatusCode, http.StatusNotFound)
+	}
+
+	dirResp, err := srv.Client().Get(srv.URL + "/media/")
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	defer dirResp.Body.Close()
+	if dirResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (an empty MediaDir must not serve a directory listing)", dirResp.StatusCode, http.StatusNotFound)
+	}
+}
+
 func solidPNGBytes(t *testing.T, w, h int) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))

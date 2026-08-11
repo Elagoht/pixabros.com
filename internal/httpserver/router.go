@@ -107,7 +107,15 @@ func New(deps Dependencies) http.Handler {
 	// It gets plain noDirListing rather than the immutable-cache treatment
 	// /assets/ uses: media keys are not content-hashed, so a replaced or
 	// deleted image has to be able to actually disappear.
-	mux.Handle("/media/", http.StripPrefix("/media/", noDirListing(deps.MediaDir)))
+	// deps.MediaDir is empty in several pre-existing Dependencies{} test
+	// literals that don't care about media at all. http.Dir("").Open rewrites
+	// "" to ".", so mounting unconditionally would make this unauthenticated
+	// public route serve the process's current working directory the moment
+	// MediaDir is ever left unset. Production always sets a real MediaDir, but
+	// the guard is cheap and this route is new and unauthenticated by design.
+	if deps.MediaDir != "" {
+		mux.Handle("/media/", http.StripPrefix("/media/", noDirListing(deps.MediaDir)))
+	}
 	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
 	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
 

@@ -245,6 +245,24 @@ func (r *Repo) SetWebExportPath(id int64, path string) error {
 	return requireRowsAffected(res)
 }
 
+func (r *Repo) List() ([]Game, error) {
+	rows, err := r.db.Query(`SELECT ` + gameColumns + ` FROM games ORDER BY display_order ASC, id ASC;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []Game
+	for rows.Next() {
+		g, err := scanGame(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, g)
+	}
+	return list, rows.Err()
+}
+
 func requireRowsAffected(res sql.Result) error {
 	n, err := res.RowsAffected()
 	if err != nil {

@@ -179,3 +179,27 @@ func TestRepo_SetWebExportPath(t *testing.T) {
 		t.Errorf("WebExportPath = %q, want %q", found.WebExportPath, "data/games/pixel-quest")
 	}
 }
+
+func TestRepo_ListOrdersByDisplayOrder(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	repo.Create(CreateInput{Title: "Third", DisplayOrder: 3})
+	repo.Create(CreateInput{Title: "First", DisplayOrder: 1})
+	repo.Create(CreateInput{Title: "Second", DisplayOrder: 2})
+
+	list, err := repo.List()
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("List() returned %d games, want 3", len(list))
+	}
+	got := []string{list[0].Title, list[1].Title, list[2].Title}
+	want := []string{"First", "Second", "Third"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("List()[%d].Title = %q, want %q (full order = %v)", i, got[i], want[i], got)
+		}
+	}
+}

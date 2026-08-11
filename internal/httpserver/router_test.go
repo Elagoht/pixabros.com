@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +20,7 @@ import (
 	"pixabros/internal/auth"
 	"pixabros/internal/db"
 	"pixabros/internal/games"
+	"pixabros/internal/media"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -704,5 +708,187 @@ func TestServeImmutableAssets_DoesNotListDirectory(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d (directory listing must not be exposed)", rec.Code, http.StatusNotFound)
+	}
+}
+
+func solidPNGBytes(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{R: 200, G: 40, B: 220, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode() error = %v", err)
+	}
+	return buf.Bytes()
+}
+
+// TestRouter_MediaUploadAndServing proves the whole media path the admin UI
+// depends on: an authenticated multipart upload stores a resized WebP, the
+// metadata lookup answers with the same public URL, that URL really serves the
+// stored bytes back over /media/, and a miss 404s instead of exposing a
+// directory listing.
+func TestRouter_MediaUploadAndServing(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	hash, err := auth.HashPassword("s3cret-password")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	if _, err := conn.Exec(`INSERT INTO admins (username, password_hash) VALUES (?, ?);`, "furkan", hash); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+
+	dataDir := t.TempDir()
+	mediaDir := filepath.Join(dataDir, "media")
+	if err := os.MkdirAll(mediaDir, 0o755); err != nil {
+		t.Fatalf("mkdir media: %v", err)
+	}
+	renderedFiles := storage.NewLocalDisk(t.TempDir(), "/rendered")
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		Store:      render.NewStore(conn, renderedFiles),
+		Files:      renderedFiles,
+		DB:         conn,
+		Games:      games.NewRepo(conn),
+		Media:      media.NewRepo(conn),
+		MediaFiles: storage.NewLocalDisk(dataDir, ""),
+		MediaDir:   mediaDir,
+		AdminUIDir: t.TempDir(),
+		PlayDir:    t.TempDir(),
+		AssetsDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	loginBody, _ := json.Marshal(map[string]string{"username": "furkan", "password": "s3cret-password"})
+	loginResp, err := srv.Client().Post(srv.URL+"/api/admin/login", "application/json", bytes.NewReader(loginBody))
+	if err != nil {
+		t.Fatalf("login request error = %v", err)
+	}
+	defer loginResp.Body.Close()
+	cookies := loginResp.Cookies()
+
+	var multipartBuf bytes.Buffer
+	mw := multipart.NewWriter(&multipartBuf)
+	part, err := mw.CreateFormFile("file", "art.png")
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := part.Write(solidPNGBytes(t, 800, 1120)); err != nil {
+		t.Fatalf("write form file: %v", err)
+	}
+	mw.Close()
+
+	uploadReq, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/admin/media/upload?target=cartridge_art", &multipartBuf)
+	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
+	for _, c := range cookies {
+		uploadReq.AddCookie(c)
+	}
+	uploadResp, err := srv.Client().Do(uploadReq)
+	if err != nil {
+		t.Fatalf("upload request error = %v", err)
+	}
+	defer uploadResp.Body.Close()
+	if uploadResp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(uploadResp.Body)
+		t.Fatalf("upload status = %d, want %d, body = %s", uploadResp.StatusCode, http.StatusCreated, body)
+	}
+
+	var uploaded struct {
+		ID     int64  `json:"id"`
+		URL    string `json:"url"`
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
+	}
+	if err := json.NewDecoder(uploadResp.Body).Decode(&uploaded); err != nil {
+		t.Fatalf("decode upload response: %v", err)
+	}
+	if uploaded.Width != 400 || uploaded.Height != 560 {
+		t.Errorf("uploaded dimensions = %dx%d, want the cartridge_art target's 400x560", uploaded.Width, uploaded.Height)
+	}
+	if !strings.HasPrefix(uploaded.URL, "/media/cartridge_art/") {
+		t.Fatalf("uploaded url = %q, want it to start with /media/cartridge_art/", uploaded.URL)
+	}
+
+	lookupReq, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/admin/media/%d", srv.URL, uploaded.ID), nil)
+	for _, c := range cookies {
+		lookupReq.AddCookie(c)
+	}
+	lookupResp, err := srv.Client().Do(lookupReq)
+	if err != nil {
+		t.Fatalf("lookup request error = %v", err)
+	}
+	defer lookupResp.Body.Close()
+	if lookupResp.StatusCode != http.StatusOK {
+		t.Fatalf("lookup status = %d, want %d", lookupResp.StatusCode, http.StatusOK)
+	}
+	var looked struct {
+		URL    string `json:"url"`
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
+	}
+	if err := json.NewDecoder(lookupResp.Body).Decode(&looked); err != nil {
+		t.Fatalf("decode lookup response: %v", err)
+	}
+	if looked.URL != uploaded.URL || looked.Width != 400 || looked.Height != 560 {
+		t.Errorf("lookup = %+v, want the same URL %q and 400x560", looked, uploaded.URL)
+	}
+
+	// The public URL must really serve the stored bytes: without this the admin
+	// UI would render a thumbnail pointing at a 404.
+	fileResp, err := srv.Client().Get(srv.URL + uploaded.URL)
+	if err != nil {
+		t.Fatalf("media file request error = %v", err)
+	}
+	defer fileResp.Body.Close()
+	if fileResp.StatusCode != http.StatusOK {
+		t.Fatalf("media file status = %d, want %d", fileResp.StatusCode, http.StatusOK)
+	}
+	fileBytes, err := io.ReadAll(fileResp.Body)
+	if err != nil {
+		t.Fatalf("read media file: %v", err)
+	}
+	if len(fileBytes) < 12 || !bytes.HasPrefix(fileBytes, []byte("RIFF")) || !bytes.Equal(fileBytes[8:12], []byte("WEBP")) {
+		t.Errorf("served %d bytes, want a WebP image (RIFF....WEBP header)", len(fileBytes))
+	}
+
+	missResp, err := srv.Client().Get(srv.URL + "/media/cartridge_art/does-not-exist.webp")
+	if err != nil {
+		t.Fatalf("missing media request error = %v", err)
+	}
+	defer missResp.Body.Close()
+	if missResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing media status = %d, want %d", missResp.StatusCode, http.StatusNotFound)
+	}
+
+	listResp, err := srv.Client().Get(srv.URL + "/media/cartridge_art/")
+	if err != nil {
+		t.Fatalf("media directory request error = %v", err)
+	}
+	defer listResp.Body.Close()
+	if listResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("media directory status = %d, want %d (no directory listings)", listResp.StatusCode, http.StatusNotFound)
+	}
+
+	anonResp, err := srv.Client().Get(srv.URL + fmt.Sprintf("/api/admin/media/%d", uploaded.ID))
+	if err != nil {
+		t.Fatalf("anonymous lookup request error = %v", err)
+	}
+	defer anonResp.Body.Close()
+	if anonResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anonymous lookup status = %d, want %d", anonResp.StatusCode, http.StatusUnauthorized)
 	}
 }

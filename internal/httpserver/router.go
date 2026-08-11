@@ -17,6 +17,8 @@ import (
 	"pixabros/internal/gamesapi"
 	"pixabros/internal/gameupload"
 	"pixabros/internal/httpapi"
+	"pixabros/internal/media"
+	"pixabros/internal/mediaapi"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -28,6 +30,9 @@ type Dependencies struct {
 	Files      storage.Storage
 	DB         *sql.DB
 	Games      *games.Repo
+	Media      *media.Repo
+	MediaFiles storage.Storage
+	MediaDir   string
 	AdminUIDir string
 	PlayDir    string
 	AssetsDir  string
@@ -48,8 +53,14 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Get))
 	mux.HandleFunc("PUT /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Delete))
+	mux.HandleFunc("GET /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.ListScreenshots))
 	mux.HandleFunc("POST /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.AddScreenshot))
 	mux.HandleFunc("DELETE /api/admin/games/{id}/screenshots/{screenshotID}", adminapi.RequireSession(deps.Sessions, gamesHandlers.RemoveScreenshot))
+
+	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
+	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)
+	mux.HandleFunc("POST /api/admin/media/upload", adminapi.RequireSession(deps.Sessions, mediaUploadHandler.Upload))
+	mux.HandleFunc("GET /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Get))
 
 	onGameArchiveExtracted := func(slug string) error {
 		game, err := deps.Games.FindBySlug(slug)
@@ -91,6 +102,12 @@ func New(deps Dependencies) http.Handler {
 
 	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(deps.AdminUIDir)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
+	// Uploaded media is public site content (cartridge art, screenshots, OG
+	// images all appear on the public MPA), so it is served without a session.
+	// It gets plain noDirListing rather than the immutable-cache treatment
+	// /assets/ uses: media keys are not content-hashed, so a replaced or
+	// deleted image has to be able to actually disappear.
+	mux.Handle("/media/", http.StripPrefix("/media/", noDirListing(deps.MediaDir)))
 	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
 	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
 

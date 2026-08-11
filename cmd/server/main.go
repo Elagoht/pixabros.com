@@ -14,6 +14,7 @@ import (
 	"pixabros/internal/db"
 	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
+	"pixabros/internal/media"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -35,6 +36,7 @@ func main() {
 		cfg.DataDir + "/admin-dist",
 		cfg.DataDir + "/games",
 		cfg.DataDir + "/assets",
+		cfg.DataDir + "/media",
 		cfg.DataDir + "/rendered-store",
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -43,6 +45,12 @@ func main() {
 	}
 
 	renderedFiles := storage.NewLocalDisk(cfg.DataDir+"/rendered-store", "/rendered")
+	// mediaapi's storage keys already begin with "media/", so the root is the
+	// bare data dir and the base URL is empty: that yields both the on-disk
+	// path <data>/media/<target>/<name>.webp and the public URL
+	// /media/<target>/<name>.webp with no duplicated segment.
+	mediaFiles := storage.NewLocalDisk(cfg.DataDir, "")
+	mediaRepo := media.NewRepo(conn)
 	store := render.NewStore(conn, renderedFiles)
 	registry := render.NewRegistry()
 
@@ -68,6 +76,9 @@ func main() {
 		Files:      renderedFiles,
 		DB:         conn,
 		Games:      games.NewRepo(conn),
+		Media:      mediaRepo,
+		MediaFiles: mediaFiles,
+		MediaDir:   cfg.DataDir + "/media",
 		AdminUIDir: cfg.DataDir + "/admin-dist",
 		PlayDir:    cfg.DataDir + "/games",
 		AssetsDir:  cfg.DataDir + "/assets",

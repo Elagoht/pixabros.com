@@ -3,6 +3,8 @@ package gamesapi
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -134,4 +136,119 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 
 func parseIDPathValue(r *http.Request) (int64, error) {
 	return strconv.ParseInt(r.PathValue("id"), 10, 64)
+}
+
+func (h *Handlers) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	game, err := h.repo.FindByID(id)
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load game")
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, toGameResponse(game))
+}
+
+type updateRequest struct {
+	Title             string `json:"title"`
+	ShortDescription  string `json:"short_description"`
+	FullDescription   string `json:"full_description"`
+	Tags              string `json:"tags"`
+	IsBrowserPlayable bool   `json:"is_browser_playable"`
+	IsDownloadable    bool   `json:"is_downloadable"`
+	IsForSale         bool   `json:"is_for_sale"`
+	PriceDisplay      string `json:"price_display"`
+	ExternalLinksJSON string `json:"external_links_json"`
+	CartridgeArtID    *int64 `json:"cartridge_art_id"`
+	CDCoverArtID      *int64 `json:"cd_cover_art_id"`
+	OGImageID         *int64 `json:"og_image_id"`
+	DisplayOrder      int    `json:"display_order"`
+	IsPublished       bool   `json:"is_published"`
+}
+
+func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	var req updateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
+		return
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "title is required")
+		return
+	}
+
+	game, err := h.repo.Update(id, games.UpdateInput{
+		Title:             req.Title,
+		ShortDescription:  req.ShortDescription,
+		FullDescription:   req.FullDescription,
+		Tags:              req.Tags,
+		IsBrowserPlayable: req.IsBrowserPlayable,
+		IsDownloadable:    req.IsDownloadable,
+		IsForSale:         req.IsForSale,
+		PriceDisplay:      req.PriceDisplay,
+		ExternalLinksJSON: req.ExternalLinksJSON,
+		CartridgeArtID:    req.CartridgeArtID,
+		CDCoverArtID:      req.CDCoverArtID,
+		OGImageID:         req.OGImageID,
+		DisplayOrder:      req.DisplayOrder,
+		IsPublished:       req.IsPublished,
+	})
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not update game")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", id)); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, toGameResponse(game))
+}
+
+func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	err = h.repo.Delete(id)
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not delete game")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

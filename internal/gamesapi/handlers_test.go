@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -97,5 +98,117 @@ func TestCreate_MissingTitle(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestGet_Success(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	handlers := NewHandlers(repo, conn)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/1", nil)
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.Get(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+}
+
+func TestGet_NotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/999", nil)
+	req.SetPathValue("id", "999")
+	rec := httptest.NewRecorder()
+	handlers.Get(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestUpdate_Success(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	handlers := NewHandlers(repo, conn)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"title":        "Pixel Quest: Remastered",
+		"is_published": true,
+	})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), bytes.NewReader(body))
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.Update(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got gameResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if got.Title != "Pixel Quest: Remastered" || got.Slug != "pixel-quest" {
+		t.Errorf("Update() = %+v, want Title changed and Slug unchanged", got)
+	}
+
+	var jobCount int
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
+	if jobCount != 1 {
+		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
+	}
+}
+
+func TestUpdate_NotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn)
+
+	body, _ := json.Marshal(map[string]string{"title": "x"})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/999", bytes.NewReader(body))
+	req.SetPathValue("id", "999")
+	rec := httptest.NewRecorder()
+	handlers.Update(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestDelete_Success(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	handlers := NewHandlers(repo, conn)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), nil)
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.Delete(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if _, err := repo.FindByID(game.ID); err == nil {
+		t.Error("game should be deleted")
+	}
+}
+
+func TestDelete_NotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/999", nil)
+	req.SetPathValue("id", "999")
+	rec := httptest.NewRecorder()
+	handlers.Delete(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }

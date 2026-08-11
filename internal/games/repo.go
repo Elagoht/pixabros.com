@@ -157,7 +157,7 @@ func nullableInt64(v *int64) interface{} {
 }
 
 func (r *Repo) Create(input CreateInput) (Game, error) {
-	slug, err := uniqueSlug(r.db, Slugify(input.Title))
+	slug, err := uniqueSlug(r.db, Slugify(input.Title), 0)
 	if err != nil {
 		return Game{}, err
 	}
@@ -196,22 +196,30 @@ func (r *Repo) FindBySlug(slug string) (Game, error) {
 	return scanGame(row)
 }
 
+// Update regenerates the slug from the (possibly changed) title on every
+// call. excludeID=id in the uniqueSlug lookup means an unchanged title
+// resolves back to the same slug rather than colliding with itself and
+// picking up a spurious -2 suffix.
 func (r *Repo) Update(id int64, input UpdateInput) (Game, error) {
 	externalLinks := input.ExternalLinksJSON
 	if externalLinks == "" {
 		externalLinks = "[]"
 	}
+	slug, err := uniqueSlug(r.db, Slugify(input.Title), id)
+	if err != nil {
+		return Game{}, err
+	}
 
 	res, err := r.db.Exec(
 		`UPDATE games SET
-			title = ?, short_description = ?, full_description = ?, tags = ?,
+			slug = ?, title = ?, short_description = ?, full_description = ?, tags = ?,
 			is_browser_playable = ?, is_downloadable = ?, is_for_sale = ?,
 			price_display = ?, external_links_json = ?,
 			cartridge_art_id = ?, cd_cover_art_id = ?, og_image_id = ?,
 			display_order = ?, is_published = ?,
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
 		WHERE id = ?;`,
-		input.Title, input.ShortDescription, input.FullDescription, input.Tags,
+		slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
 		input.IsBrowserPlayable, input.IsDownloadable, input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks,
 		nullableInt64(input.CartridgeArtID), nullableInt64(input.CDCoverArtID), nullableInt64(input.OGImageID),

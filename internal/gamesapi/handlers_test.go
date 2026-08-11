@@ -153,14 +153,80 @@ func TestUpdate_Success(t *testing.T) {
 	}
 	var got gameResponse
 	json.Unmarshal(rec.Body.Bytes(), &got)
-	if got.Title != "Pixel Quest: Remastered" || got.Slug != "pixel-quest" {
-		t.Errorf("Update() = %+v, want Title changed and Slug unchanged", got)
+	if got.Title != "Pixel Quest: Remastered" || got.Slug != "pixel-quest-remastered" {
+		t.Errorf("Update() = %+v, want Title and Slug both to reflect the new title", got)
 	}
 
 	var jobCount int
 	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
 	if jobCount != 1 {
 		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
+	}
+}
+
+func TestGet_SuccessBySlug(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/pixel-quest", nil)
+	req.SetPathValue("id", game.Slug)
+	rec := httptest.NewRecorder()
+	handlers.Get(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got gameResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if got.ID != game.ID {
+		t.Errorf("ID = %d, want %d", got.ID, game.ID)
+	}
+}
+
+func TestUpdate_SuccessBySlugAndMovesExtractedBuild(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+
+	playDir := t.TempDir()
+	oldBuildDir := filepath.Join(playDir, game.Slug)
+	if err := os.MkdirAll(oldBuildDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldBuildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := repo.SetWebExportPath(game.ID, oldBuildDir); err != nil {
+		t.Fatalf("SetWebExportPath() error = %v", err)
+	}
+	handlers := NewHandlers(repo, conn, playDir)
+
+	body, _ := json.Marshal(map[string]interface{}{"title": "Pixel Quest: Remastered"})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/pixel-quest", bytes.NewReader(body))
+	req.SetPathValue("id", game.Slug)
+	rec := httptest.NewRecorder()
+	handlers.Update(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got gameResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if got.Slug != "pixel-quest-remastered" {
+		t.Fatalf("Slug = %q, want %q", got.Slug, "pixel-quest-remastered")
+	}
+
+	newBuildDir := filepath.Join(playDir, "pixel-quest-remastered")
+	if _, err := os.Stat(filepath.Join(newBuildDir, "index.html")); err != nil {
+		t.Errorf("os.Stat(%q) error = %v, want the build moved to the new slug's directory", newBuildDir, err)
+	}
+	if _, err := os.Stat(oldBuildDir); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(%q) error = %v, want the old slug's directory to be gone", oldBuildDir, err)
+	}
+	if got.WebExportPath != newBuildDir {
+		t.Errorf("WebExportPath = %q, want %q", got.WebExportPath, newBuildDir)
 	}
 }
 

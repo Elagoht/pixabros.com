@@ -12,9 +12,9 @@ var slugInvalidChars = regexp.MustCompile(`[^a-z0-9]+`)
 // slugTransliterations maps characters common in the languages this
 // project's content is actually written in (starting with Turkish) to a
 // plain-ASCII equivalent, applied before non-ASCII characters are simply
-// discarded. Slugs are immutable once assigned (see Update), so silently
-// dropping these characters instead of transliterating them would be a
-// permanent, unrecoverable defect for any non-English title.
+// discarded. The slug regenerates from the title on every update (see
+// Update), so this only has to look right, not be permanent -- but it should
+// still look right for a non-English title on the very first save.
 var slugTransliterations = strings.NewReplacer(
 	"ç", "c", "Ç", "c",
 	"ğ", "g", "Ğ", "g",
@@ -36,11 +36,16 @@ func Slugify(title string) string {
 	return slug
 }
 
-func uniqueSlug(db *sql.DB, base string) (string, error) {
+// uniqueSlug finds a slug not used by any other game, appending -2, -3, ...
+// as needed. excludeID excludes a game from that collision check -- pass the
+// game's own id on an update so keeping its title also keeps its slug
+// instead of colliding with itself and getting suffixed; pass 0 (no real
+// game has this id) on create, where there is no "own row" yet.
+func uniqueSlug(db *sql.DB, base string, excludeID int64) (string, error) {
 	candidate := base
 	for suffix := 2; ; suffix++ {
 		var count int
-		if err := db.QueryRow(`SELECT COUNT(*) FROM games WHERE slug = ?;`, candidate).Scan(&count); err != nil {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM games WHERE slug = ? AND id != ?;`, candidate, excludeID).Scan(&count); err != nil {
 			return "", err
 		}
 		if count == 0 {

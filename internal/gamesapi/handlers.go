@@ -144,14 +144,20 @@ func parseIDPathValue(r *http.Request) (int64, error) {
 	return strconv.ParseInt(r.PathValue("id"), 10, 64)
 }
 
-func (h *Handlers) Get(w http.ResponseWriter, r *http.Request) {
-	id, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
+// resolveGame reads the {id} path segment, which the admin UI's edit URL
+// now sends as the game's slug (slugs change with the title, so they are
+// what the URL is built from), but accepts a numeric id too so any other
+// direct API caller keeps working unchanged.
+func (h *Handlers) resolveGame(r *http.Request) (games.Game, error) {
+	raw := r.PathValue("id")
+	if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return h.repo.FindByID(id)
 	}
+	return h.repo.FindBySlug(raw)
+}
 
-	game, err := h.repo.FindByID(id)
+func (h *Handlers) Get(w http.ResponseWriter, r *http.Request) {
+	game, err := h.resolveGame(r)
 	if errors.Is(err, games.ErrGameNotFound) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
 		return
@@ -181,9 +187,17 @@ type updateRequest struct {
 }
 
 func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
-	id, err := parseIDPathValue(r)
+	// Loaded before the update so a slug change below (see games.Repo.Update,
+	// which regenerates the slug from the title) can move this game's
+	// already-extracted build alongside it -- otherwise its /play/{slug}/
+	// link would 404 the moment the title changes.
+	oldGame, err := h.resolveGame(r)
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
 	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load game")
 		return
 	}
 
@@ -197,7 +211,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game, err := h.repo.Update(id, games.UpdateInput{
+	game, err := h.repo.Update(oldGame.ID, games.UpdateInput{
 		Title:             req.Title,
 		ShortDescription:  req.ShortDescription,
 		FullDescription:   req.FullDescription,
@@ -222,7 +236,19 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", id)); err != nil {
+	if game.Slug != oldGame.Slug && h.playDir != "" {
+		oldDir := filepath.Join(h.playDir, oldGame.Slug)
+		if _, statErr := os.Stat(oldDir); statErr == nil {
+			newDir := filepath.Join(h.playDir, game.Slug)
+			if err := os.Rename(oldDir, newDir); err == nil {
+				if err := h.repo.SetWebExportPath(game.ID, newDir); err == nil {
+					game.WebExportPath = newDir
+				}
+			}
+		}
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", oldGame.ID)); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
@@ -272,15 +298,9 @@ func (h *Handlers) Reorder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
-	}
-
 	// The game is loaded before it is deleted purely to learn its slug, which
 	// is what names its extracted build directory on disk.
-	game, err := h.repo.FindByID(id)
+	game, err := h.resolveGame(r)
 	if errors.Is(err, games.ErrGameNotFound) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
 		return
@@ -290,7 +310,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.Delete(id); err != nil {
+	if err := h.repo.Delete(game.ID); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not delete game")
 		return
 	}

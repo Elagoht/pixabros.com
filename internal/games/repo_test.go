@@ -99,7 +99,7 @@ func TestRepo_FindBySlug(t *testing.T) {
 	}
 }
 
-func TestRepo_UpdateNeverChangesSlug(t *testing.T) {
+func TestRepo_UpdateRegeneratesSlugFromTitle(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := NewRepo(conn)
 
@@ -123,8 +123,8 @@ func TestRepo_UpdateNeverChangesSlug(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
-	if updated.Slug != "pixel-quest" {
-		t.Errorf("Slug changed to %q, want it to stay %q", updated.Slug, "pixel-quest")
+	if updated.Slug != "pixel-quest-remastered" {
+		t.Errorf("Slug = %q, want %q", updated.Slug, "pixel-quest-remastered")
 	}
 	if updated.Title != "Pixel Quest: Remastered" {
 		t.Errorf("Title = %q, want %q", updated.Title, "Pixel Quest: Remastered")
@@ -135,6 +135,46 @@ func TestRepo_UpdateNeverChangesSlug(t *testing.T) {
 
 	if _, err := repo.Update(999999, UpdateInput{Title: "x"}); !errors.Is(err, ErrGameNotFound) {
 		t.Errorf("Update() error = %v, want ErrGameNotFound", err)
+	}
+}
+
+func TestRepo_UpdateKeepsSameSlugWhenTitleUnchanged(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	game, err := repo.Create(CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	updated, err := repo.Update(game.ID, UpdateInput{Title: "Pixel Quest", IsPublished: true})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if updated.Slug != "pixel-quest" {
+		t.Errorf("Slug = %q, want it to stay %q when the title didn't change", updated.Slug, "pixel-quest")
+	}
+}
+
+func TestRepo_UpdateSlugCollisionGetsSuffixed(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	first, err := repo.Create(CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() first error = %v", err)
+	}
+	second, err := repo.Create(CreateInput{Title: "Dungrid Tactics"})
+	if err != nil {
+		t.Fatalf("Create() second error = %v", err)
+	}
+
+	updated, err := repo.Update(second.ID, UpdateInput{Title: first.Title})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if updated.Slug != "pixel-quest-2" {
+		t.Errorf("Slug = %q, want %q", updated.Slug, "pixel-quest-2")
 	}
 }
 

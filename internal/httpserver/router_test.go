@@ -59,6 +59,8 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 		Sessions:   auth.NewSessionStore(conn),
 		Store:      store,
 		Files:      files,
+		DB:         conn,
+		Games:      games.NewRepo(conn),
 		AdminUIDir: adminDir,
 		PlayDir:    playDir,
 		AssetsDir:  t.TempDir(),

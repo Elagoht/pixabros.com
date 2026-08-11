@@ -12,6 +12,7 @@ import (
 	"pixabros/internal/auth"
 	"pixabros/internal/config"
 	"pixabros/internal/db"
+	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
@@ -65,6 +66,8 @@ func main() {
 		Sessions:   auth.NewSessionStore(conn),
 		Store:      store,
 		Files:      renderedFiles,
+		DB:         conn,
+		Games:      games.NewRepo(conn),
 		AdminUIDir: cfg.DataDir + "/admin-dist",
 		PlayDir:    cfg.DataDir + "/games",
 		AssetsDir:  cfg.DataDir + "/assets",

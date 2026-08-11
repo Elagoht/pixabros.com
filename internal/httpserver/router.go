@@ -12,6 +12,7 @@ import (
 	"pixabros/internal/adminapi"
 	"pixabros/internal/auth"
 	"pixabros/internal/games"
+	"pixabros/internal/gamesapi"
 	"pixabros/internal/gameupload"
 	"pixabros/internal/httpapi"
 	"pixabros/internal/render"
@@ -38,6 +39,15 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/admin/logout", authHandlers.Logout)
 	mux.HandleFunc("POST /api/admin/change-password", adminapi.RequireSession(deps.Sessions, authHandlers.ChangePassword))
 	mux.HandleFunc("GET /api/admin/whoami", adminapi.RequireSession(deps.Sessions, authHandlers.Whoami))
+
+	gamesHandlers := gamesapi.NewHandlers(deps.Games, deps.DB)
+	mux.HandleFunc("GET /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.List))
+	mux.HandleFunc("POST /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.Create))
+	mux.HandleFunc("GET /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Get))
+	mux.HandleFunc("PUT /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Update))
+	mux.HandleFunc("DELETE /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Delete))
+	mux.HandleFunc("POST /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.AddScreenshot))
+	mux.HandleFunc("DELETE /api/admin/games/{id}/screenshots/{screenshotID}", adminapi.RequireSession(deps.Sessions, gamesHandlers.RemoveScreenshot))
 
 	onGameArchiveExtracted := func(slug string) error {
 		game, err := deps.Games.FindBySlug(slug)

@@ -11,8 +11,8 @@ import (
 
 	"pixabros/internal/adminapi"
 	"pixabros/internal/auth"
-	"pixabros/internal/gameupload"
 	"pixabros/internal/games"
+	"pixabros/internal/gameupload"
 	"pixabros/internal/httpapi"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"

@@ -3,7 +3,9 @@ package httpserver
 import (
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"pixabros/internal/adminapi"
 	"pixabros/internal/auth"
@@ -35,7 +37,7 @@ func New(deps Dependencies) http.Handler {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")
 	}))
 
-	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", noDirListing(deps.AdminUIDir)))
+	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(deps.AdminUIDir)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
 	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
 	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
@@ -58,6 +60,40 @@ func noDirListing(dir string) http.Handler {
 			}
 		}
 		fileServer.ServeHTTP(w, r)
+	})
+}
+
+// serveAdminSPA serves dir (the built admin SPA's output). A request that
+// resolves to a real file on disk (including assets/*) is served as-is via
+// noDirListing, and a genuine miss inside assets/ still 404s -- a stale
+// hashed-asset URL failing as a clear 404 is far better than it being
+// answered with the HTML shell and a confusing MIME-type error. Any other
+// GET/HEAD path -- a client-side route like /login or /change-password that
+// react-router-dom owns, not the filesystem -- falls back to index.html with
+// a 200 so react-router can take over, with Cache-Control: no-store so a
+// redeploy is never masked by a stale cached shell. Non-GET/HEAD requests
+// get no SPA fallback at all and keep the plain file-server behaviour.
+func serveAdminSPA(dir string) http.Handler {
+	fileServer := noDirListing(dir)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// http.StripPrefix leaves a relative path here (e.g. "login" or
+		// "assets/index-abc123.js"), so normalise to a rooted, cleaned
+		// slash path before deciding anything from it.
+		urlPath := path.Clean("/" + strings.TrimPrefix(r.URL.Path, "/"))
+		if info, err := os.Stat(filepath.Join(dir, filepath.FromSlash(urlPath))); err == nil && !info.IsDir() {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		if urlPath == "/assets" || strings.HasPrefix(urlPath, "/assets/") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.ServeFile(w, r, filepath.Join(dir, "index.html"))
 	})
 }
 

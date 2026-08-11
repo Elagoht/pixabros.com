@@ -3,6 +3,7 @@ package httpserver
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -109,6 +110,144 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 	if publicResp.StatusCode != http.StatusOK {
 		t.Fatalf("public status = %d, want %d", publicResp.StatusCode, http.StatusOK)
 	}
+}
+
+// TestRouter_AdminSPAServing covers the SPA fallback: react-router-dom's
+// BrowserRouter puts real browser URLs like /I-am-a-pixabro/change-password in
+// the address bar, so a direct navigation, refresh or bookmark of a
+// client-side route must load the shell instead of 404ing, while a stale
+// content-hashed asset URL must still 404 honestly.
+func TestRouter_AdminSPAServing(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	const indexHTML = `<!doctype html><title>pixabros admin</title><div id="root"></div>`
+	adminDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(adminDir, "index.html"), []byte(indexHTML), 0o644); err != nil {
+		t.Fatalf("write admin index.html: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(adminDir, "assets"), 0o755); err != nil {
+		t.Fatalf("mkdir assets: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(adminDir, "assets", "index-abc123.js"), []byte("console.log(1)"), 0o644); err != nil {
+		t.Fatalf("write asset: %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, files)
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      files,
+		AdminUIDir: adminDir,
+		PlayDir:    t.TempDir(),
+		AssetsDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	get := func(t *testing.T, path string) (*http.Response, string) {
+		t.Helper()
+		resp, err := srv.Client().Get(srv.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s error = %v", path, err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("read body of %s: %v", path, err)
+		}
+		return resp, string(body)
+	}
+
+	t.Run("client-side route serves the uncached SPA shell", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/change-password")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d (a client-side route must load the shell)", resp.StatusCode, http.StatusOK)
+		}
+		if body != indexHTML {
+			t.Errorf("body = %q, want the built index.html %q", body, indexHTML)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, want %q (a redeploy must reach the browser)", got, "no-store")
+		}
+	})
+
+	t.Run("nested client-side route serves the SPA shell", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/login")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if body != indexHTML {
+			t.Errorf("body = %q, want the built index.html", body)
+		}
+	})
+
+	t.Run("missing asset 404s instead of serving the shell", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/assets/nope.js")
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d (a stale hashed asset must 404)", resp.StatusCode, http.StatusNotFound)
+		}
+		if strings.Contains(body, "<div id=\"root\">") {
+			t.Errorf("body = %q, want a 404 rather than the SPA shell", body)
+		}
+	})
+
+	t.Run("real asset is served as-is", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/assets/index-abc123.js")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if body != "console.log(1)" {
+			t.Errorf("body = %q, want the real asset's contents", body)
+		}
+	})
+
+	t.Run("shell root serves index.html", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if body != indexHTML {
+			t.Errorf("body = %q, want the built index.html", body)
+		}
+	})
+
+	t.Run("index.html requested by name is served as-is", func(t *testing.T) {
+		resp, body := get(t, "/I-am-a-pixabro/index.html")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if body != indexHTML {
+			t.Errorf("body = %q, want the built index.html", body)
+		}
+	})
+
+	t.Run("non-GET requests get no SPA fallback", func(t *testing.T) {
+		resp, err := srv.Client().Post(srv.URL+"/I-am-a-pixabro/change-password", "application/json", bytes.NewReader([]byte("{}")))
+		if err != nil {
+			t.Fatalf("POST error = %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d (only navigations get the shell)", resp.StatusCode, http.StatusNotFound)
+		}
+	})
+
+	t.Run("the API is never answered with the SPA shell", func(t *testing.T) {
+		resp, _ := get(t, "/api/admin/whoami")
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+		}
+	})
 }
 
 func TestRouter_UnmatchedAPIRouteReturnsJSONNotFound(t *testing.T) {

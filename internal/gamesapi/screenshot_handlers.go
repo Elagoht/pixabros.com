@@ -1,0 +1,84 @@
+package gamesapi
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"pixabros/internal/httpapi"
+	"pixabros/internal/render"
+)
+
+type screenshotResponse struct {
+	ID           int64 `json:"id"`
+	GameID       int64 `json:"game_id"`
+	MediaID      int64 `json:"media_id"`
+	DisplayOrder int   `json:"display_order"`
+}
+
+type addScreenshotRequest struct {
+	MediaID      int64 `json:"media_id"`
+	DisplayOrder int   `json:"display_order"`
+}
+
+func (h *Handlers) AddScreenshot(w http.ResponseWriter, r *http.Request) {
+	gameID, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	var req addScreenshotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
+		return
+	}
+	if req.MediaID == 0 {
+		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "media_id is required")
+		return
+	}
+
+	screenshot, err := h.repo.AddScreenshot(gameID, req.MediaID, req.DisplayOrder)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not add screenshot")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusCreated, screenshotResponse{
+		ID:           screenshot.ID,
+		GameID:       screenshot.GameID,
+		MediaID:      screenshot.MediaID,
+		DisplayOrder: screenshot.DisplayOrder,
+	})
+}
+
+func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
+	gameID, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+	screenshotID, err := strconv.ParseInt(r.PathValue("screenshotID"), 10, 64)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "screenshotID must be a number")
+		return
+	}
+
+	if err := h.repo.RemoveScreenshot(screenshotID); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not remove screenshot")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

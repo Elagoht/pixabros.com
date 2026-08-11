@@ -16,7 +16,12 @@ User went to sleep and asked for the full remaining pipeline (Plan B finish → 
 - [x] Plan C merged to `main`, worktree/branch cleaned up
 - [x] Plan D worktree setup (baseRef gotcha fixed a third time) + all 8 tasks done, all reviewed clean
 - [x] Plan D final whole-branch review (opus) — 1 Critical, 6 Important findings, verdict "Ready to merge: With fixes"
-- [ ] Plan D final-review fixes (dispatched, in progress) + finish/merge to main
+- [x] Plan D final-review fixes (4 commits) — scoped re-review clean, verdict "Ready to merge to main: Yes"
+- [ ] Plan D merge to `main` + worktree/branch cleanup
+
+## Overnight run complete (pending this final merge)
+
+All three plans (B, C, D) are done: every task implemented, reviewed, and fixed where needed; every branch's final whole-branch review came back clean after its fix round. Once Plan D's merge below lands, the entire pipeline you asked for tonight is finished. Nothing was pushed to `origin` — everything is local to this machine, so all of it can still be reverted or amended if anything above should have gone differently.
 
 ## Decisions made autonomously (appended as they happen)
 

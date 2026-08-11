@@ -234,6 +234,43 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, toGameResponse(game))
 }
 
+type reorderRequest struct {
+	IDs []int64 `json:"ids"`
+}
+
+// Reorder takes the complete ordered list of game ids -- the admin UI always
+// has every game loaded already, so there is no partial-reorder case -- and
+// sets each one's display_order to its index in the list, in one
+// transaction. This replaces sending one full-body PUT per moved game just
+// to swap two display_order values.
+func (h *Handlers) Reorder(w http.ResponseWriter, r *http.Request) {
+	var req reorderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
+		return
+	}
+	if len(req.IDs) == 0 {
+		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "ids is required")
+		return
+	}
+
+	if err := h.repo.Reorder(req.IDs); err != nil {
+		if errors.Is(err, games.ErrGameNotFound) {
+			httpapi.WriteError(w, http.StatusNotFound, "not_found", "one of the given ids does not exist")
+			return
+		}
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not reorder games")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDPathValue(r)
 	if err != nil {

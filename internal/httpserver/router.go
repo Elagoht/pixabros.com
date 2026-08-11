@@ -50,11 +50,16 @@ func New(deps Dependencies) http.Handler {
 	gamesHandlers := gamesapi.NewHandlers(deps.Games, deps.DB, deps.PlayDir)
 	mux.HandleFunc("GET /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.List))
 	mux.HandleFunc("POST /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.Create))
+	// Registered above GET/PUT /api/admin/games/{id}: Go's ServeMux ranks a
+	// fully static segment ("reorder") over a wildcard ("{id}") regardless of
+	// registration order, but keeping it here keeps the list readable.
+	mux.HandleFunc("PUT /api/admin/games/reorder", adminapi.RequireSession(deps.Sessions, gamesHandlers.Reorder))
 	mux.HandleFunc("GET /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Get))
 	mux.HandleFunc("PUT /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Delete))
 	mux.HandleFunc("GET /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.ListScreenshots))
 	mux.HandleFunc("POST /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.AddScreenshot))
+	mux.HandleFunc("PUT /api/admin/games/{id}/screenshots/reorder", adminapi.RequireSession(deps.Sessions, gamesHandlers.ReorderScreenshots))
 	mux.HandleFunc("DELETE /api/admin/games/{id}/screenshots/{screenshotID}", adminapi.RequireSession(deps.Sessions, gamesHandlers.RemoveScreenshot))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)

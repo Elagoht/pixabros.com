@@ -245,6 +245,37 @@ func (r *Repo) SetWebExportPath(id int64, path string) error {
 	return requireRowsAffected(res)
 }
 
+// Reorder sets display_order to each id's index in ids, in one transaction:
+// the admin UI's reorder control always sends the complete ordered id list
+// (it already has every game loaded), so a partial or unknown id is a bug in
+// the caller, not a normal case -- the whole reorder is rolled back rather
+// than silently applying half of it.
+func (r *Repo) Reorder(ids []int64) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`UPDATE games SET display_order = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for i, id := range ids {
+		res, err := stmt.Exec(i, id)
+		if err != nil {
+			return err
+		}
+		if err := requireRowsAffected(res); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *Repo) List() ([]Game, error) {
 	rows, err := r.db.Query(`SELECT ` + gameColumns + ` FROM games ORDER BY display_order ASC, id ASC;`)
 	if err != nil {

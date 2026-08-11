@@ -258,3 +258,59 @@ func TestListScreenshots_NonNumericIDRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }
+
+func TestReorderScreenshots_Success(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	if _, err := conn.Exec(
+		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+	); err != nil {
+		t.Fatalf("seed media rows error = %v", err)
+	}
+	first, _ := repo.AddScreenshot(game.ID, 55, 0)
+	second, _ := repo.AddScreenshot(game.ID, 56, 1)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	body, _ := json.Marshal(reorderRequest{IDs: []int64{second.ID, first.ID}})
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%d/screenshots/reorder", game.ID), bytes.NewReader(body))
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.ReorderScreenshots(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+	list, err := repo.ListScreenshots(game.ID)
+	if err != nil {
+		t.Fatalf("ListScreenshots() error = %v", err)
+	}
+	if len(list) != 2 || list[0].ID != second.ID || list[1].ID != first.ID {
+		t.Errorf("ListScreenshots() = %+v, want [second, first] in that order", list)
+	}
+}
+
+func TestReorderScreenshots_IDFromAnotherGameNotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	gameA, _ := repo.Create(games.CreateInput{Title: "Game A"})
+	gameB, _ := repo.Create(games.CreateInput{Title: "Game B"})
+	if _, err := conn.Exec(
+		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+	); err != nil {
+		t.Fatalf("seed media rows error = %v", err)
+	}
+	ownScreenshot, _ := repo.AddScreenshot(gameA.ID, 55, 0)
+	otherScreenshot, _ := repo.AddScreenshot(gameB.ID, 56, 0)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	body, _ := json.Marshal(reorderRequest{IDs: []int64{ownScreenshot.ID, otherScreenshot.ID}})
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%d/screenshots/reorder", gameA.ID), bytes.NewReader(body))
+	req.SetPathValue("id", fmt.Sprintf("%d", gameA.ID))
+	rec := httptest.NewRecorder()
+	handlers.ReorderScreenshots(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}

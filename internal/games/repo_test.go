@@ -203,3 +203,52 @@ func TestRepo_ListOrdersByDisplayOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestRepo_ReorderSetsDisplayOrderToIndex(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	first, _ := repo.Create(CreateInput{Title: "First", DisplayOrder: 0})
+	second, _ := repo.Create(CreateInput{Title: "Second", DisplayOrder: 1})
+	third, _ := repo.Create(CreateInput{Title: "Third", DisplayOrder: 2})
+
+	if err := repo.Reorder([]int64{third.ID, first.ID, second.ID}); err != nil {
+		t.Fatalf("Reorder() error = %v", err)
+	}
+
+	list, err := repo.List()
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	got := []string{list[0].Title, list[1].Title, list[2].Title}
+	want := []string{"Third", "First", "Second"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("List()[%d].Title = %q, want %q (full order = %v)", i, got[i], want[i], got)
+		}
+	}
+}
+
+// An id that doesn't exist must roll back the whole reorder, not apply the
+// ids that came before it in the list -- a caller retrying after this error
+// should find the original order untouched.
+func TestRepo_ReorderRollsBackOnUnknownID(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	first, _ := repo.Create(CreateInput{Title: "First", DisplayOrder: 0})
+	second, _ := repo.Create(CreateInput{Title: "Second", DisplayOrder: 1})
+
+	err := repo.Reorder([]int64{second.ID, 999})
+	if !errors.Is(err, ErrGameNotFound) {
+		t.Fatalf("Reorder() error = %v, want ErrGameNotFound", err)
+	}
+
+	reloadedFirst, findErr := repo.FindByID(first.ID)
+	if findErr != nil {
+		t.Fatalf("FindByID(first) error = %v", findErr)
+	}
+	if reloadedFirst.DisplayOrder != 0 {
+		t.Errorf("first.DisplayOrder = %d, want 0 (unchanged -- the reorder should have rolled back)", reloadedFirst.DisplayOrder)
+	}
+}

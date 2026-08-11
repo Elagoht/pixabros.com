@@ -244,3 +244,57 @@ func TestDelete_NotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
+
+func TestReorder_Success(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	first, _ := repo.Create(games.CreateInput{Title: "First", DisplayOrder: 0})
+	second, _ := repo.Create(games.CreateInput{Title: "Second", DisplayOrder: 1})
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	body, _ := json.Marshal(reorderRequest{IDs: []int64{second.ID, first.ID}})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	handlers.Reorder(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+	list, err := repo.List()
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(list) != 2 || list[0].ID != second.ID || list[1].ID != first.ID {
+		t.Errorf("List() = %+v, want [second, first] in that order", list)
+	}
+}
+
+func TestReorder_MissingIDs(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	body, _ := json.Marshal(reorderRequest{IDs: []int64{}})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	handlers.Reorder(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestReorder_UnknownIDNotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	body, _ := json.Marshal(reorderRequest{IDs: []int64{999}})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	handlers.Reorder(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}

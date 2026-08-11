@@ -54,6 +54,41 @@ func (r *Repo) ListScreenshots(gameID int64) ([]Screenshot, error) {
 	return list, rows.Err()
 }
 
+// ReorderScreenshots sets display_order to each id's index in screenshotIDs,
+// scoped to gameID the same way RemoveScreenshot is: a screenshot id
+// belonging to a different game must not be reorderable through another
+// game's URL. The whole reorder is one transaction, rolled back if any id
+// doesn't belong to this game.
+func (r *Repo) ReorderScreenshots(gameID int64, screenshotIDs []int64) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`UPDATE game_screenshots SET display_order = ? WHERE id = ? AND game_id = ?;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for i, id := range screenshotIDs {
+		res, err := stmt.Exec(i, id, gameID)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return ErrScreenshotNotFound
+		}
+	}
+
+	return tx.Commit()
+}
+
 // RemoveScreenshot scopes the delete to gameID as well as screenshotID: a
 // screenshot ID belonging to a different game must not be deletable through
 // another game's URL, since the caller only invalidates the rendered page of

@@ -93,6 +93,43 @@ func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ReorderScreenshots takes the complete ordered list of this game's
+// screenshot ids and sets each one's display_order to its index, in one
+// transaction, scoped to gameID.
+func (h *Handlers) ReorderScreenshots(w http.ResponseWriter, r *http.Request) {
+	gameID, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	var req reorderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
+		return
+	}
+	if len(req.IDs) == 0 {
+		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "ids is required")
+		return
+	}
+
+	if err := h.repo.ReorderScreenshots(gameID, req.IDs); err != nil {
+		if errors.Is(err, games.ErrScreenshotNotFound) {
+			httpapi.WriteError(w, http.StatusNotFound, "not_found", "one of the given ids does not belong to this game")
+			return
+		}
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not reorder screenshots")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ListScreenshots checks the game exists before listing, so a request for an
 // unknown game is a 404 rather than an empty array that looks like "this game
 // simply has no screenshots".

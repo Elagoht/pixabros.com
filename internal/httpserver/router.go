@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -9,6 +11,8 @@ import (
 
 	"pixabros/internal/adminapi"
 	"pixabros/internal/auth"
+	"pixabros/internal/gameupload"
+	"pixabros/internal/games"
 	"pixabros/internal/httpapi"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
@@ -19,6 +23,8 @@ type Dependencies struct {
 	Sessions   *auth.SessionStore
 	Store      *render.Store
 	Files      storage.Storage
+	DB         *sql.DB
+	Games      *games.Repo
 	AdminUIDir string
 	PlayDir    string
 	AssetsDir  string
@@ -32,6 +38,19 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/admin/logout", authHandlers.Logout)
 	mux.HandleFunc("POST /api/admin/change-password", adminapi.RequireSession(deps.Sessions, authHandlers.ChangePassword))
 	mux.HandleFunc("GET /api/admin/whoami", adminapi.RequireSession(deps.Sessions, authHandlers.Whoami))
+
+	onGameArchiveExtracted := func(slug string) error {
+		game, err := deps.Games.FindBySlug(slug)
+		if err != nil {
+			return err
+		}
+		if err := deps.Games.SetWebExportPath(game.ID, filepath.Join(deps.PlayDir, slug)); err != nil {
+			return err
+		}
+		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%d", game.ID))
+	}
+	gameUploadHandler := gameupload.NewHandler(deps.PlayDir, onGameArchiveExtracted)
+	mux.HandleFunc("POST /api/admin/games/{slug}/upload", adminapi.RequireSession(deps.Sessions, gameUploadHandler.Upload))
 
 	mux.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")

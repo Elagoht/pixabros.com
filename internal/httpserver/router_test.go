@@ -1,9 +1,12 @@
 package httpserver
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +16,7 @@ import (
 
 	"pixabros/internal/auth"
 	"pixabros/internal/db"
+	"pixabros/internal/games"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -109,6 +113,95 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 	}
 	if publicResp.StatusCode != http.StatusOK {
 		t.Fatalf("public status = %d, want %d", publicResp.StatusCode, http.StatusOK)
+	}
+}
+
+func TestRouter_GameArchiveUpload(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	hash, err := auth.HashPassword("s3cret-password")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	conn.Exec(`INSERT INTO admins (username, password_hash) VALUES (?, ?);`, "furkan", hash)
+
+	gamesRepo := games.NewRepo(conn)
+	game, err := gamesRepo.Create(games.CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("games.Create() error = %v", err)
+	}
+
+	playDir := t.TempDir()
+	renderedFiles := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	store := render.NewStore(conn, renderedFiles)
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      renderedFiles,
+		DB:         conn,
+		Games:      gamesRepo,
+		AdminUIDir: t.TempDir(),
+		PlayDir:    playDir,
+		AssetsDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	loginBody, _ := json.Marshal(map[string]string{"username": "furkan", "password": "s3cret-password"})
+	loginResp, err := srv.Client().Post(srv.URL+"/api/admin/login", "application/json", bytes.NewReader(loginBody))
+	if err != nil {
+		t.Fatalf("login request error = %v", err)
+	}
+
+	var zipBuf bytes.Buffer
+	zw := zip.NewWriter(&zipBuf)
+	f, _ := zw.Create("index.html")
+	f.Write([]byte("<html></html>"))
+	zw.Close()
+
+	var multipartBuf bytes.Buffer
+	mw := multipart.NewWriter(&multipartBuf)
+	part, _ := mw.CreateFormFile("file", "build.zip")
+	part.Write(zipBuf.Bytes())
+	mw.Close()
+
+	uploadURL := fmt.Sprintf("%s/api/admin/games/%s/upload", srv.URL, game.Slug)
+	uploadReq, _ := http.NewRequest(http.MethodPost, uploadURL, &multipartBuf)
+	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
+	for _, c := range loginResp.Cookies() {
+		uploadReq.AddCookie(c)
+	}
+
+	uploadResp, err := srv.Client().Do(uploadReq)
+	if err != nil {
+		t.Fatalf("upload request error = %v", err)
+	}
+	if uploadResp.StatusCode != http.StatusNoContent {
+		t.Fatalf("upload status = %d, want %d", uploadResp.StatusCode, http.StatusNoContent)
+	}
+
+	updated, err := gamesRepo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	wantPath := filepath.Join(playDir, game.Slug)
+	if updated.WebExportPath != wantPath {
+		t.Errorf("WebExportPath = %q, want %q", updated.WebExportPath, wantPath)
+	}
+
+	var jobCount int
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
+	if jobCount != 1 {
+		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
 	}
 }
 

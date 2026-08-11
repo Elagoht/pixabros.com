@@ -92,3 +92,40 @@ func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// ListScreenshots checks the game exists before listing, so a request for an
+// unknown game is a 404 rather than an empty array that looks like "this game
+// simply has no screenshots".
+func (h *Handlers) ListScreenshots(w http.ResponseWriter, r *http.Request) {
+	gameID, err := parseIDPathValue(r)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
+		return
+	}
+
+	if _, err := h.repo.FindByID(gameID); err != nil {
+		if errors.Is(err, games.ErrGameNotFound) {
+			httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+			return
+		}
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load game")
+		return
+	}
+
+	list, err := h.repo.ListScreenshots(gameID)
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not list screenshots")
+		return
+	}
+
+	responses := make([]screenshotResponse, 0, len(list))
+	for _, s := range list {
+		responses = append(responses, screenshotResponse{
+			ID:           s.ID,
+			GameID:       s.GameID,
+			MediaID:      s.MediaID,
+			DisplayOrder: s.DisplayOrder,
+		})
+	}
+	httpapi.WriteJSON(w, http.StatusOK, responses)
+}

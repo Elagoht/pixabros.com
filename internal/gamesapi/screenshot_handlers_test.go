@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"pixabros/internal/games"
@@ -150,5 +151,110 @@ func TestAddScreenshot_UnknownGameNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestListScreenshots_ReturnsScreenshotsInDisplayOrder(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	if _, err := conn.Exec(
+		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+	); err != nil {
+		t.Fatalf("seed media rows error = %v", err)
+	}
+	if _, err := repo.AddScreenshot(game.ID, 56, 1); err != nil {
+		t.Fatalf("AddScreenshot() error = %v", err)
+	}
+	if _, err := repo.AddScreenshot(game.ID, 55, 0); err != nil {
+		t.Fatalf("AddScreenshot() error = %v", err)
+	}
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), nil)
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.ListScreenshots(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got []screenshotResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(ListScreenshots()) = %d, want 2", len(got))
+	}
+	if got[0].MediaID != 55 || got[0].DisplayOrder != 0 {
+		t.Errorf("first screenshot = %+v, want MediaID=55 DisplayOrder=0", got[0])
+	}
+	if got[1].MediaID != 56 || got[1].DisplayOrder != 1 {
+		t.Errorf("second screenshot = %+v, want MediaID=56 DisplayOrder=1", got[1])
+	}
+	if got[0].GameID != game.ID {
+		t.Errorf("GameID = %d, want %d", got[0].GameID, game.ID)
+	}
+}
+
+// A game with no screenshots must answer with [] rather than null: the admin
+// UI maps over the response directly, and null would force every caller to
+// defend against it.
+func TestListScreenshots_EmptyListIsAnArrayNotNull(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), nil)
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.ListScreenshots(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
+		t.Errorf("body = %q, want %q", body, "[]")
+	}
+}
+
+func TestListScreenshots_UnknownGameNotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/999/screenshots", nil)
+	req.SetPathValue("id", "999")
+	rec := httptest.NewRecorder()
+	handlers.ListScreenshots(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if body.Error.Code != "not_found" {
+		t.Errorf("error.code = %q, want %q", body.Error.Code, "not_found")
+	}
+}
+
+func TestListScreenshots_NonNumericIDRejected(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/abc/screenshots", nil)
+	req.SetPathValue("id", "abc")
+	rec := httptest.NewRecorder()
+	handlers.ListScreenshots(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }

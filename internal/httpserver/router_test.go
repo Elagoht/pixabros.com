@@ -207,6 +207,90 @@ func TestRouter_GameArchiveUpload(t *testing.T) {
 	}
 }
 
+// TestRouter_GameArchiveUploadUnknownSlug covers uploading against a slug no
+// game owns: the request must be rejected as a 404 client error before
+// anything is extracted, rather than extracting a whole archive into a
+// publicly served directory and only then failing with a 500.
+func TestRouter_GameArchiveUploadUnknownSlug(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	hash, err := auth.HashPassword("s3cret-password")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	conn.Exec(`INSERT INTO admins (username, password_hash) VALUES (?, ?);`, "furkan", hash)
+
+	playDir := t.TempDir()
+	renderedFiles := storage.NewLocalDisk(t.TempDir(), "/rendered")
+
+	handler := New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		Store:      render.NewStore(conn, renderedFiles),
+		Files:      renderedFiles,
+		DB:         conn,
+		Games:      games.NewRepo(conn),
+		AdminUIDir: t.TempDir(),
+		PlayDir:    playDir,
+		AssetsDir:  t.TempDir(),
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	loginBody, _ := json.Marshal(map[string]string{"username": "furkan", "password": "s3cret-password"})
+	loginResp, err := srv.Client().Post(srv.URL+"/api/admin/login", "application/json", bytes.NewReader(loginBody))
+	if err != nil {
+		t.Fatalf("login request error = %v", err)
+	}
+
+	var zipBuf bytes.Buffer
+	zw := zip.NewWriter(&zipBuf)
+	f, _ := zw.Create("index.html")
+	f.Write([]byte("<html></html>"))
+	zw.Close()
+
+	var multipartBuf bytes.Buffer
+	mw := multipart.NewWriter(&multipartBuf)
+	part, _ := mw.CreateFormFile("file", "build.zip")
+	part.Write(zipBuf.Bytes())
+	mw.Close()
+
+	const unknownSlug = "no-such-game"
+	uploadURL := fmt.Sprintf("%s/api/admin/games/%s/upload", srv.URL, unknownSlug)
+	uploadReq, _ := http.NewRequest(http.MethodPost, uploadURL, &multipartBuf)
+	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
+	for _, c := range loginResp.Cookies() {
+		uploadReq.AddCookie(c)
+	}
+
+	uploadResp, err := srv.Client().Do(uploadReq)
+	if err != nil {
+		t.Fatalf("upload request error = %v", err)
+	}
+	defer uploadResp.Body.Close()
+	if uploadResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("upload status = %d, want %d", uploadResp.StatusCode, http.StatusNotFound)
+	}
+
+	if _, err := os.Stat(filepath.Join(playDir, unknownSlug)); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(playDir/%s) error = %v, want no directory to have been created", unknownSlug, err)
+	}
+	entries, err := os.ReadDir(playDir)
+	if err != nil {
+		t.Fatalf("ReadDir(playDir) error = %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("playDir contains %d entries, want none", len(entries))
+	}
+}
+
 // TestRouter_AdminSPAServing covers the SPA fallback: react-router-dom's
 // BrowserRouter puts real browser URLs like /I-am-a-pixabro/change-password in
 // the address bar, so a direct navigation, refresh or bookmark of a

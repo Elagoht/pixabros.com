@@ -2,7 +2,9 @@ package httpserver
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -59,8 +61,29 @@ func New(deps Dependencies) http.Handler {
 		}
 		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%d", game.ID))
 	}
-	gameUploadHandler := gameupload.NewHandler(deps.PlayDir, onGameArchiveExtracted)
-	mux.HandleFunc("POST /api/admin/games/{slug}/upload", adminapi.RequireSession(deps.Sessions, gameUploadHandler.Upload))
+	gameUploadHandler := gameupload.NewHandler(deps.PlayDir, onGameArchiveExtracted, gameupload.WithErrorLogger(func(err error) {
+		log.Printf("game upload: %v", err)
+	}))
+
+	// requireGameSlug resolves {slug} to a real game before the upload handler
+	// touches the filesystem at all: without it, uploading against a slug
+	// nobody created extracts a whole archive into a publicly served
+	// directory and only then 500s, leaving an orphaned build on disk.
+	requireGameSlug := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			slug := r.PathValue("slug")
+			if _, err := deps.Games.FindBySlug(slug); err != nil {
+				if errors.Is(err, games.ErrGameNotFound) {
+					httpapi.WriteError(w, http.StatusNotFound, "not_found", "no game with that slug")
+					return
+				}
+				httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not look up game")
+				return
+			}
+			next(w, r)
+		}
+	}
+	mux.HandleFunc("POST /api/admin/games/{slug}/upload", adminapi.RequireSession(deps.Sessions, requireGameSlug(gameUploadHandler.Upload)))
 
 	mux.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")

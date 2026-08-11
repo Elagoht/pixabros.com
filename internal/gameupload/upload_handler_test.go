@@ -76,6 +76,108 @@ func TestUpload_ExtractsAndCallsCallback(t *testing.T) {
 	}
 }
 
+// zipWithFiles builds a zip containing an index.html plus the given extra
+// entries, so a test can distinguish one build's files from another's.
+func zipWithFiles(t *testing.T, extra map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	entries := map[string]string{"index.html": "<html></html>"}
+	for name, content := range extra {
+		entries[name] = content
+	}
+	for name, content := range entries {
+		f, err := w.Create(name)
+		if err != nil {
+			t.Fatalf("zip Create(%q): %v", name, err)
+		}
+		if _, err := f.Write([]byte(content)); err != nil {
+			t.Fatalf("zip write(%q): %v", name, err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("zip Close(): %v", err)
+	}
+	return buf.Bytes()
+}
+
+// TestUpload_ReplacingBuildDropsStaleFiles proves a re-upload replaces the
+// live directory wholesale: a file that existed only in the previous build
+// must not survive alongside the new one, since a leftover .wasm/.js next to
+// its replacement silently breaks the published game.
+func TestUpload_ReplacingBuildDropsStaleFiles(t *testing.T) {
+	gamesDir := t.TempDir()
+	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+
+	firstReq := uploadRequest(t, "pixel-quest", zipWithFiles(t, map[string]string{"old-build.wasm": "stale"}))
+	firstRec := httptest.NewRecorder()
+	handler.Upload(firstRec, firstReq)
+	if firstRec.Code != http.StatusNoContent {
+		t.Fatalf("first upload status = %d, want %d, body = %s", firstRec.Code, http.StatusNoContent, firstRec.Body.String())
+	}
+	stalePath := filepath.Join(gamesDir, "pixel-quest", "old-build.wasm")
+	if _, err := httpFileExists(stalePath); err != nil {
+		t.Fatalf("first build's file should exist after the first upload: %v", err)
+	}
+
+	secondReq := uploadRequest(t, "pixel-quest", zipWithFiles(t, map[string]string{"new-build.wasm": "fresh"}))
+	secondRec := httptest.NewRecorder()
+	handler.Upload(secondRec, secondReq)
+	if secondRec.Code != http.StatusNoContent {
+		t.Fatalf("second upload status = %d, want %d, body = %s", secondRec.Code, http.StatusNoContent, secondRec.Body.String())
+	}
+
+	if _, err := httpFileExists(stalePath); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(old-build.wasm) error = %v, want the previous build's file to be gone", err)
+	}
+	if _, err := httpFileExists(filepath.Join(gamesDir, "pixel-quest", "new-build.wasm")); err != nil {
+		t.Errorf("new build's file should exist: %v", err)
+	}
+	if _, err := httpFileExists(filepath.Join(gamesDir, "pixel-quest", "index.html")); err != nil {
+		t.Errorf("new build's index.html should exist: %v", err)
+	}
+	// The staging directory must not be left behind next to the live one.
+	if _, err := httpFileExists(filepath.Join(gamesDir, "pixel-quest.incoming")); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(staging dir) error = %v, want no staging directory left behind", err)
+	}
+}
+
+// TestUpload_FailedUploadLeavesPreviousBuildIntact proves the previous build
+// survives a rejected upload: extraction happens in a staging directory, so
+// a corrupt archive can no longer wipe out a live, working game.
+func TestUpload_FailedUploadLeavesPreviousBuildIntact(t *testing.T) {
+	gamesDir := t.TempDir()
+	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+
+	firstReq := uploadRequest(t, "pixel-quest", zipWithFiles(t, map[string]string{"game.wasm": "working build"}))
+	firstRec := httptest.NewRecorder()
+	handler.Upload(firstRec, firstReq)
+	if firstRec.Code != http.StatusNoContent {
+		t.Fatalf("first upload status = %d, want %d, body = %s", firstRec.Code, http.StatusNoContent, firstRec.Body.String())
+	}
+
+	badReq := uploadRequest(t, "pixel-quest", []byte("not a real archive"))
+	badRec := httptest.NewRecorder()
+	handler.Upload(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid upload status = %d, want %d", badRec.Code, http.StatusBadRequest)
+	}
+
+	if _, err := httpFileExists(filepath.Join(gamesDir, "pixel-quest", "index.html")); err != nil {
+		t.Errorf("previous build's index.html should have survived: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(gamesDir, "pixel-quest", "game.wasm"))
+	if err != nil {
+		t.Fatalf("previous build's game.wasm should have survived: %v", err)
+	}
+	if string(got) != "working build" {
+		t.Errorf("game.wasm = %q, want the original build's contents unchanged", got)
+	}
+	if _, err := httpFileExists(filepath.Join(gamesDir, "pixel-quest.incoming")); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(staging dir) error = %v, want the failed staging directory cleaned up", err)
+	}
+}
+
 func TestUpload_InvalidArchiveReturnsBadRequest(t *testing.T) {
 	gamesDir := t.TempDir()
 	handler := NewHandler(gamesDir, func(slug string) error { return nil })

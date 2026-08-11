@@ -66,16 +66,36 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	destDir := filepath.Join(h.gamesDir, slug)
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+	stagingDir := destDir + ".incoming"
+
+	// Always start from a clean staging directory: a previous crashed
+	// upload could have left one behind.
+	os.RemoveAll(stagingDir)
+	if err := os.MkdirAll(stagingDir, 0o755); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not prepare destination directory")
 		return
 	}
 
-	if err := gamearchive.Extract(file, header.Filename, destDir); err != nil {
+	if err := gamearchive.Extract(file, header.Filename, stagingDir); err != nil {
 		// The raw error can be an *os.PathError carrying an absolute server
 		// path, so it is logged rather than returned to the client.
+		os.RemoveAll(stagingDir)
 		h.onError(fmt.Errorf("extract archive for slug %q: %w", slug, err))
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_archive", "could not extract the uploaded archive")
+		return
+	}
+
+	// Replace the live directory wholesale -- RemoveAll before Rename means
+	// a re-upload can never merge with (and leave stale files from) the
+	// previous build, and until this point the previous build was never
+	// touched, so a failure above leaves it fully intact.
+	if err := os.RemoveAll(destDir); err != nil {
+		os.RemoveAll(stagingDir)
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not replace the previous build")
+		return
+	}
+	if err := os.Rename(stagingDir, destDir); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not finalize the uploaded build")
 		return
 	}
 

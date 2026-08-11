@@ -5,3 +5,4 @@
 *.db-wal
 *.db-shm
 /bin/
+/admin-ui/node_modules/

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestList_ReturnsAllGames(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
 	repo.Create(games.CreateInput{Title: "Pixel Quest"})
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/games", nil)
 	rec := httptest.NewRecorder()
@@ -52,7 +53,7 @@ func TestList_ReturnsAllGames(t *testing.T) {
 func TestCreate_Success(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]interface{}{
 		"title":               "Pixel Quest",
@@ -89,7 +90,7 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_MissingTitle(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]string{"title": "  "})
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/games", bytes.NewReader(body))
@@ -105,7 +106,7 @@ func TestGet_Success(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/1", nil)
 	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
@@ -120,7 +121,7 @@ func TestGet_Success(t *testing.T) {
 func TestGet_NotFound(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/999", nil)
 	req.SetPathValue("id", "999")
@@ -136,7 +137,7 @@ func TestUpdate_Success(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]interface{}{
 		"title":        "Pixel Quest: Remastered",
@@ -166,7 +167,7 @@ func TestUpdate_Success(t *testing.T) {
 func TestUpdate_NotFound(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]string{"title": "x"})
 	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/999", bytes.NewReader(body))
@@ -183,7 +184,7 @@ func TestDelete_Success(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), nil)
 	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
@@ -198,10 +199,41 @@ func TestDelete_Success(t *testing.T) {
 	}
 }
 
+// TestDelete_RemovesExtractedBuildDirectory covers the disk side of deletion:
+// /play/{slug}/ is an ungated file-server mount, so a deleted game whose
+// extracted build survives stays publicly playable forever.
+func TestDelete_RemovesExtractedBuildDirectory(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+
+	playDir := t.TempDir()
+	buildDir := filepath.Join(playDir, game.Slug)
+	if err := os.MkdirAll(buildDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	handlers := NewHandlers(repo, conn, playDir)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), nil)
+	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	rec := httptest.NewRecorder()
+	handlers.Delete(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+	if _, err := os.Stat(buildDir); !os.IsNotExist(err) {
+		t.Errorf("os.Stat(%q) error = %v, want the extracted build directory to be gone", buildDir, err)
+	}
+}
+
 func TestDelete_NotFound(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
-	handlers := NewHandlers(repo, conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/999", nil)
 	req.SetPathValue("id", "999")

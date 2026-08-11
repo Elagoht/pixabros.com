@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,12 +18,16 @@ import (
 )
 
 type Handlers struct {
-	repo *games.Repo
-	db   *sql.DB
+	repo    *games.Repo
+	db      *sql.DB
+	playDir string
 }
 
-func NewHandlers(repo *games.Repo, db *sql.DB) *Handlers {
-	return &Handlers{repo: repo, db: db}
+// NewHandlers takes playDir -- the directory uploaded game builds are
+// extracted into -- so that deleting a game can also remove its extracted
+// build, which is otherwise left publicly playable under /play/{slug}/.
+func NewHandlers(repo *games.Repo, db *sql.DB, playDir string) *Handlers {
+	return &Handlers{repo: repo, db: db, playDir: playDir}
 }
 
 type gameResponse struct {
@@ -235,14 +241,25 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.repo.Delete(id)
+	// The game is loaded before it is deleted purely to learn its slug, which
+	// is what names its extracted build directory on disk.
+	game, err := h.repo.FindByID(id)
 	if errors.Is(err, games.ErrGameNotFound) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
 		return
 	}
 	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load game")
+		return
+	}
+
+	if err := h.repo.Delete(id); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not delete game")
 		return
+	}
+
+	if h.playDir != "" {
+		os.RemoveAll(filepath.Join(h.playDir, game.Slug))
 	}
 
 	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {

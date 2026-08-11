@@ -1,5 +1,9 @@
 package games
 
+import "errors"
+
+var ErrScreenshotNotFound = errors.New("screenshot not found")
+
 type Screenshot struct {
 	ID           int64
 	GameID       int64
@@ -7,7 +11,13 @@ type Screenshot struct {
 	DisplayOrder int
 }
 
+// AddScreenshot checks the game exists first so that a screenshot added
+// against an unknown game surfaces as ErrGameNotFound rather than as a raw
+// foreign-key violation the caller cannot classify.
 func (r *Repo) AddScreenshot(gameID, mediaID int64, displayOrder int) (Screenshot, error) {
+	if _, err := r.FindByID(gameID); err != nil {
+		return Screenshot{}, err
+	}
 	res, err := r.db.Exec(
 		`INSERT INTO game_screenshots (game_id, media_id, display_order) VALUES (?, ?, ?);`,
 		gameID, mediaID, displayOrder,
@@ -44,7 +54,21 @@ func (r *Repo) ListScreenshots(gameID int64) ([]Screenshot, error) {
 	return list, rows.Err()
 }
 
-func (r *Repo) RemoveScreenshot(screenshotID int64) error {
-	_, err := r.db.Exec(`DELETE FROM game_screenshots WHERE id = ?;`, screenshotID)
-	return err
+// RemoveScreenshot scopes the delete to gameID as well as screenshotID: a
+// screenshot ID belonging to a different game must not be deletable through
+// another game's URL, since the caller only invalidates the rendered page of
+// the game it was called for.
+func (r *Repo) RemoveScreenshot(gameID, screenshotID int64) error {
+	res, err := r.db.Exec(`DELETE FROM game_screenshots WHERE id = ? AND game_id = ?;`, screenshotID, gameID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrScreenshotNotFound
+	}
+	return nil
 }

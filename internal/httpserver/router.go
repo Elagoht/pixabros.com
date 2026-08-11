@@ -40,7 +40,7 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/admin/change-password", adminapi.RequireSession(deps.Sessions, authHandlers.ChangePassword))
 	mux.HandleFunc("GET /api/admin/whoami", adminapi.RequireSession(deps.Sessions, authHandlers.Whoami))
 
-	gamesHandlers := gamesapi.NewHandlers(deps.Games, deps.DB)
+	gamesHandlers := gamesapi.NewHandlers(deps.Games, deps.DB, deps.PlayDir)
 	mux.HandleFunc("GET /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.List))
 	mux.HandleFunc("POST /api/admin/games", adminapi.RequireSession(deps.Sessions, gamesHandlers.Create))
 	mux.HandleFunc("GET /api/admin/games/{id}", adminapi.RequireSession(deps.Sessions, gamesHandlers.Get))

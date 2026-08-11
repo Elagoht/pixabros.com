@@ -2,10 +2,12 @@ package gamesapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"pixabros/internal/games"
 	"pixabros/internal/httpapi"
 	"pixabros/internal/render"
 )
@@ -40,6 +42,10 @@ func (h *Handlers) AddScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	screenshot, err := h.repo.AddScreenshot(gameID, req.MediaID, req.DisplayOrder)
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
 	if err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not add screenshot")
 		return
@@ -70,7 +76,11 @@ func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.RemoveScreenshot(screenshotID); err != nil {
+	if err := h.repo.RemoveScreenshot(gameID, screenshotID); err != nil {
+		if errors.Is(err, games.ErrScreenshotNotFound) {
+			httpapi.WriteError(w, http.StatusNotFound, "not_found", "screenshot not found")
+			return
+		}
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not remove screenshot")
 		return
 	}

@@ -528,7 +528,10 @@ a:hover {
 }
 
 .slide__media {
-  aspect-ratio: 16 / 9;
+  /* The OpenGraph image's own shape (internal/imaging targets it at 1200x630),
+     so the artwork the carousel leads with fills the area exactly instead of
+     being cropped to 16:9. */
+  aspect-ratio: 1200 / 630;
   background-color: #0b0d11;
   position: relative;
 }

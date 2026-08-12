@@ -32,30 +32,61 @@
           class="crt__knob"
           type="button"
           aria-pressed="true"
+          aria-label="CRT effect"
+          title="CRT effect"
           data-console-crt
         >
-          CRT
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="2.5" y="4.5" width="19" height="13" rx="2.5" />
+            <path d="M8 20.5h8" />
+          </svg>
         </button>
-        <button class="crt__knob" type="button" data-console-fullscreen>
-          Fullscreen
+        <button
+          class="crt__knob"
+          type="button"
+          aria-label="Fullscreen"
+          title="Fullscreen"
+          data-console-fullscreen
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 3.5H3.5V9M15 3.5h5.5V9M9 20.5H3.5V15M15 20.5h5.5V15" />
+          </svg>
         </button>
       </div>
     </div>
 
-    <div class="console__deck">
-      {{/* The cartridge you pick is slotted in here, not dropped straight into
-           the screen: the console is the thing you put a game into. */}}
-      <span class="console__slot">
+    {{/* The machine itself. A cartridge you pick is pushed into the bay here,
+         not dropped straight into the screen: the console is the thing you put
+         a game into. */}}
+    <div class="nes">
+      <div class="nes__bay">
+        <span class="nes__lid" aria-hidden="true"></span>
         <span class="console__cartridge" data-console-cartridge></span>
-      </span>
-      <span class="console__title" data-console-title></span>
-      <button class="console__button" type="button" hidden data-console-reset>
-        Reset
-      </button>
-      <button class="console__button" type="button" hidden data-console-eject>
-        Eject
-      </button>
-      <span class="console__led"></span>
+      </div>
+
+      <div class="nes__panel">
+        <p class="nes__brand" aria-hidden="true">
+          <span class="nes__brand-mark">{{.Site.Name}}</span>
+          <span class="nes__brand-sub">Entertainment System</span>
+        </p>
+
+        <div class="nes__switches">
+          <span class="nes__led" data-console-led></span>
+          <button class="nes__button" type="button" hidden data-console-reset>
+            Reset
+          </button>
+          <button class="nes__button" type="button" hidden data-console-eject>
+            Eject
+          </button>
+        </div>
+
+        <p class="nes__now" data-console-title></p>
+      </div>
+
+      <div class="nes__ports" aria-hidden="true">
+        <span class="nes__port"></span>
+        <span class="nes__port"></span>
+      </div>
     </div>
   </div>
 

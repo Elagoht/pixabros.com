@@ -14,6 +14,7 @@
   var controls = document.querySelector("[data-console-controls]");
   var resetButton = document.querySelector("[data-console-reset]");
   var ejectButton = document.querySelector("[data-console-eject]");
+  var led = document.querySelector("[data-console-led]");
   var crtButton = document.querySelector("[data-console-crt]");
   var fullscreenButton = document.querySelector("[data-console-fullscreen]");
   var cartridges = document.querySelectorAll("[data-play-url]");
@@ -59,6 +60,9 @@
       title.textContent = cartridge.getAttribute("data-play-title") || "";
     }
     insert(cartridge);
+    if (led) {
+      led.classList.add("nes__led--on");
+    }
 
     consoleEl.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -80,6 +84,9 @@
     if (slot) {
       slot.replaceChildren();
       slot.classList.remove("console__cartridge--loaded");
+    }
+    if (led) {
+      led.classList.remove("nes__led--on");
     }
   }
 
@@ -128,9 +135,9 @@
     });
 
     document.addEventListener("fullscreenchange", function () {
-      fullscreenButton.textContent = document.fullscreenElement
-        ? "Exit fullscreen"
-        : "Fullscreen";
+      var label = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
+      fullscreenButton.setAttribute("aria-label", label);
+      fullscreenButton.setAttribute("title", label);
     });
   }
 })();

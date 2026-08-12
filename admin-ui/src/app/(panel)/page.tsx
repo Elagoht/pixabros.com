@@ -1,13 +1,14 @@
 import type { FC } from "react";
 import useBreadcrumb from "@/hooks/useBreadcrumb";
 import { useI18n } from "@/lib/stores/i18n";
+import { Container } from "@/components/ui";
 
 const MainPage: FC = () => {
-  const { t } = useI18n();
+	const { t } = useI18n();
 
-  useBreadcrumb([{ label: t("menu.dashboard") }]);
+	useBreadcrumb([{ label: t("menu.dashboard") }]);
 
-  return <>Admin Dashboard</>;
+	return <Container>Admin Dashboard</Container>;
 };
 
 export default MainPage;

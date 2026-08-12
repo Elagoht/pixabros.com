@@ -27,9 +27,6 @@ const GamesTable: FC<GamesTableProps> = ({
     if (game.is_browser_playable) {
       labels.push(t("games.distribution.browser"));
     }
-    if (game.is_downloadable) {
-      labels.push(t("games.distribution.download"));
-    }
     if (game.is_for_sale) {
       labels.push(t("games.distribution.forSale"));
     }

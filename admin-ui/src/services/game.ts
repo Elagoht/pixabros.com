@@ -57,6 +57,11 @@ export class GameService {
       { silent: true },
     );
 
+  // Clearing the build is what turns is_browser_playable back off; the flag
+  // is not editable on its own.
+  static deleteBuild = (gameId: string): Promise<void> =>
+    Http.delete<void>(`/api/admin/games/${gameId}/build`, { silent: true });
+
   static uploadBuild = (slug: string, file: File): Promise<void> => {
     const body = new FormData();
     body.append("file", file);

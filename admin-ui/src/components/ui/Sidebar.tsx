@@ -76,7 +76,7 @@ const SidebarItemRenderer: FC<SidebarItemRendererProps> = ({
     "group relative flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium outline-none transition-all duration-200",
     hasChildren && "font-semibold",
     isDisabled
-      ? "cursor-not-allowed text-gray-400 opacity-60 dark:text-gray-600"
+      ? "cursor-not-allowed text-gray-400 dark:text-gray-500"
       : isActive
         ? "sidebar-item-active text-primary-600 dark:text-primary-400 shadow-md shadow-primary-500/20"
         : "sidebar-item-hover text-gray-600 dark:text-gray-400",
@@ -90,7 +90,7 @@ const SidebarItemRenderer: FC<SidebarItemRendererProps> = ({
             className={classNames(
               "inline-flex rounded-md p-1",
               isDisabled
-                ? "text-gray-400 dark:text-gray-600"
+                ? "text-gray-400 dark:text-gray-500"
                 : isActive
                   ? "sidebar-icon-active"
                   : "sidebar-icon-idle text-gray-500 dark:text-gray-400",
@@ -231,7 +231,7 @@ const Sidebar: FC<SidebarProps> = ({ className, groups, items }) => {
           groups.map((group, i) => (
             <div key={group.titleKey ?? i} className="flex flex-col gap-0.5">
               {group.titleKey && (
-                <span className="px-2.5 py-1 text-[10px] font-bold uppercase text-secondary-600 dark:text-secondary-400">
+                <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-500">
                   {t(group.titleKey as TranslationKey)}
                 </span>
               )}

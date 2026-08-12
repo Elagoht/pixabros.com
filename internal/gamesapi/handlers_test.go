@@ -55,6 +55,8 @@ func TestCreate_Success(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
+	// is_browser_playable is deliberately sent and deliberately ignored: it
+	// is derived from whether a build exists, not chosen by the caller.
 	body, _ := json.Marshal(map[string]interface{}{
 		"title":               "Pixel Quest",
 		"short_description":   "A tiny adventure.",
@@ -74,8 +76,8 @@ func TestCreate_Success(t *testing.T) {
 	if got.Slug != "pixel-quest" {
 		t.Errorf("Slug = %q, want %q", got.Slug, "pixel-quest")
 	}
-	if !got.IsBrowserPlayable {
-		t.Error("IsBrowserPlayable = false, want true")
+	if got.IsBrowserPlayable {
+		t.Error("IsBrowserPlayable = true for a game with no build; the client must not be able to set it")
 	}
 
 	var jobCount int
@@ -198,8 +200,8 @@ func TestUpdate_SuccessBySlugAndMovesExtractedBuild(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(oldBuildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := repo.SetWebExportPath(game.ID, oldBuildDir); err != nil {
-		t.Fatalf("SetWebExportPath() error = %v", err)
+	if err := repo.SetBuild(game.ID, oldBuildDir); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, playDir)
 
@@ -362,5 +364,66 @@ func TestReorder_UnknownIDNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestDeleteBuild_RemovesFilesAndClearsBrowserPlayable(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	playDir := t.TempDir()
+	handlers := NewHandlers(repo, conn, playDir)
+
+	game, err := repo.Create(games.CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	buildDir := filepath.Join(playDir, game.Slug)
+	if err := os.MkdirAll(buildDir, 0o755); err != nil {
+		t.Fatalf("seed build dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
+		t.Fatalf("seed index.html: %v", err)
+	}
+	if err := repo.SetBuild(game.ID, buildDir); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+game.ID+"/build", nil)
+	req.SetPathValue("id", game.ID)
+	rec := httptest.NewRecorder()
+	handlers.DeleteBuild(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+
+	if _, err := os.Stat(buildDir); !os.IsNotExist(err) {
+		t.Error("the extracted build is still on disk after DeleteBuild")
+	}
+
+	after, err := repo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if after.IsBrowserPlayable {
+		t.Error("IsBrowserPlayable = true after the build was deleted, want false")
+	}
+	if after.WebExportPath != "" {
+		t.Errorf("WebExportPath = %q after delete, want it cleared", after.WebExportPath)
+	}
+}
+
+func TestDeleteBuild_UnknownGameNotFound(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa/build", nil)
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
+	rec := httptest.NewRecorder()
+	handlers.DeleteBuild(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }

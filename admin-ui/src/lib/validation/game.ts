@@ -18,8 +18,6 @@ export const gameValidationSchema = (t: TranslateFunction) =>
     short_description: Yup.string(),
     full_description: Yup.string(),
     tags: Yup.string(),
-    is_browser_playable: Yup.boolean(),
-    is_downloadable: Yup.boolean(),
     is_for_sale: Yup.boolean(),
     price_display: Yup.string(),
     external_links: Yup.array().of(externalLinkSchema(t)),

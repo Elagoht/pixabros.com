@@ -136,3 +136,17 @@
   color: white;
   box-shadow: 0 4px 14px rgba(93, 125, 212, 0.3);
 }
+
+/* Tailwind's base sets --tw-ring-offset-color to white on every element, and
+   components only re-declare it under focus-visible:. Any hover:ring-offset-*
+   therefore drew a white halo around controls on dark surfaces. Overriding the
+   default here fixes every component at once; an explicit ring-offset-* class
+   still wins, being a class selector rather than the universal one. The value
+   is gray-950, the card surface most controls sit on. */
+@media (prefers-color-scheme: dark) {
+  *,
+  ::before,
+  ::after {
+    --tw-ring-offset-color: #16181d;
+  }
+}

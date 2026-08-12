@@ -19,7 +19,6 @@ type Game struct {
 	FullDescription   string
 	Tags              string
 	IsBrowserPlayable bool
-	IsDownloadable    bool
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
@@ -38,8 +37,6 @@ type CreateInput struct {
 	ShortDescription  string
 	FullDescription   string
 	Tags              string
-	IsBrowserPlayable bool
-	IsDownloadable    bool
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
@@ -52,8 +49,6 @@ type UpdateInput struct {
 	ShortDescription  string
 	FullDescription   string
 	Tags              string
-	IsBrowserPlayable bool
-	IsDownloadable    bool
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
@@ -73,7 +68,7 @@ func NewRepo(db *sql.DB) *Repo {
 }
 
 const gameColumns = `id, slug, title, short_description, full_description, tags,
-	is_browser_playable, is_downloadable, is_for_sale,
+	is_browser_playable, is_for_sale,
 	price_display, external_links_json,
 	cartridge_art_id, cd_cover_art_id, og_image_id,
 	web_export_path, display_order, is_published, created_at, updated_at`
@@ -90,7 +85,7 @@ func scanGame(row rowScanner) (Game, error) {
 
 	err := row.Scan(
 		&g.ID, &g.Slug, &g.Title, &g.ShortDescription, &g.FullDescription, &g.Tags,
-		&g.IsBrowserPlayable, &g.IsDownloadable, &g.IsForSale,
+		&g.IsBrowserPlayable, &g.IsForSale,
 		&priceDisplay, &g.ExternalLinksJSON,
 		&cartridgeArtID, &cdCoverArtID, &ogImageID,
 		&webExportPath, &g.DisplayOrder, &g.IsPublished,
@@ -172,12 +167,11 @@ func (r *Repo) Create(input CreateInput) (Game, error) {
 	if _, err := r.db.Exec(
 		`INSERT INTO games (
 			id, slug, title, short_description, full_description, tags,
-			is_browser_playable, is_downloadable, is_for_sale,
-			price_display, external_links_json, display_order, is_published
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+			is_for_sale, price_display, external_links_json, display_order, is_published
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		newID, slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
-		input.IsBrowserPlayable, input.IsDownloadable, input.IsForSale,
-		nullableString(input.PriceDisplay), externalLinks, input.DisplayOrder, input.IsPublished,
+		input.IsForSale, nullableString(input.PriceDisplay), externalLinks,
+		input.DisplayOrder, input.IsPublished,
 	); err != nil {
 		return Game{}, err
 	}
@@ -211,14 +205,14 @@ func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 	res, err := r.db.Exec(
 		`UPDATE games SET
 			slug = ?, title = ?, short_description = ?, full_description = ?, tags = ?,
-			is_browser_playable = ?, is_downloadable = ?, is_for_sale = ?,
+			is_for_sale = ?,
 			price_display = ?, external_links_json = ?,
 			cartridge_art_id = ?, cd_cover_art_id = ?, og_image_id = ?,
 			display_order = ?, is_published = ?,
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
 		WHERE id = ?;`,
 		slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
-		input.IsBrowserPlayable, input.IsDownloadable, input.IsForSale,
+		input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks,
 		nullableID(input.CartridgeArtID), nullableID(input.CDCoverArtID), nullableID(input.OGImageID),
 		input.DisplayOrder, input.IsPublished, id,
@@ -240,10 +234,16 @@ func (r *Repo) Delete(id string) error {
 	return requireRowsAffected(res)
 }
 
-func (r *Repo) SetWebExportPath(id string, path string) error {
+// SetBuild records where a game's playable build was extracted to, and
+// derives is_browser_playable from it: a game is playable in the browser
+// exactly when a build exists. Passing an empty path clears both, which is
+// what removing a build does. Nothing else may write is_browser_playable --
+// the admin form does not offer it as a field.
+func (r *Repo) SetBuild(id string, path string) error {
 	res, err := r.db.Exec(
-		`UPDATE games SET web_export_path = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
-		path, id,
+		`UPDATE games SET web_export_path = ?, is_browser_playable = ?,
+			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
+		nullableString(path), path != "", id,
 	)
 	if err != nil {
 		return err

@@ -202,7 +202,7 @@ func TestRepo_Delete(t *testing.T) {
 	}
 }
 
-func TestRepo_SetWebExportPath(t *testing.T) {
+func TestRepo_SetBuildDerivesBrowserPlayable(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := NewRepo(conn)
 
@@ -210,9 +210,12 @@ func TestRepo_SetWebExportPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
+	if game.IsBrowserPlayable {
+		t.Error("a new game with no build should not be browser playable")
+	}
 
-	if err := repo.SetWebExportPath(game.ID, "data/games/pixel-quest"); err != nil {
-		t.Fatalf("SetWebExportPath() error = %v", err)
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
 	}
 
 	found, err := repo.FindByID(game.ID)
@@ -221,6 +224,65 @@ func TestRepo_SetWebExportPath(t *testing.T) {
 	}
 	if found.WebExportPath != "data/games/pixel-quest" {
 		t.Errorf("WebExportPath = %q, want %q", found.WebExportPath, "data/games/pixel-quest")
+	}
+	if !found.IsBrowserPlayable {
+		t.Error("IsBrowserPlayable = false after a build was recorded, want true")
+	}
+}
+
+// Removing the build is the only thing that turns browser play back off.
+func TestRepo_SetBuildWithEmptyPathClearsBrowserPlayable(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	game, err := repo.Create(CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
+	}
+
+	if err := repo.SetBuild(game.ID, ""); err != nil {
+		t.Fatalf("SetBuild(\"\") error = %v", err)
+	}
+
+	found, err := repo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if found.WebExportPath != "" {
+		t.Errorf("WebExportPath = %q, want it cleared", found.WebExportPath)
+	}
+	if found.IsBrowserPlayable {
+		t.Error("IsBrowserPlayable = true after the build was removed, want false")
+	}
+}
+
+// An ordinary edit must not disturb the build-derived flag: the admin form
+// does not send it, and a full-replace update that zeroed it would take a
+// game offline every time its description was corrected.
+func TestRepo_UpdateLeavesBrowserPlayableAlone(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	game, err := repo.Create(CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
+	}
+
+	updated, err := repo.Update(game.ID, UpdateInput{Title: "Pixel Quest", ShortDescription: "edited"})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if !updated.IsBrowserPlayable {
+		t.Error("Update() cleared IsBrowserPlayable; it must be left to SetBuild")
+	}
+	if updated.WebExportPath != "data/games/pixel-quest" {
+		t.Errorf("Update() changed WebExportPath to %q", updated.WebExportPath)
 	}
 }
 

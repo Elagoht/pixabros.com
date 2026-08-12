@@ -1,28 +1,33 @@
 import {
   IconDeviceGamepad2,
   IconExternalLink,
+  IconTrash,
   IconUpload,
 } from "@tabler/icons-react";
 import { type ChangeEvent, type FC, useRef, useState } from "react";
-import { Alert, Button, Card } from "@/components/ui";
+import { Alert, Button, Card, Dialog } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
 import { GameService } from "@/services/game";
 import { handleRequest } from "@/utilities/request";
 
 interface BuildUploadCardProps {
+  gameId: string;
   slug: string;
   webExportPath: string;
-  onUploaded: () => void;
+  onChanged: () => void;
 }
 
 const BuildUploadCard: FC<BuildUploadCardProps> = ({
+  gameId,
   slug,
   webExportPath,
-  onUploaded,
+  onChanged,
 }) => {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -43,10 +48,26 @@ const BuildUploadCard: FC<BuildUploadCardProps> = ({
       },
     );
     if (success) {
-      onUploaded();
+      onChanged();
     }
     if (inputRef.current) {
       inputRef.current.value = "";
+    }
+  };
+
+  const removeBuild = async () => {
+    setIsRemoving(true);
+    const { success } = await handleRequest(
+      () => GameService.deleteBuild(gameId),
+      {
+        method: "DELETE",
+        successMessage: "games.toast.buildRemoved",
+        onFinally: () => setIsRemoving(false),
+      },
+    );
+    setConfirmingRemove(false);
+    if (success) {
+      onChanged();
     }
   };
 
@@ -83,16 +104,34 @@ const BuildUploadCard: FC<BuildUploadCardProps> = ({
           <Alert variant="info" description={t("games.build.empty")} />
         )}
 
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={IconUpload}
-          disabled={isUploading}
-          className="w-full"
-          onClick={() => inputRef.current?.click()}
-        >
-          {isUploading ? t("games.build.uploading") : t("games.build.upload")}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={IconUpload}
+            disabled={isUploading || isRemoving}
+            className="flex-1"
+            onClick={() => inputRef.current?.click()}
+          >
+            {isUploading
+              ? t("games.build.uploading")
+              : webExportPath
+                ? t("games.build.replace")
+                : t("games.build.upload")}
+          </Button>
+
+          {webExportPath && (
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("games.build.remove")}
+              disabled={isUploading || isRemoving}
+              onClick={() => setConfirmingRemove(true)}
+            >
+              <IconTrash size={14} />
+            </Button>
+          )}
+        </div>
 
         <p className="text-[10px] text-gray-400 dark:text-gray-500">
           {t("games.build.help")}
@@ -106,6 +145,17 @@ const BuildUploadCard: FC<BuildUploadCardProps> = ({
           onChange={handleFile}
         />
       </Card.Body>
+
+      <Dialog
+        open={confirmingRemove}
+        onClose={() => setConfirmingRemove(false)}
+        title={t("games.build.remove")}
+        description={t("games.build.removeDescription")}
+        confirmLabel={t("common.delete")}
+        confirmVariant="destructive"
+        onConfirm={removeBuild}
+        onCancel={() => setConfirmingRemove(false)}
+      />
     </Card>
   );
 };

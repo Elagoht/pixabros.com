@@ -188,7 +188,6 @@
     },
     "distribution": {
       "browser": "Tarayıcı",
-      "download": "İndirilebilir",
       "forSale": "Satışta"
     },
     "form": {
@@ -200,16 +199,12 @@
       "tags": "Etiketler",
       "tagsPlaceholder": "platform, retro",
       "availability": "Yayın ve satış",
-      "browserPlayable": "Tarayıcıda oynanabilir",
-      "downloadable": "İndirilebilir",
       "forSale": "Satışta",
       "priceDisplay": "Fiyat etiketi",
       "priceDisplayPlaceholder": "₺49,99 veya Ücretsiz",
       "externalLinks": "Dış bağlantılar",
       "externalLinksHelp": "Oyunun genel sayfasında gösterilecek bağlantılar — örneğin itch.io veya Steam sayfası.",
-      "publishing": "Yayınlama",
       "published": "Yayında",
-      "orderHint": "Oyunların görünme sırası, oyun listesindeki sürükleme ile ayarlanır.",
       "linkLabelPlaceholder": "itch.io",
       "linkUrlPlaceholder": "https://ornek.itch.io/oyun",
       "addLink": "Bağlantı ekle",
@@ -250,7 +245,10 @@
       "empty": "Henüz bir sürüm yüklenmedi.",
       "upload": "Sürüm yükle",
       "uploading": "Sürüm yükleniyor...",
-      "help": "Kök dizininde index.html bulunan .zip, .tar, .tar.gz veya .tgz arşivi. Mevcut sürümün yerine geçer."
+      "help": "Kök dizininde index.html bulunan .zip, .tar, .tar.gz veya .tgz arşivi. Mevcut sürümün yerine geçer.",
+      "replace": "Sürümü değiştir",
+      "remove": "Sürümü kaldır",
+      "removeDescription": "Yüklenmiş sürüm diskten silinir ve oyun tarayıcıda oynanamaz hâle gelir. Oyunun kendisi silinmez."
     },
     "reorder": {
       "title": "Oyunları sırala",
@@ -272,7 +270,8 @@
       "reordered": "Sıralama kaydedildi",
       "screenshotAdded": "Ekran görüntüsü eklendi",
       "screenshotRemoved": "Ekran görüntüsü kaldırıldı",
-      "buildUploaded": "Sürüm yüklendi"
+      "buildUploaded": "Sürüm yüklendi",
+      "buildRemoved": "Sürüm kaldırıldı"
     },
     "errors": {
       "titleRequired": "Başlık zorunludur",

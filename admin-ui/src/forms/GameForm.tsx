@@ -1,4 +1,4 @@
-import { IconInfoCircle, IconRocket, IconWorldWww } from "@tabler/icons-react";
+import { IconInfoCircle, IconWorldWww } from "@tabler/icons-react";
 import { Form, Formik } from "formik";
 import type { FC, ReactNode } from "react";
 import {
@@ -19,8 +19,6 @@ export const emptyGameFormValues: GameFormValues = {
   short_description: "",
   full_description: "",
   tags: "",
-  is_browser_playable: false,
-  is_downloadable: false,
   is_for_sale: false,
   price_display: "",
   external_links: [],
@@ -57,8 +55,6 @@ export const toGameFormValues = (game: ResponseGame): GameFormValues => ({
   short_description: game.short_description,
   full_description: game.full_description,
   tags: game.tags,
-  is_browser_playable: game.is_browser_playable,
-  is_downloadable: game.is_downloadable,
   is_for_sale: game.is_for_sale,
   price_display: game.price_display,
   external_links: parseExternalLinks(game.external_links_json),
@@ -70,8 +66,8 @@ interface GameFormProps {
   submitLabel: string;
   onSubmit: (values: GameFormValues) => Promise<void>;
   slugHint?: ReactNode;
-  /** Rendered between availability and publishing (the edit page's screenshots). */
-  beforePublishing?: ReactNode;
+  /** Rendered after the form's own cards (the edit page's screenshots). */
+  extraSections?: ReactNode;
 }
 
 const GameForm: FC<GameFormProps> = ({
@@ -79,7 +75,7 @@ const GameForm: FC<GameFormProps> = ({
   submitLabel,
   onSubmit,
   slugHint,
-  beforePublishing,
+  extraSections,
 }) => {
   const { t } = useI18n();
 
@@ -135,15 +131,8 @@ const GameForm: FC<GameFormProps> = ({
               </h2>
             </Card.Header>
             <Card.Body className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Switch
-                  name="is_browser_playable"
-                  label={t("games.form.browserPlayable")}
-                />
-                <Switch
-                  name="is_downloadable"
-                  label={t("games.form.downloadable")}
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Switch name="is_published" label={t("games.form.published")} />
                 <Switch name="is_for_sale" label={t("games.form.forSale")} />
               </div>
 
@@ -173,21 +162,7 @@ const GameForm: FC<GameFormProps> = ({
             </Card.Body>
           </Card>
 
-          {beforePublishing}
-
-          <Card>
-            <Card.Header icon={IconRocket}>
-              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                {t("games.form.publishing")}
-              </h2>
-            </Card.Header>
-            <Card.Body className="space-y-3">
-              <Switch name="is_published" label={t("games.form.published")} />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {t("games.form.orderHint")}
-              </p>
-            </Card.Body>
-          </Card>
+          {extraSections}
 
           <SubmitButton variant="default" loadingText={t("common.loading")}>
             {submitLabel}

@@ -24,7 +24,7 @@ const Card: FC<CardProps> & {
     className={classNames(
       "rounded-xl border border-gray-200/60 bg-white shadow-md shadow-gray-500/10 transition-all duration-200",
       "hover:shadow-lg hover:shadow-gray-500/15 hover:border-gray-300/60",
-      "dark:border-gray-700 dark:bg-gray-900 dark:shadow-gray-950/50 dark:hover:border-gray-600 dark:hover:shadow-gray-950/60",
+      "dark:border-gray-800 dark:bg-gray-950 dark:shadow-black/40 dark:hover:border-gray-600 dark:hover:shadow-gray-950/60",
       className,
     )}
   >

@@ -188,7 +188,6 @@
     },
     "distribution": {
       "browser": "Browser",
-      "download": "Download",
       "forSale": "For sale"
     },
     "form": {
@@ -200,16 +199,12 @@
       "tags": "Tags",
       "tagsPlaceholder": "platformer, retro",
       "availability": "Availability",
-      "browserPlayable": "Playable in browser",
-      "downloadable": "Downloadable",
       "forSale": "For sale",
       "priceDisplay": "Price label",
       "priceDisplayPlaceholder": "$4.99 or Free",
       "externalLinks": "External links",
       "externalLinksHelp": "Links shown on the game's public page — for example its itch.io or Steam listing.",
-      "publishing": "Publishing",
       "published": "Published",
-      "orderHint": "The order games appear in is set by dragging them on the games list.",
       "linkLabelPlaceholder": "itch.io",
       "linkUrlPlaceholder": "https://example.itch.io/game",
       "addLink": "Add link",
@@ -250,7 +245,10 @@
       "empty": "No build uploaded yet.",
       "upload": "Upload build",
       "uploading": "Uploading build...",
-      "help": "A .zip, .tar, .tar.gz or .tgz archive with index.html at its root. Replaces the current build."
+      "help": "A .zip, .tar, .tar.gz or .tgz archive with index.html at its root. Replaces the current build.",
+      "replace": "Replace build",
+      "remove": "Remove build",
+      "removeDescription": "The uploaded build is deleted from disk and the game stops being playable in the browser. The game itself is kept."
     },
     "reorder": {
       "title": "Reorder games",
@@ -272,7 +270,8 @@
       "reordered": "Order saved",
       "screenshotAdded": "Screenshot added",
       "screenshotRemoved": "Screenshot removed",
-      "buildUploaded": "Build uploaded"
+      "buildUploaded": "Build uploaded",
+      "buildRemoved": "Build removed"
     },
     "errors": {
       "titleRequired": "A title is required",

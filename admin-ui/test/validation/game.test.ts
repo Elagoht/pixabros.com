@@ -10,8 +10,6 @@ const valid: GameFormValues = {
   short_description: "",
   full_description: "",
   tags: "",
-  is_browser_playable: false,
-  is_downloadable: false,
   is_for_sale: false,
   price_display: "",
   external_links: [],

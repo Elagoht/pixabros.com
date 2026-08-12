@@ -61,7 +61,6 @@ func toGameResponse(g games.Game) gameResponse {
 		FullDescription:   g.FullDescription,
 		Tags:              g.Tags,
 		IsBrowserPlayable: g.IsBrowserPlayable,
-		IsDownloadable:    g.IsDownloadable,
 		IsForSale:         g.IsForSale,
 		PriceDisplay:      g.PriceDisplay,
 		ExternalLinksJSON: g.ExternalLinksJSON,
@@ -95,7 +94,6 @@ type createRequest struct {
 	FullDescription   string `json:"full_description"`
 	Tags              string `json:"tags"`
 	IsBrowserPlayable bool   `json:"is_browser_playable"`
-	IsDownloadable    bool   `json:"is_downloadable"`
 	IsForSale         bool   `json:"is_for_sale"`
 	PriceDisplay      string `json:"price_display"`
 	ExternalLinksJSON string `json:"external_links_json"`
@@ -119,8 +117,6 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		ShortDescription:  req.ShortDescription,
 		FullDescription:   req.FullDescription,
 		Tags:              req.Tags,
-		IsBrowserPlayable: req.IsBrowserPlayable,
-		IsDownloadable:    req.IsDownloadable,
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -217,8 +213,6 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		ShortDescription:  req.ShortDescription,
 		FullDescription:   req.FullDescription,
 		Tags:              req.Tags,
-		IsBrowserPlayable: req.IsBrowserPlayable,
-		IsDownloadable:    req.IsDownloadable,
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -242,7 +236,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		if _, statErr := os.Stat(oldDir); statErr == nil {
 			newDir := filepath.Join(h.playDir, game.Slug)
 			if err := os.Rename(oldDir, newDir); err == nil {
-				if err := h.repo.SetWebExportPath(game.ID, newDir); err == nil {
+				if err := h.repo.SetBuild(game.ID, newDir); err == nil {
 					game.WebExportPath = newDir
 				}
 			}
@@ -320,6 +314,48 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 		os.RemoveAll(filepath.Join(h.playDir, game.Slug))
 	}
 
+	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteBuild removes a game's extracted build from disk and clears the
+// columns derived from it. is_browser_playable is not a field anyone can
+// edit: a game is playable in the browser exactly while a build exists, so
+// removing the files is what turns it off.
+func (h *Handlers) DeleteBuild(w http.ResponseWriter, r *http.Request) {
+	game, err := h.resolveGame(r)
+	if errors.Is(err, games.ErrGameNotFound) {
+		httpapi.WriteError(w, http.StatusNotFound, "not_found", "game not found")
+		return
+	}
+	if err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not load game")
+		return
+	}
+
+	// The directory is removed before the columns are cleared: if the delete
+	// fails, the game keeps pointing at a build that is still playable,
+	// rather than claiming to have none while the files remain served.
+	if h.playDir != "" {
+		if err := os.RemoveAll(filepath.Join(h.playDir, game.Slug)); err != nil {
+			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not remove the build from disk")
+			return
+		}
+	}
+
+	if err := h.repo.SetBuild(game.ID, ""); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not clear the build")
+		return
+	}
+
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%s", game.ID)); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
+		return
+	}
 	if err := render.EnqueueRegen(h.db, "game:list"); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return

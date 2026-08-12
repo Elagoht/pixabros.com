@@ -41,8 +41,8 @@ interface ResponseGame {
   short_description: string;
   full_description: string;
   tags: string;
+  // Derived server-side from whether a playable build exists; read-only.
   is_browser_playable: boolean;
-  is_downloadable: boolean;
   is_for_sale: boolean;
   price_display: string;
   external_links_json: string;
@@ -62,8 +62,6 @@ interface RequestCreateGame {
   short_description: string;
   full_description: string;
   tags: string;
-  is_browser_playable: boolean;
-  is_downloadable: boolean;
   is_for_sale: boolean;
   price_display: string;
   external_links_json: string;
@@ -110,8 +108,6 @@ interface GameFormValues {
   short_description: string;
   full_description: string;
   tags: string;
-  is_browser_playable: boolean;
-  is_downloadable: boolean;
   is_for_sale: boolean;
   price_display: string;
   // Edited as a real list and serialised to external_links_json on submit;

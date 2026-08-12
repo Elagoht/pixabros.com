@@ -94,7 +94,7 @@ const GameEditView: FC = () => {
           <GameForm
             initialValues={toGameFormValues(game)}
             submitLabel={t("games.edit.submit")}
-            beforePublishing={<ScreenshotManager gameId={gameId} />}
+            extraSections={<ScreenshotManager gameId={gameId} />}
             slugHint={
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {t("games.edit.slugHint")}{" "}
@@ -168,13 +168,18 @@ const GameEditView: FC = () => {
           </Card>
 
           <BuildUploadCard
+            gameId={gameId}
             slug={game.slug}
             webExportPath={game.web_export_path}
-            onUploaded={() =>
+            onChanged={() => {
               queryClient.invalidateQueries({
                 queryKey: queryKeys.games.detail(gameId),
-              })
-            }
+              });
+              // The list shows a "browser playable" badge derived from this.
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.games.list(),
+              });
+            }}
           />
 
           <Card className="border-red-300/60 dark:border-red-900/60">

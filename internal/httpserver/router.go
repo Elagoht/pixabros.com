@@ -72,7 +72,7 @@ func New(deps Dependencies) http.Handler {
 		if err != nil {
 			return err
 		}
-		if err := deps.Games.SetWebExportPath(game.ID, filepath.Join(deps.PlayDir, slug)); err != nil {
+		if err := deps.Games.SetBuild(game.ID, filepath.Join(deps.PlayDir, slug)); err != nil {
 			return err
 		}
 		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%s", game.ID))
@@ -100,6 +100,9 @@ func New(deps Dependencies) http.Handler {
 		}
 	}
 	mux.HandleFunc("POST /api/admin/games/{slug}/upload", adminapi.RequireSession(deps.Sessions, requireGameSlug(gameUploadHandler.Upload)))
+	// Addressed by {id} like the rest of the games API; only the upload above
+	// needs the slug, because the extracted directory is named after it.
+	mux.HandleFunc("DELETE /api/admin/games/{id}/build", adminapi.RequireSession(deps.Sessions, gamesHandlers.DeleteBuild))
 
 	mux.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")

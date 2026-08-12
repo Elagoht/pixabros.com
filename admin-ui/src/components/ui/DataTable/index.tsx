@@ -530,9 +530,9 @@ const DataTable = <T,>({
                       key={header.id}
                       style={colStyle}
                       className={classNames(
-                        "border-b border-gray-200/60 bg-gray-100 px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:border-gray-700/60 dark:bg-gray-800 dark:text-gray-400",
+                        "border-b border-gray-200/60 bg-gray-100 px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400",
                         canSort &&
-                          "cursor-pointer select-none transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+                          "cursor-pointer select-none transition-colors hover:bg-gray-200/70 dark:hover:bg-gray-800",
                         colDef?.align === "center" && "text-center",
                         colDef?.align === "right" && "text-right",
                         stickyHeader && "sticky top-0 z-10",
@@ -638,7 +638,7 @@ const DataTable = <T,>({
                       "transition-all duration-300",
                       row.getIsSelected()
                         ? "bg-primary-50 dark:bg-primary-900/20"
-                        : "bg-white hover:bg-gray-50 dark:bg-gray-950 dark:hover:bg-primary-900/8",
+                        : "bg-white hover:bg-gray-50 dark:bg-gray-950 dark:hover:bg-primary-900/20",
                     )}
                   >
                     {row.getVisibleCells().map((cell) => {

@@ -201,7 +201,12 @@ const DataTable = <T,>({
         accessorFn:
           typeof col.accessor === "function" ? col.accessor : undefined,
         header: col.header,
-        enableSorting: col.sortable ?? true,
+        // Opt in, not out. Sorting is done by the database against a
+        // whitelist of columns, so a column that has not said it is sortable
+        // cannot be -- defaulting to true put a sort control on computed
+        // columns (and on the actions column), and clicking it asked the API
+        // to order by something it rejects.
+        enableSorting: col.type !== "actions" && (col.sortable ?? false),
         enableHiding: col.type !== "actions",
         ...(filterFn && { filterFn }),
         size: typeof col.width === "number" ? col.width : undefined,

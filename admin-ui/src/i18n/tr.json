@@ -399,8 +399,46 @@
     "upload": "Yükle",
     "replace": "Değiştir",
     "errors": {
+      "stillInUse": "Bu görsel hâlâ bir yerde kullanılıyor",
       "invalidImage": "Bu görsel işlenemedi",
       "fileTooLarge": "Bu dosya çok büyük"
+    },
+    "list": {
+      "title": "Medya",
+      "count": "{{count}} görsel",
+      "orphaned": "{{count}} kullanılmıyor"
+    },
+    "usedIn": "Kullanıldığı yer",
+    "unused": "Hiçbir yerde kullanılmıyor",
+    "altText": {
+      "label": "Alt metin",
+      "help": "Ekran okuyucular ve görsel yüklenmediğinde kullanılır.",
+      "missing": "Alt metin yok",
+      "save": "Alt metni kaydet"
+    },
+    "detail": {
+      "title": "Görsel",
+      "dimensions": "Boyut",
+      "format": "Biçim",
+      "uploaded": "Yüklenme"
+    },
+    "delete": {
+      "title": "Görseli sil",
+      "description": "Görsel ve dosyası silinir. Bu işlem geri alınamaz.",
+      "blocked": "Bu görsel hâlâ kullanılıyor. Önce kullanıldığı yerden kaldırın."
+    },
+    "toast": {
+      "altSaved": "Alt metin kaydedildi",
+      "deleted": "Görsel silindi"
+    },
+    "sweepNote": "24 saatten eski, kullanılmayan görseller otomatik olarak kaldırılır.",
+    "modules": {
+      "games": "Oyunlar",
+      "members": "Ekip",
+      "devlog": "Devlog",
+      "awards": "Ödüller",
+      "site-settings": "Site Ayarları",
+      "homepage": "Anasayfa"
     }
   },
   "awards": {

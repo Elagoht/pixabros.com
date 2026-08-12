@@ -61,6 +61,7 @@ const memberColumns = `id, name, avatar_id, tags, description, links_json,
 // interpolated into ORDER BY must come from this map and nowhere else.
 var sortableColumns = map[string]string{
 	"name":          "name COLLATE NOCASE",
+	"tags":          "tags COLLATE NOCASE",
 	"is_published":  "is_published",
 	"display_order": "display_order",
 	"created_at":    "created_at",

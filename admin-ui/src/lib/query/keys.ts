@@ -71,6 +71,7 @@ export const queryKeys = {
   },
   media: {
     all: ["media"] as const,
+    library: () => [...queryKeys.media.all, "library"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,
   },
 };

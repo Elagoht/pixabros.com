@@ -40,6 +40,7 @@ const MembersTable: FC<MembersTableProps> = ({
       id: "tags",
       header: t("members.columns.tags"),
       accessor: "tags",
+      sortable: true,
       cell: (value) => {
         const tags = String(value ?? "")
           .split(",")

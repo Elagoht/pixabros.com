@@ -80,6 +80,7 @@ describe("sidebarGroups data", () => {
       "/members",
       "/homepage",
       "/site-settings",
+      "/media",
       "/contact",
     ]);
   });

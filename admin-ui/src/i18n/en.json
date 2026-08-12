@@ -399,8 +399,46 @@
     "upload": "Upload",
     "replace": "Replace",
     "errors": {
+      "stillInUse": "This image is still used somewhere",
       "invalidImage": "That image could not be processed",
       "fileTooLarge": "That file is too large"
+    },
+    "list": {
+      "title": "Media",
+      "count": "{{count}} images",
+      "orphaned": "{{count}} unused"
+    },
+    "usedIn": "Used in",
+    "unused": "Not used anywhere",
+    "altText": {
+      "label": "Alt text",
+      "help": "Describes the image for screen readers and when it fails to load.",
+      "missing": "No alt text",
+      "save": "Save alt text"
+    },
+    "detail": {
+      "title": "Image",
+      "dimensions": "Dimensions",
+      "format": "Format",
+      "uploaded": "Uploaded"
+    },
+    "delete": {
+      "title": "Delete image",
+      "description": "The image and its file are deleted. This cannot be undone.",
+      "blocked": "This image is still used. Remove it where it is used first."
+    },
+    "toast": {
+      "altSaved": "Alt text saved",
+      "deleted": "Image deleted"
+    },
+    "sweepNote": "Unused images older than 24 hours are removed automatically.",
+    "modules": {
+      "games": "Games",
+      "members": "Team",
+      "devlog": "Devlog",
+      "awards": "Awards",
+      "site-settings": "Site settings",
+      "homepage": "Homepage"
     }
   },
   "awards": {

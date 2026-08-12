@@ -73,6 +73,7 @@ export const sidebarGroups: SidebarGroupData[] = [
         id: "media",
         icon: IconPhoto,
         labelKey: "menu.media",
+        path: "/media",
       },
     ],
   },

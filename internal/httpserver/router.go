@@ -114,9 +114,12 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("PUT /api/admin/settings/{group}", adminapi.RequireSession(deps.Sessions, settingsHandlers.Update))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
-	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)
+	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles, deps.DB)
 	mux.HandleFunc("POST /api/admin/media/upload", adminapi.RequireSession(deps.Sessions, mediaUploadHandler.Upload))
+	mux.HandleFunc("GET /api/admin/media", adminapi.RequireSession(deps.Sessions, mediaHandlers.List))
 	mux.HandleFunc("GET /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Get))
+	mux.HandleFunc("PUT /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Update))
+	mux.HandleFunc("DELETE /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Delete))
 
 	onGameArchiveExtracted := func(slug string) error {
 		game, err := deps.Games.FindBySlug(slug)

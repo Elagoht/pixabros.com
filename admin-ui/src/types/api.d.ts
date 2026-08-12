@@ -329,3 +329,26 @@ interface RequestUpdateSettings {
 type SettingsFormValues = Record<string, string | string[]>;
 
 type SettingsGroupName = "site" | "homepage";
+
+interface MediaUsage {
+  module: string;
+  label: string;
+}
+
+interface ResponseMediaItem {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+  format: string;
+  alt_text: string;
+  created_at: string;
+  usages: MediaUsage[];
+}
+
+// The orphan count travels with the list because picking it out of the grid by
+// eye is the tedious part.
+interface ResponseMediaLibrary {
+  items: ResponseMediaItem[];
+  orphaned: number;
+}

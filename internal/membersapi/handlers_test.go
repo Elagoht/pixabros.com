@@ -230,3 +230,36 @@ func TestReorder_RequiresIDs(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 }
+
+// The roles column is sortable in the admin table, so the whitelist has to
+// accept it -- otherwise clicking that header asks for an ordering the server
+// refuses.
+func TestList_SortsByTags(t *testing.T) {
+	handlers, repo, _ := setup(t)
+	for _, m := range []members.CreateInput{
+		{Name: "one", Tags: "music"},
+		{Name: "two", Tags: "Art"},
+		{Name: "three", Tags: "code"},
+	} {
+		if _, err := repo.Create(m); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/members?sort=tags&dir=asc", nil)
+	rec := httptest.NewRecorder()
+	handlers.List(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got []memberResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	tags := make([]string, 0, len(got))
+	for _, m := range got {
+		tags = append(tags, m.Tags)
+	}
+	if !slices.Equal(tags, []string{"Art", "code", "music"}) {
+		t.Errorf("tags asc = %v, want case-insensitive alphabetical", tags)
+	}
+}

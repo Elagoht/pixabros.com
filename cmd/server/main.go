@@ -18,6 +18,7 @@ import (
 	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
 	"pixabros/internal/media"
+	"pixabros/internal/mediarefs"
 	"pixabros/internal/members"
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
@@ -79,6 +80,27 @@ func main() {
 		close(workerDone)
 	}()
 
+	// Nothing reclaimed orphaned media before this: images left behind by a
+	// deleted game or replaced artwork accumulated on disk forever. The lookup
+	// comes from mediarefs, the one place that knows every media reference.
+	sweeper := media.NewSweeper(
+		mediaRepo,
+		mediaFiles,
+		func() (map[string]bool, error) { return mediarefs.ReferencedIDs(conn) },
+		6*time.Hour,
+		media.WithSweepLogger(func(deleted int) {
+			log.Printf("media sweep: removed %d orphaned image(s)", deleted)
+		}),
+		media.WithSweepErrorLogger(func(err error) {
+			log.Printf("media sweep: %v", err)
+		}),
+	)
+	sweeperDone := make(chan struct{})
+	go func() {
+		sweeper.Run(ctx)
+		close(sweeperDone)
+	}()
+
 	handler := httpserver.New(httpserver.Dependencies{
 		Admins:     auth.NewAdminRepo(conn),
 		Sessions:   auth.NewSessionStore(conn),
@@ -119,7 +141,9 @@ func main() {
 		log.Fatalf("serve: %v", err)
 	}
 
-	// Join the worker so no render is still running against conn when the
-	// deferred conn.Close() fires.
+	// Join both background goroutines so neither is still using conn when the
+	// deferred conn.Close() fires. The sweeper deletes rows and files, so
+	// letting it be cut off mid-sweep is exactly what should not happen.
 	<-workerDone
+	<-sweeperDone
 }

@@ -101,7 +101,7 @@ const ContactListView: FC = () => {
       header: t("contact.columns.subject"),
       accessor: "subject",
       sortable: true,
-      onClick: (submission) => setViewing(submission),
+      onClick: openSubmission,
       // An unread message is what the inbox is for, so it carries weight.
       cell: (value, submission) => (
         <span

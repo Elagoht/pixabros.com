@@ -6,7 +6,7 @@
 
 **Architecture:** A new `internal/site` package owns everything public-facing: an `embed.FS` of `html/template` files and CSS, a `Renderers` type that registers each page key against the existing `render.Registry`, and a `Reconciler` that keeps the set of rendered pages in step with the database. `cmd/server/main.go` gains three lines: build the asset bundle, register the renderers, run the reconciler. No existing package changes shape except `internal/render`'s serve handler, which learns to serve a styled 404, and `internal/httpserver`, which mounts the built assets.
 
-**Tech Stack:** Go 1.26 standard library only — `html/template`, `embed`, `crypto/sha256`. **No new dependencies.** Hand-written plain CSS with `:root` custom properties (Tailwind is admin-only).
+**Tech Stack:** Go 1.26 standard library — `html/template`, `embed`, `crypto/sha256` — plus one dependency: `github.com/tdewolff/minify/v2` (pure Go, no CGO) for HTML and CSS minification. Hand-written plain CSS with `:root` custom properties (Tailwind is admin-only).
 
 **Depends on:** Plan A (`internal/db`, `internal/httpserver`), Plan B (`internal/render`, `internal/storage`), and the per-module backend plans — `internal/games`, `internal/members`, `internal/awards`, `internal/devlog`, `internal/settings` are all implemented and are consumed read-only here.
 
@@ -72,10 +72,30 @@ It is the cheapest page that exercises every part of the pipeline: it reads a co
 
 ---
 
-## Deliberate deviations from the architecture spec
+## Minification
 
-1. **No HTML/CSS minification.** The spec asks for minified output. Minifying would mean either a new dependency or a hand-rolled minifier, and a naive one breaks on `<pre>`, on `url()` values and on strings containing `/*`. The site is behind Cloudflare with compression on, where minification buys a few percent over gzip. Content hashing and immutable caching — the parts that actually matter — are implemented. Revisit if a page ever gets large enough to matter.
-2. **Regen already deviates**, as recorded: no admin screen and no manual retry; the queue retries with backoff and gives up into the operator's log. Nothing in this plan reintroduces a UI for it.
+The spec requires minified HTML/CSS/JS and `github.com/tdewolff/minify/v2` provides it. It is a real parser rather than a set of regexes, which is what makes it safe on the cases that break naive minifiers. Verified against this library before writing this plan:
+
+| Case | Result |
+|---|---|
+| `<pre>` contents | preserved exactly, including newlines and indentation |
+| `<textarea>` contents | preserved exactly |
+| ordinary inter-tag whitespace | collapsed |
+| `url(/assets/build/fonts/inter.woff2)` | unchanged |
+| `content: "/* not a comment */"` | unchanged — not mistaken for a comment |
+| `url("data:image/svg+xml;...%3Csvg/%3E")` | unchanged |
+| `--color-accent` custom property | preserved |
+| genuine `/* comment */` | stripped |
+
+One surprise worth knowing: the CSS minifier rewrites `font-family: "Inter"` to `font-family:inter`. This is safe — CSS font family names are matched case-insensitively — but it looks alarming in a diff, so do not "fix" it.
+
+**Where it runs:** HTML is minified inside the `internal/site` renderer, after the template executes and before the bytes are returned to `render.Store`. The ETag is computed from what is actually served, so minification must happen before the store sees the bytes, not after. CSS is minified once at publish time in `Build`, so the content hash covers the minified bytes.
+
+**A note on the dependency:** `go get` recorded it as `// indirect` because no code imports it yet. Do not run `go mod tidy` before Task 2 lands — tidy would remove an unused dependency. It becomes direct as soon as `assets.go` imports it.
+
+## Deliberate deviation from the architecture spec
+
+**Regen already deviates**, as recorded: no admin screen and no manual retry; the queue retries with backoff and gives up into the operator's log. Nothing in this plan reintroduces a UI for it.
 
 ---
 
@@ -168,9 +188,10 @@ func Build(dir string) (*Bundle, error)
 func (b *Bundle) URL(name string) string
 ```
 
+- [ ] Minify CSS with `minify.New()` + `css.Minify` **before** hashing, so the hash identifies the bytes that are actually served.
 - [ ] Hash with `sha256`, take the first 8 hex characters. Collisions at this length are irrelevant for a handful of files, and short names keep the HTML readable.
 - [ ] Fonts are published the same way, and `site.css` must reference them **through the bundle**, not by a literal path — which means the CSS needs its font URLs rewritten at publish time, or the fonts must keep stable unhashed names. **Choose the second:** publish fonts under their plain names in `build/fonts/`, and give only `site.css` a content hash. A font file's contents never change without its name changing, so it does not need the hash to bust caches; the stylesheet does.
-- [ ] **Tests:** `Build` produces a hashed name; the same input twice produces the same name; changed input produces a different one; a stale file from a previous build is removed; a file in the parent `assets/` directory is left alone.
+- [ ] **Tests:** `Build` produces a hashed name; the same input twice produces the same name; changed input produces a different one; a stale file from a previous build is removed; a file in the parent `assets/` directory is left alone; the published CSS is smaller than the source and still contains `--color-accent` and its `url()` values intact.
 
 ### Task 3: The template layer
 
@@ -192,6 +213,7 @@ type pageData struct {
 
 - [ ] Nav links are a package-level slice so `/awards` and every later page mark themselves current from one place.
 - [ ] Shared `FuncMap`: `formatDate` (English, e.g. `2 June 2026`), `mediaURL` (media id → `/media/...`), `hasImage`. Keep it small — logic belongs in the renderer, not the template.
+- [ ] Add a single `renderPage` helper that executes the layout into a buffer, runs the HTML minifier over it, and returns the bytes. Every renderer goes through it, so no page can accidentally ship unminified and no page computes its ETag over different bytes than it serves.
 - [ ] **Verify:** rendering the layout with an empty `Data` must not panic. A `nil` map access inside a template is a runtime error, not a compile error.
 
 ### Task 4: Page-key reconciliation — the missing first render
@@ -237,7 +259,7 @@ func (r *Reconciler) Reconcile() (rendered int, removed int, err error)
 - [ ] View model per the visual spec: newest first (`date DESC`), each entry a badge image (`picture_id`, 320×320), title, issuer, date, and an optional outbound link. The vertical timeline line is CSS, not markup — no spacer elements.
 - [ ] An award with no picture must render without a hole in the layout; an award with a `game_id` may link to that game, but the game detail page does not exist yet, so **do not** emit that link in this plan.
 - [ ] Empty state: with no awards, the page still renders with its heading and a short line of English copy. A page that renders an empty timeline is fine; a page that fails to render is not.
-- [ ] **Golden-file test** per the spec's test strategy: seed a fixed set of awards, render, compare against `testdata/awards.golden.html`. Include one award without a picture and one without a link so the branches are covered.
+- [ ] **Golden-file test** per the spec's test strategy: seed a fixed set of awards, render, compare against `testdata/awards.golden.html`. Include one award without a picture and one without a link so the branches are covered. The golden file holds the **minified** output, since that is what is stored and served.
 
 ### Task 7: Wiring
 
@@ -267,9 +289,10 @@ func (r *Reconciler) Reconcile() (rendered int, removed int, err error)
 - Editing content in the admin panel updates the public page automatically, with no admin action beyond saving.
 - A newly created game or devlog post gets a page key without anyone running anything, and a deleted one stops being served.
 - CSS is content-hashed, served `immutable`, and self-hosted along with its fonts.
+- HTML and CSS are minified, with `<pre>`/`<textarea>` content verified intact.
 - The design tokens in `site.css` match the stack spec exactly, in one place.
 - Every new package has tests; the awards render is covered by a golden file.
-- No new Go dependency was added.
+- Exactly one new dependency (`tdewolff/minify/v2`), recorded as direct in `go.mod`.
 
 ## What this unlocks
 

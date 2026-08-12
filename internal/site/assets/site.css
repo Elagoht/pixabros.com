@@ -783,8 +783,10 @@ a:hover {
  */
 
 .console {
-  margin-inline: auto;
-  max-width: 46rem;
+  /* 1280 for the screen itself plus the bezel's padding on either side. */
+  --console-width: min(100vw - 2 * var(--space-page), 1328px);
+  margin-inline: calc(50% - var(--console-width) / 2);
+  width: var(--console-width);
 }
 
 .crt {
@@ -799,7 +801,11 @@ a:hover {
 
 .crt__screen {
   align-items: center;
-  aspect-ratio: 4 / 3;
+  /* The builds are made for 1280x720, so the screen is 16:9 and stops there --
+     past that the game would just be scaled up. */
+  aspect-ratio: 16 / 9;
+  margin-inline: auto;
+  max-width: 1280px;
   background: radial-gradient(circle at 50% 40%, #14301f, #050806 75%);
   border: 2px solid #0b0d10;
   border-radius: 1rem;
@@ -874,54 +880,106 @@ a:hover {
   text-align: center;
 }
 
-/* Cartridges ------------------------------------------------------------- */
+/* Cartridges -------------------------------------------------------------
+ *
+ * Modelled on a real NES cartridge: grey plastic, a ribbed grip panel down the
+ * left with a recess at its top, the label sitting high on the right, a
+ * triangular notch at the foot and two cutouts along the top edge.
+ */
 
 .cartridges {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
   list-style: none;
   padding: 0;
 }
 
-/* Modelled on a real NES cartridge: grey body, ridged grip down one side, the
-   label filling the rest, and a notch at the foot. */
 .cartridge {
-  aspect-ratio: 400 / 560;
-  background: linear-gradient(160deg, #9aa0a6, #6f757b);
-  border-radius: 0.4rem 0.4rem 0.2rem 0.2rem;
-  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.25), 0 10px 20px rgb(0 0 0 / 0.4);
-  display: flex;
-  overflow: hidden;
-  padding: 0.55rem;
+  /* The proportions of the cartridge's face, not of its label. */
+  aspect-ratio: 27 / 25;
+  background:
+    linear-gradient(103deg, #b9bcc0 0 46%, #a7abb0 46% 100%),
+    #adb1b6;
+  border-radius: 0.55rem 0.55rem 0.3rem 0.3rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -2px 4px rgb(0 0 0 / 0.25),
+    0 10px 22px rgb(0 0 0 / 0.45);
+  display: block;
   position: relative;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .cartridge:hover {
-  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.3), 0 16px 28px rgb(0 0 0 / 0.5);
-  transform: translateY(-4px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -2px 4px rgb(0 0 0 / 0.25),
+    0 18px 30px rgb(0 0 0 / 0.55);
+  transform: translateY(-5px);
 }
 
+/* Two shallow cutouts along the top edge, as on the real shell. */
+.cartridge::before,
+.cartridge::after {
+  background: var(--color-bg);
+  border-radius: 0 0 0.15rem 0.15rem;
+  content: "";
+  height: 4.5%;
+  position: absolute;
+  top: 0;
+  width: 7%;
+}
+
+.cartridge::before {
+  left: 12%;
+}
+
+.cartridge::after {
+  right: 12%;
+}
+
+/* The ribbed grip panel. */
 .cartridge__grip {
   background: repeating-linear-gradient(
     to bottom,
-    rgb(0 0 0 / 0.18) 0 3px,
-    transparent 3px 7px
+    rgb(255 255 255 / 0.28) 0 2px,
+    rgb(0 0 0 / 0.16) 2px 4px,
+    transparent 4px 9px
   );
   border-radius: 0.2rem;
-  flex: 0 0 0.9rem;
-  margin-right: 0.5rem;
+  inset: 26% 60% 9% 12%;
+  position: absolute;
 }
 
-.cartridge__label {
-  align-items: center;
-  background: #15171c;
+/* The rectangular recess above the ribs. */
+.cartridge__grip::before {
+  background: rgb(0 0 0 / 0.16);
   border-radius: 0.2rem;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.3);
+  content: "";
+  height: 22%;
+  inset-inline: 6% 6%;
+  position: absolute;
+  top: -30%;
+}
+
+/* The label. Its width comes from the insets and its height from the artwork's
+   own 400x560, so a cartridge image lands in it exactly rather than being
+   cropped to fit. */
+.cartridge__label {
+  aspect-ratio: 400 / 560;
+  /* A container so the fallback title can size itself against the label
+     rather than the viewport. */
+  container-type: inline-size;
+  background: #16171b;
+  border-radius: 0.15rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
   display: flex;
-  flex: 1;
-  justify-content: center;
+  inset-inline: 46% 7%;
   overflow: hidden;
+  position: absolute;
+  top: 8%;
 }
 
 .cartridge__label img {
@@ -930,28 +988,40 @@ a:hover {
   width: 100%;
 }
 
+/* With no artwork the label carries the title instead, which has to fit rather
+   than be clipped -- most of the catalogue has no cartridge art. */
 .cartridge__title {
-  color: var(--color-text);
-  font-size: 0.8rem;
+  align-items: center;
+  color: #f4f4f5;
+  display: flex;
+  font-size: clamp(0.55rem, 0.28rem + 1.1cqw, 0.95rem);
   font-weight: 700;
-  padding: 0.5rem;
+  hyphens: auto;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  padding: 0.4rem;
   text-align: center;
+  text-transform: uppercase;
+  width: 100%;
 }
 
+/* The notch at the foot. */
 .cartridge__notch {
-  background: #5c6167;
-  border-radius: 0.15rem;
-  bottom: 0.25rem;
-  height: 0.3rem;
+  background: rgb(0 0 0 / 0.22);
+  bottom: 2.5%;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  height: 4.5%;
   left: 50%;
   position: absolute;
   transform: translateX(-50%);
-  width: 30%;
+  width: 14%;
 }
 
 .cartridge__caption {
   font-size: 0.875rem;
-  margin-top: 0.6rem;
+  margin-top: 0.7rem;
   text-align: center;
 }
 
@@ -1395,14 +1465,6 @@ a:hover {
 }
 
 /* Console screen: the build runs inside it -------------------------------- */
-
-/* 16:9 up to 1280x720, per the size the builds are made for. The aspect ratio
-   is what keeps the frame from letterboxing itself on a narrow screen. */
-.crt__screen {
-  aspect-ratio: 16 / 9;
-  margin-inline: auto;
-  max-width: 1280px;
-}
 
 .crt__frame {
   border: 0;

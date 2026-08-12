@@ -22,7 +22,7 @@ const EmptyState: FC<EmptyStateProps> = ({
   return (
     <div
       className={classNames(
-        "flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200/60 bg-gray-50/30 py-12 text-center shadow-sm shadow-gray-500/10 dark:border-gray-700/60 dark:bg-gray-900/30",
+        "flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200/60 bg-gray-50/30 py-12 text-center shadow-sm shadow-gray-500/10 dark:border-gray-800 dark:bg-black/20",
         className,
       )}
     >

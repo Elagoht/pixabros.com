@@ -31,6 +31,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/lib/stores/i18n";
 import { checkboxBase } from "@/utilities/constants";
 import { Environment } from "@/utilities/environment";
 import { filterFnMap } from "@/utilities/filter";
@@ -71,6 +72,7 @@ const DataTable = <T,>({
   maxHeight,
   hidePagination,
 }: DataTableProps<T>) => {
+  const { t } = useI18n();
   const isClient = completeData === true;
   const sourceData = useMemo(() => data ?? [], [data]);
   const size = externalPageSize ?? Environment.pageSize;
@@ -352,7 +354,7 @@ const DataTable = <T,>({
     return (
       <Alert
         variant="error"
-        title="Bir hata oluştu"
+        title={t("common.error")}
         description={error}
         className={className}
       />
@@ -530,7 +532,7 @@ const DataTable = <T,>({
                       key={header.id}
                       style={colStyle}
                       className={classNames(
-                        "border-b border-gray-200/60 bg-gray-100 px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400",
+                        "border-b border-gray-200/60 bg-gray-100 px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-600 dark:border-gray-800 dark:bg-gray-1000 dark:text-gray-400",
                         canSort &&
                           "cursor-pointer select-none transition-colors hover:bg-gray-200/70 dark:hover:bg-gray-800",
                         colDef?.align === "center" && "text-center",
@@ -620,8 +622,8 @@ const DataTable = <T,>({
               <tr>
                 <td colSpan={columnCount} className="px-3 py-12">
                   <EmptyState
-                    title="Kayıt bulunamadı"
-                    description="Henüz hiçbir veri eklenmemiş."
+                    title={t("common.noResults")}
+                    description={t("common.noData")}
                   />
                 </td>
               </tr>

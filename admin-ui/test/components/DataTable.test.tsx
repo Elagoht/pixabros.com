@@ -50,7 +50,7 @@ describe("DataTable", () => {
         completeData
       />,
     );
-    expect(screen.getByText("Kayıt bulunamadı")).toBeInTheDocument();
+    expect(screen.getByText("No results found")).toBeInTheDocument();
   });
 
   it("shows loading state", () => {
@@ -64,5 +64,36 @@ describe("DataTable", () => {
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();
+  });
+});
+describe("DataTable text is translated", () => {
+  // The empty and error states shipped with hardcoded Turkish strings; every
+  // other component routes its text through t().
+  it("takes the empty state text from the translations", () => {
+    render(
+      <DataTable
+        columns={columns}
+        data={[]}
+        getRowId={(row) => row.id}
+        isEmpty
+      />,
+    );
+
+    expect(screen.getByText("No results found")).toBeInTheDocument();
+    expect(screen.getByText("No data to display")).toBeInTheDocument();
+  });
+
+  it("takes the error title from the translations", () => {
+    render(
+      <DataTable
+        columns={columns}
+        data={[]}
+        getRowId={(row) => row.id}
+        error="boom"
+      />,
+    );
+
+    expect(screen.getByText("An error occurred")).toBeInTheDocument();
+    expect(screen.getByText("boom")).toBeInTheDocument();
   });
 });

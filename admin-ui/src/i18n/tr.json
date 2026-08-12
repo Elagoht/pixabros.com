@@ -196,7 +196,7 @@
       "shortDescription": "Kısa açıklama",
       "fullDescription": "Tam açıklama",
       "tags": "Etiketler",
-      "tagsPlaceholder": "platform, retro",
+      "tagsPlaceholder": "Etiket yazıp Enter'a basın",
       "availability": "Yayın ve satış",
       "forSale": "Satışta",
       "priceDisplay": "Fiyat etiketi",
@@ -225,10 +225,7 @@
       "hint": "Yüklenen görsel, formu kaydettiğinizde oyuna bağlanır.",
       "cartridge": "Kartuş görseli",
       "cdCover": "CD kapağı",
-      "ogImage": "Paylaşım görseli",
-      "empty": "Henüz görsel yok",
-      "upload": "Yükle",
-      "replace": "Değiştir"
+      "ogImage": "Paylaşım görseli"
     },
     "screenshots": {
       "title": "Ekran görüntüleri",
@@ -274,8 +271,6 @@
     },
     "errors": {
       "titleRequired": "Başlık zorunludur",
-      "invalidImage": "Bu görsel işlenemedi",
-      "fileTooLarge": "Bu dosya çok büyük",
       "invalidArchive": "Bu arşiv açılamadı"
     },
     "validation": {
@@ -286,6 +281,91 @@
     },
     "actions": {
       "viewOnSite": "Sitede görüntüle"
+    }
+  },
+  "members": {
+    "list": {
+      "title": "Ekip",
+      "new": "Yeni üye",
+      "reorder": "Sırala"
+    },
+    "columns": {
+      "name": "İsim",
+      "tags": "Roller",
+      "status": "Durum",
+      "order": "Sıra"
+    },
+    "status": {
+      "published": "Yayında",
+      "draft": "Taslak"
+    },
+    "form": {
+      "basics": "Temel bilgiler",
+      "name": "İsim",
+      "namePlaceholder": "Furkan Baytekin",
+      "tags": "Roller",
+      "tagsPlaceholder": "Rol yazıp Enter'a basın",
+      "description": "Biyografi",
+      "links": "Bağlantılar",
+      "linksHelp": "Üyenin kartında gösterilecek bağlantılar — örneğin GitHub veya portfolyo.",
+      "linkLabelPlaceholder": "GitHub",
+      "linkUrlPlaceholder": "https://github.com/kullanici",
+      "addLink": "Bağlantı ekle",
+      "noLinks": "Henüz bağlantı yok.",
+      "publishing": "Yayınlama",
+      "published": "Yayında",
+      "orderHint": "Üyelerin görünme sırası, ekip listesindeki sürükleme ile ayarlanır."
+    },
+    "create": {
+      "title": "Yeni üye",
+      "submit": "Üyeyi oluştur",
+      "hint": "Profil görseli, üye oluşturulduktan sonra eklenir."
+    },
+    "edit": {
+      "title": "Üyeyi düzenle",
+      "submit": "Üyeyi kaydet",
+      "notFound": "Bu üye artık mevcut değil."
+    },
+    "avatar": {
+      "title": "Profil görseli",
+      "hint": "Yüklenen görsel, formu kaydettiğinizde bağlanır.",
+      "label": "Profil görseli"
+    },
+    "reorder": {
+      "title": "Ekibi sırala",
+      "help": "Üyeleri görünmelerini istediğiniz sıraya sürükleyin."
+    },
+    "delete": {
+      "title": "Üyeyi sil",
+      "description": "\"{{name}}\" silinecek. Bu işlem geri alınamaz."
+    },
+    "danger": {
+      "title": "Tehlikeli bölge",
+      "description": "Üyeyi silmek onu siteden tamamen kaldırır.",
+      "delete": "Üyeyi sil"
+    },
+    "toast": {
+      "created": "Üye oluşturuldu",
+      "saved": "Üye kaydedildi",
+      "deleted": "Üye silindi",
+      "reordered": "Sıralama kaydedildi"
+    },
+    "errors": {
+      "nameRequired": "İsim zorunludur"
+    },
+    "validation": {
+      "nameRequired": "İsim zorunludur.",
+      "linkLabel": "Etiket zorunludur.",
+      "linkUrl": "https:// dahil tam bir adres girin"
+    }
+  },
+  "media": {
+    "empty": "Henüz görsel yok",
+    "upload": "Yükle",
+    "replace": "Değiştir",
+    "errors": {
+      "invalidImage": "Bu görsel işlenemedi",
+      "fileTooLarge": "Bu dosya çok büyük"
     }
   }
 }

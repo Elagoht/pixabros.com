@@ -41,7 +41,7 @@ const BuildUploadCard: FC<BuildUploadCardProps> = ({
         method: "POST",
         errorMessages: {
           400: "games.errors.invalidArchive",
-          413: "games.errors.fileTooLarge",
+          413: "media.errors.fileTooLarge",
         },
         successMessage: "games.toast.buildUploaded",
         onFinally: () => setIsUploading(false),

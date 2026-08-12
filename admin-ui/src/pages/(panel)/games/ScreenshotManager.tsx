@@ -98,8 +98,8 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
       {
         method: "POST",
         errorMessages: {
-          400: "games.errors.invalidImage",
-          413: "games.errors.fileTooLarge",
+          400: "media.errors.invalidImage",
+          413: "media.errors.fileTooLarge",
         },
         showSuccessMessage: false,
       },

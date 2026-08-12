@@ -18,6 +18,18 @@ export const queryKeys = {
     screenshots: (gameId: string) =>
       [...queryKeys.games.all, "screenshots", gameId] as const,
   },
+  members: {
+    all: ["members"] as const,
+    lists: () => [...queryKeys.members.all, "list"] as const,
+    list: (sort?: MemberSort) =>
+      [
+        ...queryKeys.members.lists(),
+        sort?.field ?? null,
+        sort?.direction ?? null,
+      ] as const,
+    detail: (memberId: string) =>
+      [...queryKeys.members.all, "detail", memberId] as const,
+  },
   media: {
     all: ["media"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,

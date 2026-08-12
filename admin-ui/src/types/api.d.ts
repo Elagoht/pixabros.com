@@ -129,3 +129,53 @@ interface GameSort {
   field?: GameSortField;
   direction: "asc" | "desc";
 }
+
+interface ResponseMember {
+  id: string;
+  name: string;
+  avatar_id: string | null;
+  tags: string;
+  description: string;
+  links_json: string;
+  display_order: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Create takes no avatar: media is attached once the member exists.
+interface RequestCreateMember {
+  name: string;
+  tags: string;
+  description: string;
+  links_json: string;
+  display_order: number;
+  is_published: boolean;
+}
+
+interface RequestUpdateMember extends RequestCreateMember {
+  avatar_id: string | null;
+}
+
+// Mirrors members.sortableColumns in Go.
+type MemberSortField =
+  | "name"
+  | "is_published"
+  | "display_order"
+  | "created_at"
+  | "updated_at";
+
+interface MemberSort {
+  field?: MemberSortField;
+  direction: "asc" | "desc";
+}
+
+// display_order is owned by the drag-to-reorder control on the list page, and
+// the avatar id is edit-page state, so neither is a form field.
+interface MemberFormValues {
+  name: string;
+  tags: string;
+  description: string;
+  links: GameExternalLink[];
+  is_published: boolean;
+}

@@ -5,25 +5,25 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Container, Dialog, ReorderModal } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
-import { GameService } from "@/services/game";
+import { MemberService } from "@/services/member";
 import { handleRequest } from "@/utilities/request";
-import GamesTable from "./GamesTable";
+import MembersTable from "./MembersTable";
 
-const GamesListView: FC = () => {
+const MembersListView: FC = () => {
   const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [deleteTarget, setDeleteTarget] = useState<ResponseGame | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ResponseMember | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
 
-  // Sorting lives in the URL so a particular ordering can be linked to and
-  // survives a reload, rather than resetting on every visit.
+  // Sorting lives in the URL so an ordering can be linked to and survives a
+  // reload rather than resetting on every visit.
   const [searchParams, setSearchParams] = useSearchParams();
   const sortField =
-    (searchParams.get("sort") as GameSortField | null) ?? undefined;
+    (searchParams.get("sort") as MemberSortField | null) ?? undefined;
   const sortDirection = searchParams.get("dir") === "desc" ? "desc" : "asc";
-  const sort: GameSort = { field: sortField, direction: sortDirection };
+  const sort: MemberSort = { field: sortField, direction: sortDirection };
 
   const setSort = (columnId: string, direction: "asc" | "desc") => {
     setSearchParams((prev) => {
@@ -35,32 +35,31 @@ const GamesListView: FC = () => {
   };
 
   const {
-    data: games = [],
+    data: members = [],
     isLoading,
     isError,
   } = useQuery({
-    queryKey: queryKeys.games.list(sort),
-    queryFn: () => GameService.list(sort),
+    queryKey: queryKeys.members.list(sort),
+    queryFn: () => MemberService.list(sort),
   });
 
   // The reorder modal edits display_order, so it must always show the manual
-  // order -- never whatever column the table happens to be sorted by, or
-  // dragging would rewrite the manual order to match an unrelated sort.
-  // Mirrors the server's "display_order ASC, id ASC".
-  const manualOrder = [...games].sort(
+  // order rather than whatever column the table is sorted by. Mirrors the
+  // server's "display_order ASC, id ASC".
+  const manualOrder = [...members].sort(
     (a, b) =>
       a.display_order - b.display_order ||
       (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
 
   const invalidateList = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.games.lists() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.members.lists() });
 
   const deleteMutation = useMutation({
-    mutationFn: (game: ResponseGame) =>
-      handleRequest(() => GameService.delete(game.id), {
+    mutationFn: (member: ResponseMember) =>
+      handleRequest(() => MemberService.delete(member.id), {
         method: "DELETE",
-        successMessage: "games.toast.deleted",
+        successMessage: "members.toast.deleted",
       }),
     onSuccess: () => {
       setDeleteTarget(null);
@@ -70,9 +69,9 @@ const GamesListView: FC = () => {
 
   const reorderMutation = useMutation({
     mutationFn: (ids: string[]) =>
-      handleRequest(() => GameService.reorder(ids), {
+      handleRequest(() => MemberService.reorder(ids), {
         method: "PUT",
-        successMessage: "games.toast.reordered",
+        successMessage: "members.toast.reordered",
       }),
     onSuccess: () => {
       setReorderOpen(false);
@@ -82,14 +81,12 @@ const GamesListView: FC = () => {
 
   return (
     <Container size="xl" className="space-y-4 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-          {t("games.list.title")}
-        </h1>
-      </div>
+      <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+        {t("members.list.title")}
+      </h1>
 
-      <GamesTable
-        games={games}
+      <MembersTable
+        members={members}
         isLoading={isLoading}
         error={isError ? t("common.error") : undefined}
         onDelete={setDeleteTarget}
@@ -102,18 +99,18 @@ const GamesListView: FC = () => {
               variant="outline"
               size="sm"
               leftIcon={IconArrowsSort}
-              disabled={games.length < 2}
+              disabled={members.length < 2}
               onClick={() => setReorderOpen(true)}
             >
-              {t("games.list.reorder")}
+              {t("members.list.reorder")}
             </Button>
             <Button
               variant="default"
               size="sm"
               leftIcon={IconPlus}
-              onClick={() => navigate("/games/new")}
+              onClick={() => navigate("/members/new")}
             >
-              {t("games.list.new")}
+              {t("members.list.new")}
             </Button>
           </div>
         }
@@ -121,12 +118,12 @@ const GamesListView: FC = () => {
 
       <ReorderModal
         open={reorderOpen}
-        items={manualOrder.map((game) => ({
-          id: game.id,
-          label: game.title,
+        items={manualOrder.map((member) => ({
+          id: member.id,
+          label: member.name,
         }))}
-        title={t("games.reorder.title")}
-        help={t("games.reorder.help")}
+        title={t("members.reorder.title")}
+        help={t("members.reorder.help")}
         isSaving={reorderMutation.isPending}
         onClose={() => setReorderOpen(false)}
         onSave={(ids) => reorderMutation.mutate(ids)}
@@ -135,9 +132,9 @@ const GamesListView: FC = () => {
       <Dialog
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
-        title={t("games.delete.title")}
-        description={t("games.delete.description", {
-          title: deleteTarget?.title ?? "",
+        title={t("members.delete.title")}
+        description={t("members.delete.description", {
+          name: deleteTarget?.name ?? "",
         })}
         confirmLabel={t("common.delete")}
         confirmVariant="destructive"
@@ -152,4 +149,4 @@ const GamesListView: FC = () => {
   );
 };
 
-export default GamesListView;
+export default MembersListView;

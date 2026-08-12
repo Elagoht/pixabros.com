@@ -2,6 +2,7 @@ import { IconAlertTriangle, IconPhoto, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import ImageUploadField from "@/components/media/ImageUploadField";
 import {
   Alert,
   Button,
@@ -16,7 +17,6 @@ import { useI18n } from "@/lib/stores/i18n";
 import { GameService } from "@/services/game";
 import { handleRequest } from "@/utilities/request";
 import BuildUploadCard from "./BuildUploadCard";
-import ImageUploadField from "./ImageUploadField";
 import ScreenshotManager from "./ScreenshotManager";
 
 const GameEditView: FC = () => {

@@ -7,13 +7,21 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { type FC, useEffect, useState } from "react";
-import { Button, Modal } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
+import Button from "../Button";
+import Modal from "../Modal";
 import SortableRow from "./SortableRow";
 
-interface ReorderGamesModalProps {
+interface ReorderModalItem {
+  id: string;
+  label: string;
+}
+
+interface ReorderModalProps {
   open: boolean;
-  games: ResponseGame[];
+  items: ReorderModalItem[];
+  title: string;
+  help: string;
   isSaving: boolean;
   onClose: () => void;
   onSave: (orderedIds: string[]) => void;
@@ -26,23 +34,27 @@ const moveItem = <T,>(items: T[], from: number, to: number): T[] => {
   return next;
 };
 
-const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
+// A drag-to-order list in a modal. Callers pass {id, label} rows and get back
+// the complete ordered id list, which is what the reorder endpoints take.
+const ReorderModal: FC<ReorderModalProps> = ({
   open,
-  games,
+  items,
+  title,
+  help,
   isSaving,
   onClose,
   onSave,
 }) => {
   const { t } = useI18n();
-  const [ordered, setOrdered] = useState<ResponseGame[]>(games);
+  const [ordered, setOrdered] = useState<ReorderModalItem[]>(items);
 
-  // Reopening the modal must start from the server's current order, not
-  // whatever half-finished arrangement was abandoned last time.
+  // Reopening starts from the server's current order, not whatever
+  // half-finished arrangement was abandoned last time.
   useEffect(() => {
     if (open) {
-      setOrdered(games);
+      setOrdered(items);
     }
-  }, [open, games]);
+  }, [open, items]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -53,8 +65,8 @@ const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
     if (!over || active.id === over.id) {
       return;
     }
-    const from = ordered.findIndex((game) => game.id === active.id);
-    const to = ordered.findIndex((game) => game.id === over.id);
+    const from = ordered.findIndex((item) => item.id === active.id);
+    const to = ordered.findIndex((item) => item.id === over.id);
     if (from === -1 || to === -1) {
       return;
     }
@@ -65,14 +77,12 @@ const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
     <Modal open={open} onClose={onClose} className="w-full max-w-lg">
       <Modal.Header onClose={onClose}>
         <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
-          {t("games.reorder.title")}
+          {title}
         </h2>
       </Modal.Header>
 
       <Modal.Body className="space-y-3">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t("games.reorder.help")}
-        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{help}</p>
 
         <DndContext
           sensors={sensors}
@@ -80,12 +90,12 @@ const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
           onDragEnd={handleDragEnd}
         >
           <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
-            {ordered.map((game, index) => (
+            {ordered.map((item, index) => (
               <SortableRow
-                key={game.id}
-                id={game.id}
+                key={item.id}
+                id={item.id}
                 index={index}
-                label={game.title}
+                label={item.label}
               />
             ))}
           </ul>
@@ -99,7 +109,7 @@ const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
         <Button
           variant="default"
           disabled={isSaving}
-          onClick={() => onSave(ordered.map((game) => game.id))}
+          onClick={() => onSave(ordered.map((item) => item.id))}
         >
           {isSaving ? t("common.loading") : t("common.save")}
         </Button>
@@ -108,4 +118,4 @@ const ReorderGamesModal: FC<ReorderGamesModalProps> = ({
   );
 };
 
-export default ReorderGamesModal;
+export default ReorderModal;

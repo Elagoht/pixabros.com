@@ -15,6 +15,7 @@ import (
 	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
 	"pixabros/internal/media"
+	"pixabros/internal/members"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -51,6 +52,7 @@ func main() {
 	// /media/<target>/<name>.webp with no duplicated segment.
 	mediaFiles := storage.NewLocalDisk(cfg.DataDir, "")
 	mediaRepo := media.NewRepo(conn)
+	membersRepo := members.NewRepo(conn)
 	store := render.NewStore(conn, renderedFiles)
 	registry := render.NewRegistry()
 
@@ -76,6 +78,7 @@ func main() {
 		Files:      renderedFiles,
 		DB:         conn,
 		Games:      games.NewRepo(conn),
+		Members:    membersRepo,
 		Media:      mediaRepo,
 		MediaFiles: mediaFiles,
 		MediaDir:   cfg.DataDir + "/media",

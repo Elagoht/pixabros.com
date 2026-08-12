@@ -48,8 +48,8 @@ const ImageUploadField: FC<ImageUploadFieldProps> = ({
       {
         method: "POST",
         errorMessages: {
-          400: "games.errors.invalidImage",
-          413: "games.errors.fileTooLarge",
+          400: "media.errors.invalidImage",
+          413: "media.errors.fileTooLarge",
         },
         showSuccessMessage: false,
         onFinally: () => setIsUploading(false),
@@ -86,7 +86,7 @@ const ImageUploadField: FC<ImageUploadFieldProps> = ({
           />
         ) : (
           <span className="text-xs text-gray-400 dark:text-gray-600">
-            {t("games.artwork.empty")}
+            {t("media.empty")}
           </span>
         )}
       </div>
@@ -102,7 +102,7 @@ const ImageUploadField: FC<ImageUploadFieldProps> = ({
           className="flex-1"
           onClick={() => inputRef.current?.click()}
         >
-          {previewUrl ? t("games.artwork.replace") : t("games.artwork.upload")}
+          {previewUrl ? t("media.replace") : t("media.upload")}
         </Button>
         {previewUrl && (
           <Button

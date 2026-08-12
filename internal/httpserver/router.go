@@ -19,6 +19,8 @@ import (
 	"pixabros/internal/httpapi"
 	"pixabros/internal/media"
 	"pixabros/internal/mediaapi"
+	"pixabros/internal/members"
+	"pixabros/internal/membersapi"
 	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
@@ -30,6 +32,7 @@ type Dependencies struct {
 	Files      storage.Storage
 	DB         *sql.DB
 	Games      *games.Repo
+	Members    *members.Repo
 	Media      *media.Repo
 	MediaFiles storage.Storage
 	MediaDir   string
@@ -61,6 +64,16 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/admin/games/{id}/screenshots", adminapi.RequireSession(deps.Sessions, gamesHandlers.AddScreenshot))
 	mux.HandleFunc("PUT /api/admin/games/{id}/screenshots/reorder", adminapi.RequireSession(deps.Sessions, gamesHandlers.ReorderScreenshots))
 	mux.HandleFunc("DELETE /api/admin/games/{id}/screenshots/{screenshotID}", adminapi.RequireSession(deps.Sessions, gamesHandlers.RemoveScreenshot))
+
+	membersHandlers := membersapi.NewHandlers(deps.Members, deps.DB)
+	mux.HandleFunc("GET /api/admin/members", adminapi.RequireSession(deps.Sessions, membersHandlers.List))
+	mux.HandleFunc("POST /api/admin/members", adminapi.RequireSession(deps.Sessions, membersHandlers.Create))
+	// Above /members/{id} for the same reason as games/reorder: a static
+	// segment outranks a wildcard regardless of registration order.
+	mux.HandleFunc("PUT /api/admin/members/reorder", adminapi.RequireSession(deps.Sessions, membersHandlers.Reorder))
+	mux.HandleFunc("GET /api/admin/members/{id}", adminapi.RequireSession(deps.Sessions, membersHandlers.Get))
+	mux.HandleFunc("PUT /api/admin/members/{id}", adminapi.RequireSession(deps.Sessions, membersHandlers.Update))
+	mux.HandleFunc("DELETE /api/admin/members/{id}", adminapi.RequireSession(deps.Sessions, membersHandlers.Delete))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
 	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)

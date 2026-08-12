@@ -196,7 +196,7 @@
       "shortDescription": "Short description",
       "fullDescription": "Full description",
       "tags": "Tags",
-      "tagsPlaceholder": "platformer, retro",
+      "tagsPlaceholder": "Add a tag and press Enter",
       "availability": "Availability",
       "forSale": "For sale",
       "priceDisplay": "Price label",
@@ -225,10 +225,7 @@
       "hint": "An uploaded image is attached to this game when you save the form.",
       "cartridge": "Cartridge art",
       "cdCover": "CD cover art",
-      "ogImage": "Share image",
-      "empty": "No image yet",
-      "upload": "Upload",
-      "replace": "Replace"
+      "ogImage": "Share image"
     },
     "screenshots": {
       "title": "Screenshots",
@@ -274,8 +271,6 @@
     },
     "errors": {
       "titleRequired": "A title is required",
-      "invalidImage": "That image could not be processed",
-      "fileTooLarge": "That file is too large",
       "invalidArchive": "That archive could not be extracted"
     },
     "validation": {
@@ -286,6 +281,91 @@
     },
     "actions": {
       "viewOnSite": "View on the site"
+    }
+  },
+  "members": {
+    "list": {
+      "title": "Team",
+      "new": "New member",
+      "reorder": "Reorder"
+    },
+    "columns": {
+      "name": "Name",
+      "tags": "Tags",
+      "status": "Status",
+      "order": "Order"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft"
+    },
+    "form": {
+      "basics": "Basics",
+      "name": "Name",
+      "namePlaceholder": "Furkan Baytekin",
+      "tags": "Roles",
+      "tagsPlaceholder": "Add a role and press Enter",
+      "description": "Bio",
+      "links": "Links",
+      "linksHelp": "Links shown on the member's card — for example GitHub or a portfolio.",
+      "linkLabelPlaceholder": "GitHub",
+      "linkUrlPlaceholder": "https://github.com/username",
+      "addLink": "Add link",
+      "noLinks": "No links yet.",
+      "publishing": "Publishing",
+      "published": "Published",
+      "orderHint": "The order members appear in is set by dragging them on the team list."
+    },
+    "create": {
+      "title": "New member",
+      "submit": "Create member",
+      "hint": "The avatar is added after the member exists."
+    },
+    "edit": {
+      "title": "Edit member",
+      "submit": "Save member",
+      "notFound": "This member no longer exists."
+    },
+    "avatar": {
+      "title": "Avatar",
+      "hint": "The uploaded image is attached when you save the form.",
+      "label": "Avatar"
+    },
+    "reorder": {
+      "title": "Reorder team",
+      "help": "Drag the members into the order they should appear in."
+    },
+    "delete": {
+      "title": "Delete member",
+      "description": "\"{{name}}\" will be deleted. This cannot be undone."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting a member removes them from the site.",
+      "delete": "Delete member"
+    },
+    "toast": {
+      "created": "Member created",
+      "saved": "Member saved",
+      "deleted": "Member deleted",
+      "reordered": "Order saved"
+    },
+    "errors": {
+      "nameRequired": "A name is required"
+    },
+    "validation": {
+      "nameRequired": "Name is required.",
+      "linkLabel": "A label is required.",
+      "linkUrl": "Enter a full URL, including https://"
+    }
+  },
+  "media": {
+    "empty": "No image yet",
+    "upload": "Upload",
+    "replace": "Replace",
+    "errors": {
+      "invalidImage": "That image could not be processed",
+      "fileTooLarge": "That file is too large"
     }
   }
 }

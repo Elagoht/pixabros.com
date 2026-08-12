@@ -83,6 +83,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 | `Stepper`    | `steps: string[]`, `activeStep`, `onStepClick?`                                                   |
 | `Accordion`  | `items: { value, label, content }[]`, `type?: "single" \| "multiple"`, `defaultOpen?`             |
 | `Pagination` | `page`, `totalPages`, `onChange`                                                                  |
+| `ReorderModal` | `open`, `items: { id, label }[]`, `title`, `help`, `isSaving`, `onClose`, `onSave(orderedIds)` — drag-to-order list |
 | `Carousel`   | `slides: { id, content }[]`, `autoPlay?`, `interval?`, `showDots?`, `showArrows?`, `aspectRatio?` |
 
 ## Data

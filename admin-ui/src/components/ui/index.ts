@@ -53,6 +53,7 @@ export { default as Progress, ProgressBar, ProgressCircle } from "./Progress";
 export { default as RadioGroup } from "./RadioGroup";
 export { default as RangeSlider } from "./RangeSlider";
 export { default as Rating } from "./Rating";
+export { default as ReorderModal } from "./ReorderModal";
 export { default as ScrollArea } from "./ScrollArea";
 export { default as Select } from "./Select";
 export { default as Separator } from "./Separator";

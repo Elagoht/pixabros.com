@@ -804,6 +804,7 @@ a:hover {
 }
 
 .crt {
+  position: relative;
   background: linear-gradient(160deg, #3a3d45, #1c1e24 60%);
   border: 1px solid #14161b;
   border-radius: 1.5rem 1.5rem 0.75rem 0.75rem;
@@ -842,6 +843,18 @@ a:hover {
   inset: 0;
   pointer-events: none;
   position: absolute;
+  transition: opacity 0.2s ease;
+}
+
+/* CRT off: no scanlines, no phosphor glow, no rounded tube -- just the game. */
+.console--flat .crt__screen::after {
+  opacity: 0;
+}
+
+.console--flat .crt__screen {
+  background: #000;
+  border-radius: 0.35rem;
+  box-shadow: none;
 }
 
 .crt__screen--live {
@@ -857,6 +870,44 @@ a:hover {
   text-shadow: 0 0 12px rgb(74 222 128 / 0.6);
 }
 
+/* Screen controls, sat on the bezel where a real set's knobs would be. */
+.crt__controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.9rem;
+}
+
+.crt__controls[hidden] {
+  display: none;
+}
+
+.crt__knob {
+  background: linear-gradient(180deg, #4a4e57, #33363d);
+  border: 1px solid #23262b;
+  border-radius: 0.35rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+  color: #d7dae0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.75rem;
+  text-transform: uppercase;
+}
+
+.crt__knob:hover {
+  background: linear-gradient(180deg, #575c66, #3d414a);
+  color: #fff;
+}
+
+/* The CRT knob is a switch, so its state is on the button, not a second class
+   somewhere else. */
+.crt__knob[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .console__deck {
   align-items: center;
   background: linear-gradient(180deg, #6b5334, #4a3823);
@@ -864,15 +915,71 @@ a:hover {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 12px 24px rgb(0 0 0 / 0.4);
   display: flex;
   gap: 1rem;
+  /* Tall enough to hold a cartridge, so a loaded one sits inside the machine
+     rather than sticking up over the screen. */
+  min-height: 4.5rem;
   padding: 0.9rem 1.5rem;
+  position: relative;
 }
 
+/* Deliberately not positioned: the cartridge inside it is anchored to the deck
+   instead, because the slot is a thin bar and a cartridge measured against it
+   would rise clear of the machine and over the screen. */
 .console__slot {
   background: #2b2118;
   border-radius: 0.25rem;
   box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.7);
   flex: 1;
   height: 0.9rem;
+}
+
+/* The inserted cartridge rises out of the slot: only its top shows, the rest
+   is inside the machine. */
+/* Anchored to the deck, not to the slot: the slot is a thin bar, and the
+   cartridge has to sit within the machine's own height. */
+.console__cartridge {
+  bottom: 0.6rem;
+  display: block;
+  height: 3.3rem;
+  inset-inline-start: 1.5rem;
+  overflow: hidden;
+  position: absolute;
+  width: 8.5rem;
+}
+
+.console__cartridge--loaded {
+  animation: cartridge-in 0.35s ease-out;
+}
+
+@keyframes cartridge-in {
+  from {
+    transform: translateY(2.5rem);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* The slotted copy is the same cartridge from the shelf, sized to the slot and
+   cropped to the part that would still be visible. */
+.cartridge--slotted {
+  aspect-ratio: 27 / 25;
+  pointer-events: none;
+  width: 100%;
+}
+
+.cartridge--slotted:hover {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -2px 4px rgb(0 0 0 / 0.25),
+    0 10px 22px rgb(0 0 0 / 0.45);
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console__cartridge--loaded {
+    animation: none;
+  }
 }
 
 .console__led {
@@ -1500,7 +1607,7 @@ a:hover {
   white-space: nowrap;
 }
 
-.console__reset {
+.console__button {
   background: #2b2118;
   border: 1px solid #1a130d;
   border-radius: 0.3rem;
@@ -1514,12 +1621,12 @@ a:hover {
   text-transform: uppercase;
 }
 
-.console__reset:hover {
+.console__button:hover {
   background: #3a2c20;
   color: #fff;
 }
 
-.console__reset[hidden] {
+.console__button[hidden] {
   display: none;
 }
 

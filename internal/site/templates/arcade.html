@@ -13,7 +13,7 @@
        game's own page. */}}
   <div class="console" data-console>
     <div class="crt">
-      <div class="crt__screen">
+      <div class="crt__screen" data-console-stage>
         <span class="crt__message" data-console-idle>INSERT CARTRIDGE</span>
         <iframe
           class="crt__frame"
@@ -23,12 +23,37 @@
           allow="autoplay; gamepad; fullscreen"
         ></iframe>
       </div>
+
+      {{/* Screen controls live on the bezel, where a real set's knobs would
+           be. They are inert without JavaScript, so they are only revealed by
+           the script -- see arcade.js. */}}
+      <div class="crt__controls" hidden data-console-controls>
+        <button
+          class="crt__knob"
+          type="button"
+          aria-pressed="true"
+          data-console-crt
+        >
+          CRT
+        </button>
+        <button class="crt__knob" type="button" data-console-fullscreen>
+          Fullscreen
+        </button>
+      </div>
     </div>
+
     <div class="console__deck">
-      <span class="console__slot"></span>
+      {{/* The cartridge you pick is slotted in here, not dropped straight into
+           the screen: the console is the thing you put a game into. */}}
+      <span class="console__slot">
+        <span class="console__cartridge" data-console-cartridge></span>
+      </span>
       <span class="console__title" data-console-title></span>
-      <button class="console__reset" type="button" hidden data-console-reset>
+      <button class="console__button" type="button" hidden data-console-reset>
         Reset
+      </button>
+      <button class="console__button" type="button" hidden data-console-eject>
+        Eject
       </button>
       <span class="console__led"></span>
     </div>

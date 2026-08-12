@@ -229,3 +229,57 @@ func TestDesiredPages_TracksPublishedGames(t *testing.T) {
 		t.Error("a static page went missing from the desired set")
 	}
 }
+
+// The console's controls are wired by the script through these hooks. A
+// renamed or dropped attribute leaves a button that does nothing, which is
+// invisible until someone clicks it.
+func TestRenderArcade_ConsoleCarriesEveryControlHook(t *testing.T) {
+	conn := setupTestDB(t)
+	playable := seedGame(t, conn, "Playable", "playable", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET is_browser_playable = 1 WHERE id = ?;`, playable,
+	); err != nil {
+		t.Fatalf("mark playable: %v", err)
+	}
+
+	html, _ := renderArcadePage(t, newTestSite(t, conn))
+
+	for _, hook := range []string{
+		"data-console-screen",    // the frame the build runs in
+		"data-console-stage",     // what goes fullscreen
+		"data-console-idle",      // the "insert cartridge" message
+		"data-console-cartridge", // the slot a cartridge is loaded into
+		"data-console-reset",
+		"data-console-eject",
+		"data-console-crt",
+		"data-console-fullscreen",
+	} {
+		if !strings.Contains(html, hook) {
+			t.Errorf("the console is missing %q", hook)
+		}
+	}
+}
+
+// Reset, eject and the screen controls only mean anything once a game is
+// running, so they start hidden rather than sitting there inert.
+func TestRenderArcade_PlaybackControlsStartHidden(t *testing.T) {
+	conn := setupTestDB(t)
+	seedGame(t, conn, "Shelf", "shelf", true, false, "")
+
+	html, _ := renderArcadePage(t, newTestSite(t, conn))
+
+	for _, control := range []string{
+		"data-console-reset", "data-console-eject", "data-console-controls",
+	} {
+		idx := strings.Index(html, control)
+		if idx == -1 {
+			t.Errorf("%q is missing entirely", control)
+			continue
+		}
+		// The element's tag starts before the hook; hidden is on the same tag.
+		start := strings.LastIndex(html[:idx], "<")
+		if !strings.Contains(html[start:idx], "hidden") {
+			t.Errorf("%q is visible before a game is loaded", control)
+		}
+	}
+}

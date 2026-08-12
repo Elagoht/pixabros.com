@@ -103,17 +103,25 @@ func computeETag(html []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// HasPage reports whether a page has ever been rendered. The reconciler uses
-// it to decide what is missing.
+// HasPage reports whether a page is actually servable: its row exists *and*
+// the file that row points at is still in the store.
+//
+// Checking both matters. The row and the file can drift apart -- a restored
+// database backup, a deploy onto a fresh volume, a wiped store directory --
+// and a row whose body is gone serves a 404 forever, because a reconciler that
+// only looked at the row would decide the page was already there and never
+// build it again.
 func (s *Store) HasPage(pageKey string) (bool, error) {
-	var one int
-	err := s.db.QueryRow(`SELECT 1 FROM rendered_pages WHERE page_key = ?;`, pageKey).Scan(&one)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
+	etag, found, err := s.ETag(pageKey)
+	if err != nil || !found {
 		return false, err
 	}
+
+	body, err := s.files.Get(renderedFileKey(etag))
+	if err != nil {
+		return false, nil
+	}
+	body.Close()
 	return true, nil
 }
 

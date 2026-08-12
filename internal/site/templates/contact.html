@@ -1,0 +1,69 @@
+{{define "main"}}
+  <div class="page-header">
+    <h1>Contact</h1>
+    <p class="page-header__lead">
+      Questions, press, collaborations — write to us and we will read it.
+    </p>
+  </div>
+
+  <div class="form-card">
+    {{/* Posts to the API directly. Without JavaScript the browser follows the
+         redirect to /contact/sent; the page script upgrades that to inline
+         feedback. */}}
+    <form class="form" method="post" action="/api/contact">
+      <label class="field">
+        <span class="field__label">Your name</span>
+        <input class="field__input" type="text" name="name" autocomplete="name" />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Subject <span class="field__required">*</span></span>
+        <input class="field__input" type="text" name="subject" required />
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span class="field__label">Phone</span>
+          <input class="field__input" type="tel" name="phone" autocomplete="tel" />
+        </label>
+        <label class="field">
+          <span class="field__label">Email</span>
+          <input class="field__input" type="email" name="email" autocomplete="email" />
+        </label>
+      </div>
+
+      <label class="field">
+        <span class="field__label">
+          Message <span class="field__required">*</span>
+        </span>
+        <textarea
+          class="field__input field__input--area"
+          name="message"
+          rows="8"
+          required
+          minlength="{{.Data.MinMessageLength}}"
+        ></textarea>
+        <span class="field__hint">
+          At least {{.Data.MinMessageLength}} characters, so we know what you need.
+        </span>
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" name="wants_callback" value="1" />
+        <span>I would like you to get back to me</span>
+      </label>
+
+      {{/* The honeypot: hidden from people, irresistible to bots. */}}
+      <div class="honeypot" aria-hidden="true">
+        <label>
+          Website
+          <input type="text" name="{{.Data.HoneypotField}}" tabindex="-1" autocomplete="off" />
+        </label>
+      </div>
+
+      <p class="form__status" data-contact-status role="status"></p>
+
+      <button class="button" type="submit">Send message</button>
+    </form>
+  </div>
+{{end}}

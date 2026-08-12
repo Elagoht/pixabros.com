@@ -247,3 +247,58 @@ func TestRepo_NameRoundTripsAndToleratesNull(t *testing.T) {
 		t.Errorf("List(sort=name) error = %v", err)
 	}
 }
+
+func TestRepo_CreateStoresASubmission(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	created, err := repo.Create(CreateInput{
+		Name:          "Someone",
+		Subject:       "Hello",
+		Email:         "someone@example.com",
+		Message:       "A message long enough to be a real one, with more than a hundred characters in it so it passes validation.",
+		WantsCallback: true,
+		IPAddress:     "203.0.113.7",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	found, err := repo.FindByID(created.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if found.Name != "Someone" || found.Subject != "Hello" || !found.WantsCallback {
+		t.Errorf("stored submission = %+v, want the input back", found)
+	}
+	// A new submission is unread by definition -- that is the whole point of
+	// the inbox.
+	if found.IsRead {
+		t.Error("a new submission arrived already marked read")
+	}
+}
+
+// Phone and email are both optional, and an empty one must be stored as NULL
+// rather than an empty string so the admin list can tell them apart.
+func TestRepo_CreateLeavesMissingContactDetailsNull(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	created, err := repo.Create(CreateInput{
+		Subject: "No way to reach me",
+		Message: "A message long enough to be a real one, with more than a hundred characters in it so it passes validation.",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	var phone, email sql.NullString
+	if err := conn.QueryRow(
+		`SELECT phone, email FROM contact_submissions WHERE id = ?;`, created.ID,
+	).Scan(&phone, &email); err != nil {
+		t.Fatalf("query row: %v", err)
+	}
+	if phone.Valid || email.Valid {
+		t.Errorf("phone=%v email=%v, want both NULL", phone, email)
+	}
+}

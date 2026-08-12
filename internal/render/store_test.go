@@ -101,3 +101,40 @@ func TestStore_ETag_NotFound(t *testing.T) {
 		t.Error("ETag() should report not-found for a page that was never rendered")
 	}
 }
+
+// A row whose body has gone missing must not count as rendered: otherwise the
+// reconciler decides the page exists and never rebuilds it, and the page
+// serves a 404 forever. Rows and files drift apart whenever a database is
+// restored onto a fresh store directory.
+func TestStore_HasPageIsFalseWhenTheBodyIsMissing(t *testing.T) {
+	store := setupTestStore(t)
+
+	etag, err := store.RenderAndPersist("index.html", func(string) ([]byte, []string, error) {
+		return []byte("<h1>home</h1>"), []string{"homepage"}, nil
+	})
+	if err != nil {
+		t.Fatalf("RenderAndPersist() error = %v", err)
+	}
+
+	has, err := store.HasPage("index.html")
+	if err != nil {
+		t.Fatalf("HasPage() error = %v", err)
+	}
+	if !has {
+		t.Fatal("a freshly rendered page should be servable")
+	}
+
+	// Wipe the body but leave the row, exactly as a restored database on an
+	// empty volume would.
+	if err := store.files.Delete(renderedFileKey(etag)); err != nil {
+		t.Fatalf("delete body: %v", err)
+	}
+
+	has, err = store.HasPage("index.html")
+	if err != nil {
+		t.Fatalf("HasPage() error = %v", err)
+	}
+	if has {
+		t.Error("a page with no body reported itself as rendered")
+	}
+}

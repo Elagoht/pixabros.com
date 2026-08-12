@@ -1,0 +1,232 @@
+package site
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"pixabros/internal/games"
+)
+
+// Page keys for the games section. PageGames is the arcade; each published
+// game also gets a detail page beneath it.
+const (
+	PageGames      = "games"
+	GamePagePrefix = "games/"
+)
+
+type cartridgeView struct {
+	Title string
+	Slug  string
+	Art   imageView
+	Tags  []string
+}
+
+type caseView struct {
+	Title       string
+	Slug        string
+	Art         imageView
+	Tags        []string
+	Description string
+	Price       string
+	Link        string
+}
+
+type arcadePage struct {
+	Cartridges []cartridgeView
+	Cases      []caseView
+}
+
+// renderArcade builds /games: the skeuomorphic shelf.
+//
+// The visual spec splits this into "browser playable" cartridges and
+// "downloadable" CD cases. Direct downloads were dropped as a product
+// decision, so the CD shelf shows the rest of the catalogue instead -- games
+// you cannot play in the browser but can still read about. Without that the
+// shelf would always be empty and twelve of fourteen games would be invisible.
+func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
+	chrome, err := s.chrome()
+	if err != nil {
+		return nil, nil, err
+	}
+	images, err := s.mediaByID()
+	if err != nil {
+		return nil, nil, err
+	}
+	published, err := s.publishedGames()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	page := arcadePage{}
+	for _, game := range published {
+		if game.IsBrowserPlayable {
+			page.Cartridges = append(page.Cartridges, cartridgeView{
+				Title: game.Title,
+				Slug:  game.Slug,
+				Art:   lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
+				Tags:  splitTags(game.Tags),
+			})
+			continue
+		}
+		page.Cases = append(page.Cases, caseView{
+			Title:       game.Title,
+			Slug:        game.Slug,
+			Art:         lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
+			Tags:        splitTags(game.Tags),
+			Description: game.ShortDescription,
+			Price:       priceFor(game),
+			Link:        firstExternalLink(game.ExternalLinksJSON),
+		})
+	}
+
+	html, err := s.renderer.render("arcade.html", pageData{
+		Title:       "Games — " + chrome.Name,
+		Description: "Play our browser games and browse the rest of the catalogue.",
+		Path:        "/" + PageGames,
+		Site:        chrome,
+		Data:        page,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return html, []string{gameListTag, siteSettingsTag}, nil
+}
+
+type gameLink struct {
+	Label string
+	URL   string
+}
+
+type gamePage struct {
+	Title       string
+	Slug        string
+	Tags        []string
+	Short       string
+	Full        string
+	Cover       imageView
+	Shots       []imageView
+	Playable    bool
+	PlayURL     string
+	Price       string
+	Links       []gameLink
+	HasSideInfo bool
+}
+
+// renderGame builds /games/{slug}.
+//
+// The page key carries the slug, which is what lets one renderer serve every
+// game: render.Registry resolves the "games/" prefix to this function and
+// passes the full key through.
+func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
+	slug := strings.TrimPrefix(pageKey, GamePagePrefix)
+	if slug == "" || strings.Contains(slug, "/") {
+		return nil, nil, fmt.Errorf("not a game page key: %q", pageKey)
+	}
+
+	game, err := s.games.FindBySlug(slug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("find game %q: %w", slug, err)
+	}
+	// A draft must never be reachable, even by typing its address. The
+	// reconciler will not ask for the page, but a stale job could.
+	if !game.IsPublished {
+		return nil, nil, fmt.Errorf("game %q is not published", slug)
+	}
+
+	chrome, err := s.chrome()
+	if err != nil {
+		return nil, nil, err
+	}
+	images, err := s.mediaByID()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	shots, err := s.games.ListScreenshots(game.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list screenshots: %w", err)
+	}
+	shotViews := make([]imageView, 0, len(shots))
+	for _, shot := range shots {
+		if image, ok := images[shot.MediaID]; ok {
+			shotViews = append(shotViews, imageView{
+				URL: mediaURL(image.Path),
+				Alt: altOr(image, game.Title+" screenshot"),
+			})
+		}
+	}
+
+	page := gamePage{
+		Title:    game.Title,
+		Slug:     game.Slug,
+		Tags:     splitTags(game.Tags),
+		Short:    game.ShortDescription,
+		Full:     game.FullDescription,
+		Cover:    lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
+		Shots:    shotViews,
+		Playable: game.IsBrowserPlayable,
+		// The build is served straight from disk at /play/{slug}/, which is why
+		// that prefix is not available to any public page.
+		PlayURL: "/play/" + game.Slug + "/",
+		Price:   priceFor(game),
+		Links:   parseGameLinks(game.ExternalLinksJSON),
+	}
+	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" || len(page.Links) > 0
+
+	html, err := s.renderer.render("game.html", pageData{
+		Title:       game.Title + " — " + chrome.Name,
+		Description: fallback(game.ShortDescription, game.Title+" by "+chrome.Name+"."),
+		Path:        "/" + PageGames,
+		Site:        chrome,
+		Data:        page,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return html, []string{"game:" + game.ID, siteSettingsTag}, nil
+}
+
+// publishedGames is the public view of the catalogue. The repository returns
+// drafts too, because the admin panel needs them.
+func (s *Site) publishedGames() ([]games.Game, error) {
+	all, err := s.games.List("display_order", false)
+	if err != nil {
+		return nil, fmt.Errorf("list games: %w", err)
+	}
+	published := make([]games.Game, 0, len(all))
+	for _, game := range all {
+		if game.IsPublished {
+			published = append(published, game)
+		}
+	}
+	return published, nil
+}
+
+// priceFor only surfaces a price for a game that is actually on sale. A price
+// on something you cannot buy is noise at best.
+func priceFor(game games.Game) string {
+	if !game.IsForSale {
+		return ""
+	}
+	return game.PriceDisplay
+}
+
+func parseGameLinks(raw string) []gameLink {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var links []externalLink
+	if err := json.Unmarshal([]byte(raw), &links); err != nil {
+		return nil
+	}
+	views := make([]gameLink, 0, len(links))
+	for _, link := range links {
+		if link.URL == "" {
+			continue
+		}
+		views = append(views, gameLink{Label: fallback(link.Label, linkLabel(link.URL)), URL: link.URL})
+	}
+	return views
+}

@@ -1,0 +1,75 @@
+{{define "main"}}
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="/games">Games</a>
+    <span aria-hidden="true">/</span>
+    <span>{{.Data.Title}}</span>
+  </nav>
+
+  <div class="page-header">
+    <h1>{{.Data.Title}}</h1>
+    {{if .Data.Short}}<p class="page-header__lead">{{.Data.Short}}</p>{{end}}
+  </div>
+
+  {{if .Data.Playable}}
+    {{/* The CRT is the frame the build runs inside -- the one retro flourish
+         the design language allows, and only here. */}}
+    <div class="console console--live">
+      <div class="crt">
+        <iframe
+          class="crt__screen crt__screen--live"
+          src="{{.Data.PlayURL}}"
+          title="{{.Data.Title}}"
+          loading="lazy"
+          allow="autoplay; gamepad; fullscreen"
+        ></iframe>
+      </div>
+      <div class="console__deck">
+        <span class="console__slot"></span>
+        <span class="console__led console__led--on"></span>
+      </div>
+    </div>
+    <p class="play-note">
+      <a href="{{.Data.PlayURL}}">Open the game on its own</a> if it does not
+      fit here.
+    </p>
+  {{else if .Data.Cover.URL}}
+    <div class="game-cover">
+      <img src="{{.Data.Cover.URL}}" alt="{{.Data.Cover.Alt}}" />
+    </div>
+  {{end}}
+
+  <div class="game-body">
+    <div class="game-body__main">
+      {{if .Data.Full}}<p class="game-description">{{.Data.Full}}</p>{{end}}
+
+      {{if .Data.Shots}}
+        <h2 class="section__title">Screenshots</h2>
+        <ul class="shots">
+          {{range .Data.Shots}}
+            <li><img src="{{.URL}}" alt="{{.Alt}}" loading="lazy" /></li>
+          {{end}}
+        </ul>
+      {{end}}
+    </div>
+
+    {{if .Data.HasSideInfo}}
+      <aside class="game-body__side">
+        {{if .Data.Price}}
+          <p class="game-price">{{.Data.Price}}</p>
+        {{end}}
+        {{if .Data.Tags}}
+          <ul class="tags">
+            {{range .Data.Tags}}<li class="tag">{{.}}</li>{{end}}
+          </ul>
+        {{end}}
+        {{if .Data.Links}}
+          <ul class="game-links">
+            {{range .Data.Links}}
+              <li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>
+            {{end}}
+          </ul>
+        {{end}}
+      </aside>
+    {{end}}
+  </div>
+{{end}}

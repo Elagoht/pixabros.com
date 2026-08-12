@@ -1,0 +1,35 @@
+{{define "main"}}
+  <div class="page-header">
+    <h1>Devlog</h1>
+    <p class="page-header__lead">
+      Notes from the workshop — what we are building, and what broke on the way.
+    </p>
+  </div>
+
+  {{if .Data.Posts}}
+    <ul class="post-list">
+      {{range .Data.Posts}}
+        <li class="post-row">
+          <a class="post-row__link" href="/devlog/{{.Slug}}">
+            {{if .Image.URL}}
+              <img class="post-row__thumb" src="{{.Image.URL}}" alt="" loading="lazy" />
+            {{else}}
+              <span class="post-row__thumb post-row__thumb--empty" aria-hidden="true"></span>
+            {{end}}
+            <span class="post-row__text">
+              <span class="post-row__title">{{.Title}}</span>
+              <span class="post-row__meta">
+                {{if .Date}}<span>{{formatDate .Date}}</span>{{end}}
+                {{if .GameName}}
+                  <span class="post-row__game">{{.GameName}}</span>
+                {{end}}
+              </span>
+            </span>
+          </a>
+        </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="empty-note">Nothing written up yet.</p>
+  {{end}}
+{{end}}

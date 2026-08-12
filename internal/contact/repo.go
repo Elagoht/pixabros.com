@@ -1,9 +1,9 @@
-// Package contact reads the submissions left by the public contact form.
+// Package contact stores the submissions left by the public contact form.
 //
-// Nothing here creates a submission: they arrive from the public site. The
-// admin side can only read them, mark them read or unread, and delete them.
-// Submissions never appear on the public site either, so unlike every other
-// content module a change here invalidates no rendered page.
+// Submissions never appear on the public site, so unlike every other content
+// module a change here invalidates no rendered page. The admin side can read
+// them, mark them read or unread, and delete them; the public form creates
+// them.
 package contact
 
 import (
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"pixabros/internal/dbutil"
+	"pixabros/internal/id"
 )
 
 var ErrSubmissionNotFound = errors.New("contact submission not found")
@@ -176,4 +177,39 @@ func (r *Repo) query(orderBy string) ([]Submission, error) {
 		list = append(list, s)
 	}
 	return list, rows.Err()
+}
+
+// CreateInput is a submission from the public form. Validation lives in the
+// API layer; this only writes.
+type CreateInput struct {
+	Name          string
+	Subject       string
+	Phone         string
+	Email         string
+	Message       string
+	WantsCallback bool
+	IPAddress     string
+}
+
+// Create records a submission. Nothing else in this package writes -- until
+// now nothing did at all, because the public form had no backend.
+func (r *Repo) Create(input CreateInput) (Submission, error) {
+	submissionID := id.New()
+	_, err := r.db.Exec(
+		`INSERT INTO contact_submissions
+			(id, name, subject, phone, email, message, wants_callback, is_read, ip_address)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?);`,
+		submissionID,
+		dbutil.NullableString(input.Name),
+		input.Subject,
+		dbutil.NullableString(input.Phone),
+		dbutil.NullableString(input.Email),
+		input.Message,
+		input.WantsCallback,
+		input.IPAddress,
+	)
+	if err != nil {
+		return Submission{}, err
+	}
+	return r.FindByID(submissionID)
 }

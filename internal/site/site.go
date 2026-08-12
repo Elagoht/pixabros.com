@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"pixabros/internal/awards"
+	"pixabros/internal/devlog"
 	"pixabros/internal/games"
 	"pixabros/internal/media"
 	"pixabros/internal/members"
@@ -36,6 +37,7 @@ type Site struct {
 	renderer *renderer
 	settings *settings.Repo
 	awards   *awards.Repo
+	devlog   *devlog.Repo
 	games    *games.Repo
 	members  *members.Repo
 	media    *media.Repo
@@ -51,6 +53,7 @@ func New(db *sql.DB, bundle *Bundle) (*Site, error) {
 		renderer: r,
 		settings: settings.NewRepo(db),
 		awards:   awards.NewRepo(db),
+		devlog:   devlog.NewRepo(db),
 		games:    games.NewRepo(db),
 		members:  members.NewRepo(db),
 		media:    media.NewRepo(db),
@@ -70,7 +73,11 @@ type pageDef struct {
 func (s *Site) pages() []pageDef {
 	return []pageDef{
 		{Key: PageLanding, Render: s.renderLanding},
+		{Key: PageGames, Render: s.renderArcade},
+		{Key: PageDevlog, Render: s.renderDevlogIndex},
 		{Key: PageAwards, Render: s.renderAwards},
+		{Key: PageContact, Render: s.renderContact},
+		{Key: PageContactSent, Render: s.renderContactSent},
 	}
 }
 
@@ -80,6 +87,9 @@ func (s *Site) Register(registry *render.Registry) {
 	for _, page := range s.pages() {
 		registry.Register(page.Key, page.Render)
 	}
+	// One renderer serves every game detail page; the key carries the slug.
+	registry.RegisterPrefix(GamePagePrefix, s.renderGame)
+	registry.RegisterPrefix(DevlogPagePrefix, s.renderDevlogPost)
 }
 
 // NotFoundBody renders the 404 page once, at startup. Per the architecture

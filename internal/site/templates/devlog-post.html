@@ -1,0 +1,28 @@
+{{define "main"}}
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="/devlog">Devlog</a>
+    <span aria-hidden="true">/</span>
+    <span>{{.Data.Title}}</span>
+  </nav>
+
+  <article class="post">
+    <header class="page-header">
+      <h1>{{.Data.Title}}</h1>
+      <p class="post__meta">
+        {{if .Data.Date}}<span>{{formatDate .Data.Date}}</span>{{end}}
+        {{if .Data.GameName}}
+          <span aria-hidden="true">/</span>
+          <a href="/games/{{.Data.GameSlug}}">{{.Data.GameName}}</a>
+        {{end}}
+      </p>
+    </header>
+
+    {{if .Data.Image.URL}}
+      <img class="post__hero" src="{{.Data.Image.URL}}" alt="{{.Data.Image.Alt}}" />
+    {{end}}
+
+    {{/* Body is already HTML: goldmark ran without WithUnsafe(), so raw HTML
+         in the source was dropped rather than passed through. */}}
+    <div class="prose">{{.Data.Body}}</div>
+  </article>
+{{end}}

@@ -109,6 +109,9 @@ func New(deps Dependencies) http.Handler {
 
 	contactHandlers := contactapi.NewHandlers(deps.Contact)
 	statsHandlers := statsapi.NewHandlers(deps.Stats)
+	publicContact := contactapi.NewPublicHandlers(deps.Contact)
+	mux.HandleFunc("POST /api/contact", publicContact.Submit)
+
 	mux.HandleFunc("GET /api/admin/stats", adminapi.RequireSession(deps.Sessions, statsHandlers.Get))
 
 	mux.HandleFunc("GET /api/admin/contact", adminapi.RequireSession(deps.Sessions, contactHandlers.List))

@@ -12,10 +12,16 @@ import (
 
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/html"
+	"github.com/yuin/goldmark"
 )
 
 //go:embed templates
 var templateFS embed.FS
+
+// markdown is built once and shared. WithUnsafe() is deliberately absent: raw
+// HTML in a post is dropped instead of passed through, which is what makes a
+// separate sanitiser unnecessary.
+var markdown = goldmark.New()
 
 // navItem is one entry in the site header. Declaring them once here is what
 // lets every page mark its own link current without repeating the list.
@@ -48,10 +54,13 @@ type pageData struct {
 	// Path marks the current nav item and is not otherwise displayed.
 	Path string
 	CSS  string
-	Nav  []navItem
-	Site SiteChrome
-	Year int
-	Data interface{}
+	// Scripts are per-page: only the contact form needs one, and every other
+	// page ships none at all.
+	Scripts []string
+	Nav     []navItem
+	Site    SiteChrome
+	Year    int
+	Data    interface{}
 }
 
 // renderer holds everything the page renderers share.
@@ -70,7 +79,11 @@ type renderer struct {
 
 // pageTemplates lists every page template file. Adding a page means adding it
 // here; a missing entry fails at startup rather than when someone visits.
-var pageTemplates = []string{"landing.html", "awards.html", "404.html"}
+var pageTemplates = []string{
+	"landing.html", "arcade.html", "game.html",
+	"devlog.html", "devlog-post.html", "awards.html",
+	"contact.html", "contact-sent.html", "404.html",
+}
 
 func newRenderer(bundle *Bundle) (*renderer, error) {
 	// Parsed once at startup: parsing per render would turn a template typo

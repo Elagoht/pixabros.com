@@ -1,0 +1,96 @@
+{{define "main"}}
+  <div class="page-header">
+    <h1>Games</h1>
+    <p class="page-header__lead">
+      Slot a cartridge in to play right here in the browser, or flip a case open
+      to read about the rest.
+    </p>
+  </div>
+
+  {{/* The console is a scene, not a control: it is the one place the site
+       leaves its plain modern language for something retro, per the design
+       spec. It sits idle here and actually runs a game on its own page. */}}
+  <div class="console" aria-hidden="true">
+    <div class="crt">
+      <div class="crt__screen">
+        <span class="crt__message">INSERT CARTRIDGE</span>
+      </div>
+    </div>
+    <div class="console__deck">
+      <span class="console__slot"></span>
+      <span class="console__led"></span>
+    </div>
+  </div>
+
+  {{if .Data.Cartridges}}
+    <section class="section" aria-labelledby="playable-heading">
+      <h2 class="section__title" id="playable-heading">Playable now</h2>
+      <ul class="cartridges">
+        {{range .Data.Cartridges}}
+          <li>
+            <a class="cartridge" href="/games/{{.Slug}}">
+              <span class="cartridge__grip" aria-hidden="true"></span>
+              <span class="cartridge__label">
+                {{if .Art.URL}}
+                  <img src="{{.Art.URL}}" alt="{{.Art.Alt}}" loading="lazy" />
+                {{else}}
+                  <span class="cartridge__title">{{.Title}}</span>
+                {{end}}
+              </span>
+              <span class="cartridge__notch" aria-hidden="true"></span>
+            </a>
+            <p class="cartridge__caption">{{.Title}}</p>
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+
+  {{if .Data.Cases}}
+    <section class="section" aria-labelledby="catalogue-heading">
+      <h2 class="section__title" id="catalogue-heading">The rest of the shelf</h2>
+      <p class="section__subtitle">
+        Not playable in the browser — open a case for the details.
+      </p>
+
+      {{/* :target does the flip: the "open" link points at the case's id, and
+           the close link points back at the shelf. No JavaScript involved. */}}
+      <ul class="cases">
+        {{range .Data.Cases}}
+          <li class="case" id="case-{{.Slug}}">
+            <div class="case__inner">
+              <a class="case__front" href="#case-{{.Slug}}">
+                {{if .Art.URL}}
+                  <img class="case__art" src="{{.Art.URL}}" alt="{{.Art.Alt}}" loading="lazy" />
+                {{else}}
+                  <span class="case__art case__art--empty">{{.Title}}</span>
+                {{end}}
+                <span class="case__spine" aria-hidden="true"></span>
+                <span class="case__front-title">{{.Title}}</span>
+              </a>
+
+              <div class="case__back">
+                <h3 class="case__title">{{.Title}}</h3>
+                {{if .Description}}<p class="case__blurb">{{.Description}}</p>{{end}}
+                {{if .Tags}}
+                  <ul class="tags tags--compact">
+                    {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
+                  </ul>
+                {{end}}
+                <p class="case__actions">
+                  <a href="/games/{{.Slug}}">Details</a>
+                  {{if .Link}}<a href="{{.Link}}" rel="noopener">Store</a>{{end}}
+                  <a class="case__close" href="#catalogue-heading">Close</a>
+                </p>
+              </div>
+            </div>
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+
+  {{if not (or .Data.Cartridges .Data.Cases)}}
+    <p class="empty-note">No games published yet.</p>
+  {{end}}
+{{end}}

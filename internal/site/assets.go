@@ -13,6 +13,7 @@ import (
 
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
+	"github.com/tdewolff/minify/v2/js"
 )
 
 //go:embed assets
@@ -26,6 +27,13 @@ const buildDirName = "build"
 // hashLength is how much of the sha256 goes into a filename. Eight hex
 // characters is ample for a handful of files and keeps the HTML readable.
 const hashLength = 8
+
+// minifiable maps an extension to the media type its minifier is registered
+// under. A file type absent from here is published byte for byte.
+var minifiable = map[string]string{
+	".css": "text/css",
+	".js":  "application/javascript",
+}
 
 // Bundle publishes the embedded assets under content-hashed names and
 // remembers where they landed, so a template can ask for "site.css" and get
@@ -50,6 +58,7 @@ func Build(dir string) (*Bundle, error) {
 
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
+	m.AddFunc("application/javascript", js.Minify)
 
 	bundle := &Bundle{urls: map[string]string{}}
 	written := map[string]bool{}
@@ -70,9 +79,11 @@ func Build(dir string) (*Bundle, error) {
 		// Path relative to the assets root: "site.css", "fonts/inter.woff2".
 		name := strings.TrimPrefix(embedPath, "assets/")
 
+		// Stylesheets and scripts are minified and hashed; anything else (the
+		// fonts) is published verbatim under its own name.
 		outName := name
-		if path.Ext(name) == ".css" {
-			minified, err := m.Bytes("text/css", content)
+		if mediaType, ok := minifiable[path.Ext(name)]; ok {
+			minified, err := m.Bytes(mediaType, content)
 			if err != nil {
 				return fmt.Errorf("minify %s: %w", name, err)
 			}

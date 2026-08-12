@@ -18,6 +18,26 @@ func (s *Site) DesiredPages() ([]string, error) {
 	for _, page := range defs {
 		keys = append(keys, page.Key)
 	}
+
+	// One page per published game. Unpublishing a game drops it from this list,
+	// which is what makes the reconciler stop serving its page.
+	published, err := s.publishedGames()
+	if err != nil {
+		return nil, err
+	}
+	for _, game := range published {
+		keys = append(keys, GamePagePrefix+game.Slug)
+	}
+
+	// And one per published devlog post.
+	posts, err := s.publishedPosts()
+	if err != nil {
+		return nil, err
+	}
+	for _, post := range posts {
+		keys = append(keys, DevlogPagePrefix+post.Slug)
+	}
+
 	return keys, nil
 }
 

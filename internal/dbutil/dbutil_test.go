@@ -67,3 +67,22 @@ func TestParseTimestamp(t *testing.T) {
 		t.Error("ParseTimestamp(\"not a time\") should fail")
 	}
 }
+
+func TestIsForeignKeyViolation(t *testing.T) {
+	// The exact message modernc.org/sqlite produces, captured from a real
+	// violation rather than guessed.
+	real := errors.New("constraint failed: FOREIGN KEY constraint failed (787)")
+	if !IsForeignKeyViolation(real) {
+		t.Error("IsForeignKeyViolation() = false for a real foreign key violation")
+	}
+
+	if IsForeignKeyViolation(nil) {
+		t.Error("IsForeignKeyViolation(nil) = true, want false")
+	}
+	// A different constraint must not be mistaken for a foreign key one: a
+	// duplicate slug is a conflict, not a dangling reference.
+	unique := errors.New("constraint failed: UNIQUE constraint failed: games.slug (2067)")
+	if IsForeignKeyViolation(unique) {
+		t.Error("IsForeignKeyViolation() = true for a UNIQUE violation")
+	}
+}

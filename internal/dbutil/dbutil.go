@@ -42,6 +42,18 @@ func RequireRows(res sql.Result, notFound error) error {
 	return nil
 }
 
+// IsForeignKeyViolation reports whether err is SQLite refusing a row because
+// one of its foreign keys points at something that does not exist. That is a
+// caller mistake -- an id for a game or image that was never created -- so
+// handlers translate it into 400 rather than letting it surface as a 500.
+//
+// SQLite reports this as error code 787 (SQLITE_CONSTRAINT_FOREIGNKEY) with
+// the message below. The driver does not expose a typed error to match on, so
+// the message is what there is to check.
+func IsForeignKeyViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
+}
+
 // ParseTimestamp reads the timestamps SQLite's strftime writes. Those carry
 // fractional seconds ("2026-08-12T09:15:04.123Z") which time.RFC3339 will not
 // parse, so the fraction is trimmed before parsing.

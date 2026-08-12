@@ -367,5 +367,71 @@
       "invalidImage": "Bu görsel işlenemedi",
       "fileTooLarge": "Bu dosya çok büyük"
     }
+  },
+  "awards": {
+    "list": {
+      "title": "Ödüller",
+      "new": "Yeni ödül"
+    },
+    "columns": {
+      "title": "Ödül",
+      "issuer": "Veren",
+      "date": "Tarih",
+      "game": "Oyun"
+    },
+    "form": {
+      "basics": "Ödül bilgileri",
+      "title": "Ödül",
+      "titlePlaceholder": "En İyi Oyun",
+      "issuer": "Veren kurum",
+      "issuerPlaceholder": "Independent Games Festival",
+      "date": "Tarih",
+      "link": "Bağlantı",
+      "linkPlaceholder": "https://ornek.com/oduller/2026",
+      "linkHelp": "İsteğe bağlı. Duyuru veya ödül sayfası.",
+      "game": "İlgili oyun",
+      "gameNone": "Oyun yok",
+      "gameHelp": "İsteğe bağlı. Ödülü oyunlarınızdan birine bağlar."
+    },
+    "create": {
+      "title": "Yeni ödül",
+      "submit": "Ödülü oluştur",
+      "hint": "Görsel ve ilgili oyun, ödül oluşturulduktan sonra ayarlanır."
+    },
+    "edit": {
+      "title": "Ödülü düzenle",
+      "submit": "Ödülü kaydet",
+      "notFound": "Bu ödül artık mevcut değil."
+    },
+    "picture": {
+      "title": "Görsel",
+      "hint": "Yüklenen görsel, formu kaydettiğinizde bağlanır.",
+      "label": "Ödül görseli"
+    },
+    "delete": {
+      "title": "Ödülü sil",
+      "description": "\"{{title}}\" silinecek. Bu işlem geri alınamaz."
+    },
+    "danger": {
+      "title": "Tehlikeli bölge",
+      "description": "Ödülü silmek onu sitenin zaman çizelgesinden kaldırır.",
+      "delete": "Ödülü sil"
+    },
+    "toast": {
+      "created": "Ödül oluşturuldu",
+      "saved": "Ödül kaydedildi",
+      "deleted": "Ödül silindi"
+    },
+    "errors": {
+      "invalidFields": "Ödül bilgilerini kontrol edin",
+      "unknownReference": "Seçilen oyun artık mevcut değil"
+    },
+    "validation": {
+      "titleRequired": "Ödül adı zorunludur.",
+      "issuerRequired": "Veren kurum zorunludur.",
+      "dateRequired": "Tarih zorunludur.",
+      "dateFormat": "Takvimden bir tarih seçin.",
+      "linkUrl": "https:// dahil tam bir adres girin"
+    }
   }
 }

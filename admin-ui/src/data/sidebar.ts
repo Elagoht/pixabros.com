@@ -43,6 +43,7 @@ export const sidebarGroups: SidebarGroupData[] = [
         id: "awards",
         icon: IconAward,
         labelKey: "menu.awards",
+        path: "/awards",
       },
       {
         id: "members",

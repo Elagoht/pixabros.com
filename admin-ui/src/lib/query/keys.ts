@@ -30,6 +30,18 @@ export const queryKeys = {
     detail: (memberId: string) =>
       [...queryKeys.members.all, "detail", memberId] as const,
   },
+  awards: {
+    all: ["awards"] as const,
+    lists: () => [...queryKeys.awards.all, "list"] as const,
+    list: (sort?: AwardSort) =>
+      [
+        ...queryKeys.awards.lists(),
+        sort?.field ?? null,
+        sort?.direction ?? null,
+      ] as const,
+    detail: (awardId: string) =>
+      [...queryKeys.awards.all, "detail", awardId] as const,
+  },
   media: {
     all: ["media"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,

@@ -179,3 +179,45 @@ interface MemberFormValues {
   links: GameExternalLink[];
   is_published: boolean;
 }
+
+interface ResponseAward {
+  id: string;
+  title: string;
+  issuer: string;
+  date: string;
+  picture_id: string | null;
+  game_id: string | null;
+  link: string;
+  created_at: string;
+}
+
+// Create takes no picture or game: both are attached once the award exists.
+interface RequestCreateAward {
+  title: string;
+  issuer: string;
+  date: string;
+  link: string;
+}
+
+interface RequestUpdateAward extends RequestCreateAward {
+  picture_id: string | null;
+  game_id: string | null;
+}
+
+// Mirrors awards.sortableColumns in Go.
+type AwardSortField = "title" | "issuer" | "date" | "created_at";
+
+interface AwardSort {
+  field?: AwardSortField;
+  direction: "asc" | "desc";
+}
+
+// picture_id is edit-page state, so it is not a form field. game_id is,
+// because it is chosen from a picker rather than uploaded.
+interface AwardFormValues {
+  title: string;
+  issuer: string;
+  date: string;
+  link: string;
+  game_id: string;
+}

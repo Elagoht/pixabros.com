@@ -21,6 +21,9 @@ const GameEditPage = lazy(() => import("@/app/(panel)/games/[id]/page"));
 const MembersPage = lazy(() => import("@/app/(panel)/members/page"));
 const MemberCreatePage = lazy(() => import("@/app/(panel)/members/new/page"));
 const MemberEditPage = lazy(() => import("@/app/(panel)/members/[id]/page"));
+const AwardsPage = lazy(() => import("@/app/(panel)/awards/page"));
+const AwardCreatePage = lazy(() => import("@/app/(panel)/awards/new/page"));
+const AwardEditPage = lazy(() => import("@/app/(panel)/awards/[id]/page"));
 const NotFoundPage = lazy(() => import("@/app/not-found"));
 
 // The Go server mounts this SPA under a non-root prefix, so react-router has
@@ -76,6 +79,19 @@ export const router = createBrowserRouter(
         {
           element: <MemberEditPage />,
           path: "/members/:id",
+        },
+        {
+          element: <AwardsPage />,
+          path: "/awards",
+        },
+        // Above /awards/:id so the static segment matches first.
+        {
+          element: <AwardCreatePage />,
+          path: "/awards/new",
+        },
+        {
+          element: <AwardEditPage />,
+          path: "/awards/:id",
         },
       ],
     },

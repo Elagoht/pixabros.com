@@ -367,5 +367,71 @@
       "invalidImage": "That image could not be processed",
       "fileTooLarge": "That file is too large"
     }
+  },
+  "awards": {
+    "list": {
+      "title": "Awards",
+      "new": "New award"
+    },
+    "columns": {
+      "title": "Award",
+      "issuer": "Issued by",
+      "date": "Date",
+      "game": "Game"
+    },
+    "form": {
+      "basics": "Award details",
+      "title": "Award",
+      "titlePlaceholder": "Best Game",
+      "issuer": "Issued by",
+      "issuerPlaceholder": "Independent Games Festival",
+      "date": "Date",
+      "link": "Link",
+      "linkPlaceholder": "https://example.com/awards/2026",
+      "linkHelp": "Optional. The announcement or award page.",
+      "game": "Related game",
+      "gameNone": "No game",
+      "gameHelp": "Optional. Links the award to one of your games."
+    },
+    "create": {
+      "title": "New award",
+      "submit": "Create award",
+      "hint": "The picture and the related game are set after the award exists."
+    },
+    "edit": {
+      "title": "Edit award",
+      "submit": "Save award",
+      "notFound": "This award no longer exists."
+    },
+    "picture": {
+      "title": "Picture",
+      "hint": "The uploaded image is attached when you save the form.",
+      "label": "Award picture"
+    },
+    "delete": {
+      "title": "Delete award",
+      "description": "\"{{title}}\" will be deleted. This cannot be undone."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting an award removes it from the site's timeline.",
+      "delete": "Delete award"
+    },
+    "toast": {
+      "created": "Award created",
+      "saved": "Award saved",
+      "deleted": "Award deleted"
+    },
+    "errors": {
+      "invalidFields": "Check the award details",
+      "unknownReference": "The selected game no longer exists"
+    },
+    "validation": {
+      "titleRequired": "An award name is required.",
+      "issuerRequired": "The issuer is required.",
+      "dateRequired": "A date is required.",
+      "dateFormat": "Pick a date from the calendar.",
+      "linkUrl": "Enter a full URL, including https://"
+    }
   }
 }

@@ -63,7 +63,7 @@ const Header: FC<HeaderProps> = ({ logo, appName }) => {
 						alt={t("common.logo")}
 						width={44}
 						height={44}
-						className="rounded-lg shadow-md shadow-gray-300/30 dark:shadow-gray-500/15"
+						className="shadow-md shadow-gray-300/30 dark:shadow-gray-500/15"
 					/>
 					{appName && (
 						<span className="text-lg font-bold text-gray-800 dark:text-gray-100">

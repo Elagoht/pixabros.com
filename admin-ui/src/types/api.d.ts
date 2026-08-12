@@ -298,3 +298,30 @@ interface ContactSort {
   field?: ContactSortField;
   direction: "asc" | "desc";
 }
+
+// Mirrors settings.Kind in Go. The kind decides both validation and which
+// control the admin gets.
+type SettingKind = "text" | "uri" | "media";
+
+interface SettingDefinition {
+  key: string;
+  kind: SettingKind;
+  multiline: boolean;
+  // Only present for media settings: the imaging target the upload goes
+  // through, which decides the stored dimensions.
+  target?: MediaTarget;
+}
+
+// The definitions travel with the values so the form is built from the
+// server's registry rather than a second copy of the key list.
+interface ResponseSettingsGroup {
+  group: string;
+  definitions: SettingDefinition[];
+  values: Record<string, string>;
+}
+
+interface RequestUpdateSettings {
+  values: Record<string, string>;
+}
+
+type SettingsGroupName = "site" | "homepage";

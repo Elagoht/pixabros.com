@@ -64,6 +64,11 @@ export const queryKeys = {
         sort?.direction ?? null,
       ] as const,
   },
+  settings: {
+    all: ["settings"] as const,
+    group: (group: SettingsGroupName) =>
+      [...queryKeys.settings.all, group] as const,
+  },
   media: {
     all: ["media"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,

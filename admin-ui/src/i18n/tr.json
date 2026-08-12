@@ -84,11 +84,41 @@
     "atLeastOneEmail": "En az bir e-posta adresi girin"
   },
   "settings": {
-    "title": "Ayarlar",
-    "language": {
-      "title": "Dil",
-      "subtitle": "Uygulama görüntüleme dili",
-      "saved": "Dil tercihi kaydedildi"
+    "site": {
+      "title": "Site Ayarları",
+      "hint": "Sitenin tamamında ve bağlantı önizlemelerinde kullanılan genel bilgiler."
+    },
+    "homepage": {
+      "title": "Anasayfa",
+      "hint": "Yalnızca açılış sayfasının kullandığı metinler."
+    },
+    "submit": "Ayarları kaydet",
+    "blankMeansUnset": "Boş bırakılan alanlar ayarlanmamış sayılır.",
+    "toast": {
+      "saved": "Ayarlar kaydedildi"
+    },
+    "errors": {
+      "invalidFields": "Değerleri kontrol edin",
+      "unknownReference": "Görsellerden biri artık mevcut değil"
+    },
+    "validation": {
+      "uri": "https:// dahil tam bir adres girin"
+    },
+    "labels": {
+      "site_name": "Site adı",
+      "twitter_handle": "Twitter kullanıcı adı",
+      "org_logo": "Kurum logosu",
+      "default_og_image": "Varsayılan paylaşım görseli",
+      "org_sameas_json": "Sosyal profil bağlantıları (JSON)",
+      "hero_logo": "Hero logosu",
+      "hero_slogan": "Hero sloganı",
+      "hero_description": "Hero açıklaması",
+      "hero_cta_text": "Buton metni",
+      "hero_cta_link": "Buton bağlantısı",
+      "portfolio_section_title": "Portfolyo bölüm başlığı",
+      "sales_section_title": "Satıştakiler bölüm başlığı",
+      "members_section_title": "Ekip bölüm başlığı",
+      "members_section_subtitle": "Ekip bölüm alt başlığı"
     }
   },
   "pages": {

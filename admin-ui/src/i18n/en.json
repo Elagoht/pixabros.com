@@ -84,11 +84,41 @@
     "atLeastOneEmail": "Enter at least one email address"
   },
   "settings": {
-    "title": "Settings",
-    "language": {
-      "title": "Language",
-      "subtitle": "App display language",
-      "saved": "Language preference saved"
+    "site": {
+      "title": "Site settings",
+      "hint": "Global metadata used across the site and in link previews."
+    },
+    "homepage": {
+      "title": "Homepage",
+      "hint": "Copy that only the landing page uses."
+    },
+    "submit": "Save settings",
+    "blankMeansUnset": "Any field left blank is simply not set.",
+    "toast": {
+      "saved": "Settings saved"
+    },
+    "errors": {
+      "invalidFields": "Check the values",
+      "unknownReference": "One of the images no longer exists"
+    },
+    "validation": {
+      "uri": "Enter a full URL, including https://"
+    },
+    "labels": {
+      "site_name": "Site name",
+      "twitter_handle": "Twitter handle",
+      "org_logo": "Organisation logo",
+      "default_og_image": "Default share image",
+      "org_sameas_json": "Social profile links (JSON)",
+      "hero_logo": "Hero logo",
+      "hero_slogan": "Hero slogan",
+      "hero_description": "Hero description",
+      "hero_cta_text": "Button text",
+      "hero_cta_link": "Button link",
+      "portfolio_section_title": "Portfolio section title",
+      "sales_section_title": "For-sale section title",
+      "members_section_title": "Team section title",
+      "members_section_subtitle": "Team section subtitle"
     }
   },
   "pages": {

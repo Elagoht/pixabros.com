@@ -28,6 +28,8 @@ import (
 	"pixabros/internal/members"
 	"pixabros/internal/membersapi"
 	"pixabros/internal/render"
+	"pixabros/internal/settings"
+	"pixabros/internal/settingsapi"
 	"pixabros/internal/storage"
 )
 
@@ -42,6 +44,7 @@ type Dependencies struct {
 	Awards     *awards.Repo
 	Devlog     *devlog.Repo
 	Contact    *contact.Repo
+	Settings   *settings.Repo
 	Media      *media.Repo
 	MediaFiles storage.Storage
 	MediaDir   string
@@ -105,6 +108,10 @@ func New(deps Dependencies) http.Handler {
 	// so it gets its own sub-resource rather than a general update.
 	mux.HandleFunc("PUT /api/admin/contact/{id}/read", adminapi.RequireSession(deps.Sessions, contactHandlers.SetRead))
 	mux.HandleFunc("DELETE /api/admin/contact/{id}", adminapi.RequireSession(deps.Sessions, contactHandlers.Delete))
+
+	settingsHandlers := settingsapi.NewHandlers(deps.Settings, deps.DB)
+	mux.HandleFunc("GET /api/admin/settings/{group}", adminapi.RequireSession(deps.Sessions, settingsHandlers.Get))
+	mux.HandleFunc("PUT /api/admin/settings/{group}", adminapi.RequireSession(deps.Sessions, settingsHandlers.Update))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
 	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)

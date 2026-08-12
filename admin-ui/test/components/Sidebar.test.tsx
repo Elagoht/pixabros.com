@@ -78,6 +78,8 @@ describe("sidebarGroups data", () => {
       "/devlog",
       "/awards",
       "/members",
+      "/homepage",
+      "/site-settings",
       "/contact",
     ]);
   });

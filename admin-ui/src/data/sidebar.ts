@@ -61,11 +61,13 @@ export const sidebarGroups: SidebarGroupData[] = [
         id: "homepage",
         icon: IconHome,
         labelKey: "menu.homepage",
+        path: "/homepage",
       },
       {
         id: "site-settings",
         icon: IconSettings,
         labelKey: "menu.siteSettings",
+        path: "/site-settings",
       },
       {
         id: "media",

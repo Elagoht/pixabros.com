@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"pixabros/internal/db"
 	"pixabros/internal/id"
@@ -191,5 +192,58 @@ func TestRepo_ListSorting(t *testing.T) {
 
 	if _, err := repo.List("subject; DROP TABLE contact_submissions", false); !errors.Is(err, ErrInvalidSort) {
 		t.Errorf("List() with an injected field error = %v, want ErrInvalidSort", err)
+	}
+}
+
+// The public form does not collect a name, so the column is nullable and most
+// rows have none. Imported submissions do, and it has to survive the round
+// trip -- including the NULL case, which would otherwise fail to scan.
+func TestRepo_NameRoundTripsAndToleratesNull(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	withName := id.New()
+	if _, err := conn.Exec(
+		`INSERT INTO contact_submissions (id, name, subject, email, message, created_at)
+		 VALUES (?, 'Deneme''nin Büyücüsü', 'Bir soru', 'oyuncu@example.com', 'Örnek bir mesaj.', '2026-06-21T04:03:55.000Z');`,
+		withName,
+	); err != nil {
+		t.Fatalf("seed named submission: %v", err)
+	}
+
+	withoutName := id.New()
+	if _, err := conn.Exec(
+		`INSERT INTO contact_submissions (id, subject, message, created_at)
+		 VALUES (?, 'From the form', 'No name here.', '2026-06-22T04:03:55.000Z');`,
+		withoutName,
+	); err != nil {
+		t.Fatalf("seed anonymous submission: %v", err)
+	}
+
+	named, err := repo.FindByID(withName)
+	if err != nil {
+		t.Fatalf("FindByID(named) error = %v", err)
+	}
+	if named.Name != "Deneme'nin Büyücüsü" {
+		t.Errorf("Name = %q, want %q", named.Name, "Deneme'nin Büyücüsü")
+	}
+
+	anonymous, err := repo.FindByID(withoutName)
+	if err != nil {
+		t.Fatalf("FindByID(anonymous) error = %v", err)
+	}
+	if anonymous.Name != "" {
+		t.Errorf("Name = %q, want empty for a submission with no name", anonymous.Name)
+	}
+
+	// A timestamp without fractional seconds is what the import writes; it has
+	// to parse the same as the column default's millisecond form.
+	if named.CreatedAt.Format(time.RFC3339) != "2026-06-21T04:03:55Z" {
+		t.Errorf("CreatedAt = %v, want 2026-06-21T04:03:55Z", named.CreatedAt)
+	}
+
+	// Sorting by the new column must be accepted, not rejected as unknown.
+	if _, err := repo.List("name", false); err != nil {
+		t.Errorf("List(sort=name) error = %v", err)
 	}
 }

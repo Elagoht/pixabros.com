@@ -23,6 +23,7 @@ func NewHandlers(repo *contact.Repo) *Handlers {
 
 type submissionResponse struct {
 	ID            string `json:"id"`
+	Name          string `json:"name"`
 	Subject       string `json:"subject"`
 	Phone         string `json:"phone"`
 	Email         string `json:"email"`
@@ -36,6 +37,7 @@ type submissionResponse struct {
 func toSubmissionResponse(s contact.Submission) submissionResponse {
 	return submissionResponse{
 		ID:            s.ID,
+		Name:          s.Name,
 		Subject:       s.Subject,
 		Phone:         s.Phone,
 		Email:         s.Email,

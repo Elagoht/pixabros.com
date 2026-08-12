@@ -20,6 +20,7 @@ const SubmissionDetail: FC<SubmissionDetailProps> = ({
   }
 
   const rows: { label: string; value: string }[] = [
+    { label: t("contact.detail.name"), value: submission.name },
     { label: t("contact.detail.email"), value: submission.email },
     { label: t("contact.detail.phone"), value: submission.phone },
     {

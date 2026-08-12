@@ -618,6 +618,7 @@
       "unread": "Okunmadı"
     },
     "detail": {
+      "name": "İsim",
       "title": "Mesaj",
       "from": "Gönderen",
       "phone": "Telefon",
@@ -629,8 +630,7 @@
       "noContact": "İletişim bilgisi verilmemiş"
     },
     "actions": {
-      "view": "Aç",
-      "markRead": "Okundu işaretle",
+      "read": "Oku",
       "markUnread": "Okunmadı işaretle"
     },
     "delete": {

@@ -65,7 +65,7 @@ const StatCard: FC<StatCardProps> = ({
           stroke={1.25}
           aria-hidden
           className={classNames(
-            "pointer-events-none absolute -bottom-5 -right-4 rotate-[24deg] transition-transform duration-300 group-hover:scale-105",
+            "pointer-events-none absolute -bottom-8 right-0 rotate-[24deg] transition-transform duration-300 group-hover:scale-105",
             theme.bgIcon,
           )}
         />

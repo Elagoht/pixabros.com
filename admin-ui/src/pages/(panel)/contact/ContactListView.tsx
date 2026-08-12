@@ -5,6 +5,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import classNames from "classnames";
 import { type FC, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge, Container, DataTable, Dialog } from "@/components/ui";
@@ -56,18 +57,31 @@ const ContactListView: FC = () => {
     mutationFn: ({
       submission,
       isRead,
+      silent = false,
     }: {
       submission: ResponseContactSubmission;
       isRead: boolean;
+      silent?: boolean;
     }) =>
       handleRequest(() => ContactService.setRead(submission.id, isRead), {
         method: "PUT",
+        showSuccessMessage: !silent,
         successMessage: isRead
           ? "contact.toast.markedRead"
           : "contact.toast.markedUnread",
       }),
     onSuccess: invalidate,
   });
+
+  // Opening a message is reading it. These used to be two separate actions,
+  // which meant the unread badge stayed on until you remembered to clear it by
+  // hand.
+  const openSubmission = (submission: ResponseContactSubmission) => {
+    setViewing(submission);
+    if (!submission.is_read) {
+      readMutation.mutate({ submission, isRead: true, silent: true });
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (submission: ResponseContactSubmission) =>
@@ -110,15 +124,36 @@ const ContactListView: FC = () => {
     {
       id: "from",
       header: t("contact.columns.from"),
-      // Either contact field may be missing, so the column shows whichever
-      // the sender actually left.
-      accessor: (submission) => submission.email || submission.phone,
-      cell: (value) => {
-        const from = String(value ?? "");
-        if (!from) {
+      // Any of the three may be missing, so the column shows whichever the
+      // sender actually left, name first.
+      accessor: (submission) =>
+        submission.name || submission.email || submission.phone,
+      cell: (_value, submission) => {
+        const contact = submission.email || submission.phone;
+        if (!(submission.name || contact)) {
           return <span className="text-gray-400 dark:text-gray-600">—</span>;
         }
-        return <span className="break-all text-sm">{from}</span>;
+        return (
+          <div className="min-w-0">
+            {submission.name && (
+              <div className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                {submission.name}
+              </div>
+            )}
+            {contact && (
+              <div
+                className={classNames(
+                  "break-all",
+                  submission.name
+                    ? "text-xs text-gray-500 dark:text-gray-400"
+                    : "text-sm",
+                )}
+              >
+                {contact}
+              </div>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -149,8 +184,8 @@ const ContactListView: FC = () => {
       actions: [
         {
           icon: IconMailOpened,
-          label: t("contact.actions.view"),
-          onClick: (submission) => setViewing(submission),
+          label: t("contact.actions.read"),
+          onClick: openSubmission,
         },
         {
           icon: IconMail,
@@ -159,14 +194,6 @@ const ContactListView: FC = () => {
             !submission.is_read,
           onClick: (submission) =>
             readMutation.mutate({ submission, isRead: false }),
-        },
-        {
-          icon: IconMailOpened,
-          label: t("contact.actions.markRead"),
-          disabled: (submission: ResponseContactSubmission) =>
-            submission.is_read,
-          onClick: (submission) =>
-            readMutation.mutate({ submission, isRead: true }),
         },
         {
           icon: IconTrash,

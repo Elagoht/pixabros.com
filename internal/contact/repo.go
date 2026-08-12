@@ -20,7 +20,10 @@ var ErrSubmissionNotFound = errors.New("contact submission not found")
 var ErrInvalidSort = errors.New("unknown sort field or direction")
 
 type Submission struct {
-	ID            string
+	ID string
+	// Name is empty for anything submitted through the public form, which does
+	// not ask for one.
+	Name          string
 	Subject       string
 	Phone         string
 	Email         string
@@ -39,12 +42,13 @@ func NewRepo(db *sql.DB) *Repo {
 	return &Repo{db: db}
 }
 
-const submissionColumns = `id, subject, phone, email, message,
+const submissionColumns = `id, name, subject, phone, email, message,
 	wants_callback, is_read, ip_address, created_at`
 
 // sortableColumns whitelists what the admin list may be ordered by. Anything
 // interpolated into ORDER BY must come from this map and nowhere else.
 var sortableColumns = map[string]string{
+	"name":       "name COLLATE NOCASE",
 	"subject":    "subject COLLATE NOCASE",
 	"email":      "email COLLATE NOCASE",
 	"is_read":    "is_read",
@@ -67,11 +71,11 @@ type rowScanner interface {
 
 func scanSubmission(row rowScanner) (Submission, error) {
 	var s Submission
-	var phone, email sql.NullString
+	var name, phone, email sql.NullString
 	var createdAtStr string
 
 	err := row.Scan(
-		&s.ID, &s.Subject, &phone, &email, &s.Message,
+		&s.ID, &name, &s.Subject, &phone, &email, &s.Message,
 		&s.WantsCallback, &s.IsRead, &s.IPAddress, &createdAtStr,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -81,6 +85,9 @@ func scanSubmission(row rowScanner) (Submission, error) {
 		return Submission{}, err
 	}
 
+	if name.Valid {
+		s.Name = name.String
+	}
 	if phone.Valid {
 		s.Phone = phone.String
 	}

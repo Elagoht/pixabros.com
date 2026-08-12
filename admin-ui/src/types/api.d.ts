@@ -274,6 +274,9 @@ interface DevlogFormValues {
 
 interface ResponseContactSubmission {
   id: string;
+  // Empty for anything sent through the public form, which does not ask for a
+  // name -- only imported submissions carry one.
+  name: string;
   subject: string;
   phone: string;
   email: string;

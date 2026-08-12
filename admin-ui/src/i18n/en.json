@@ -618,6 +618,7 @@
       "unread": "Unread"
     },
     "detail": {
+      "name": "Name",
       "title": "Message",
       "from": "From",
       "phone": "Phone",
@@ -629,8 +630,7 @@
       "noContact": "No contact details given"
     },
     "actions": {
-      "view": "Open",
-      "markRead": "Mark as read",
+      "read": "Read",
       "markUnread": "Mark as unread"
     },
     "delete": {

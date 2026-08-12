@@ -218,7 +218,7 @@
     "create": {
       "title": "Yeni oyun",
       "submit": "Oyunu oluştur",
-      "hint": "Adres, kaydederken başlıktan üretilir. Görseller, ekran görüntüleri ve oynanabilir sürüm oyun oluşturulduktan sonra eklenir."
+      "hint": "Görseller, ekran görüntüleri ve oynanabilir sürüm, oyun oluşturulduktan sonra eklenir."
     },
     "edit": {
       "title": "Oyunu düzenle",

@@ -218,7 +218,7 @@
     "create": {
       "title": "New game",
       "submit": "Create game",
-      "hint": "The address is generated from the title on save. Artwork, screenshots and the playable build are attached after the game exists."
+      "hint": "Artwork, screenshots and the playable build are added after the game exists."
     },
     "edit": {
       "title": "Edit game",

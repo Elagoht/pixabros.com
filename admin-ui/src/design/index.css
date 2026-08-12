@@ -150,3 +150,18 @@
     --tw-ring-offset-color: #16181d;
   }
 }
+
+/* The component library leans on Tailwind's coloured shadows
+   (shadow-gray-500/10 and friends) in 15 files. On a light page a grey shadow
+   reads as depth; on a dark one it reads as a glow, and a "shadow" lighter
+   than the surface behind it fogs the edge instead of lifting it -- popovers
+   in particular looked blurred. Re-point every grey shadow at black in dark
+   mode. The attribute selector carries the same specificity as the utility
+   class it overrides and comes later in the sheet, so it wins without
+   !important. Deliberately coloured shadows (shadow-primary-*, shadow-red-*)
+   are left alone. */
+@media (prefers-color-scheme: dark) {
+  [class*="shadow-gray-"] {
+    --tw-shadow-color: rgb(0 0 0 / 0.55);
+  }
+}

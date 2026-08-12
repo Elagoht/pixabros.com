@@ -81,3 +81,39 @@ describe("GameService screenshot reordering", () => {
     );
   });
 });
+
+describe("GameService list sorting", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Sorting is the database's job, so the field and direction have to reach
+  // the API rather than being applied in the browser.
+  it("sends the sort field and direction as query parameters", async () => {
+    vi.mocked(Http.get).mockResolvedValueOnce([]);
+    await GameService.list({ field: "title", direction: "desc" });
+
+    expect(Http.get).toHaveBeenCalledWith(
+      "/api/admin/games?sort=title&dir=desc",
+      { silent: true },
+    );
+  });
+
+  it("asks for no particular sort when none is chosen", async () => {
+    vi.mocked(Http.get).mockResolvedValueOnce([]);
+    await GameService.list();
+
+    expect(Http.get).toHaveBeenCalledWith("/api/admin/games", {
+      silent: true,
+    });
+  });
+
+  it("omits the sort when only a direction is known", async () => {
+    vi.mocked(Http.get).mockResolvedValueOnce([]);
+    await GameService.list({ direction: "asc" });
+
+    expect(Http.get).toHaveBeenCalledWith("/api/admin/games", {
+      silent: true,
+    });
+  });
+});

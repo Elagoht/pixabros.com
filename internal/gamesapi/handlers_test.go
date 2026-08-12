@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"pixabros/internal/db"
@@ -328,7 +329,7 @@ func TestReorder_Success(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNoContent, rec.Body.String())
 	}
-	list, err := repo.List()
+	list, err := repo.List("", false)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -425,5 +426,62 @@ func TestDeleteBuild_UnknownGameNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestList_SortsByQueryParams(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := games.NewRepo(conn)
+	handlers := NewHandlers(repo, conn, t.TempDir())
+
+	for _, title := range []string{"banana", "Apple", "cherry"} {
+		if _, err := repo.Create(games.CreateInput{Title: title}); err != nil {
+			t.Fatalf("Create(%q) error = %v", title, err)
+		}
+	}
+
+	titlesFor := func(t *testing.T, query string) []string {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/api/admin/games"+query, nil)
+		rec := httptest.NewRecorder()
+		handlers.List(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+		}
+		var got []gameResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		titles := make([]string, 0, len(got))
+		for _, g := range got {
+			titles = append(titles, g.Title)
+		}
+		return titles
+	}
+
+	if got, want := titlesFor(t, "?sort=title&dir=asc"), []string{"Apple", "banana", "cherry"}; !slices.Equal(got, want) {
+		t.Errorf("?sort=title&dir=asc = %v, want %v", got, want)
+	}
+	if got, want := titlesFor(t, "?sort=title&dir=desc"), []string{"cherry", "banana", "Apple"}; !slices.Equal(got, want) {
+		t.Errorf("?sort=title&dir=desc = %v, want %v", got, want)
+	}
+	// No params at all must keep the manual display order.
+	if got, want := titlesFor(t, ""), titlesFor(t, "?sort=display_order"); !slices.Equal(got, want) {
+		t.Errorf("no params = %v, want the display_order order %v", got, want)
+	}
+}
+
+func TestList_RejectsUnknownSort(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	for _, query := range []string{"?sort=password_hash", "?sort=title&dir=sideways"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/admin/games"+query, nil)
+		rec := httptest.NewRecorder()
+		handlers.List(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status = %d, want %d", query, rec.Code, http.StatusBadRequest)
+		}
 	}
 }

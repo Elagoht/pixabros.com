@@ -3,8 +3,16 @@ import { Http } from "@/utilities/http";
 // Screenshot endpoints address a game by its id only; the archive upload
 // addresses it by slug, because the extracted build lives at /play/{slug}/.
 export class GameService {
-  static list = (): Promise<ResponseGame[]> =>
-    Http.get<ResponseGame[]>("/api/admin/games", { silent: true });
+  // Sorting is done by the database, not in the browser: the column set the
+  // table offers is whitelisted server-side.
+  static list = (sort?: GameSort): Promise<ResponseGame[]> => {
+    const query = sort?.field
+      ? `?sort=${encodeURIComponent(sort.field)}&dir=${sort.direction}`
+      : "";
+    return Http.get<ResponseGame[]>(`/api/admin/games${query}`, {
+      silent: true,
+    });
+  };
 
   static get = (gameId: string): Promise<ResponseGame> =>
     Http.get<ResponseGame>(`/api/admin/games/${gameId}`, { silent: true });

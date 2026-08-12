@@ -3,6 +3,7 @@ package games
 import (
 	"database/sql"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -282,8 +283,56 @@ func (r *Repo) Reorder(ids []string) error {
 	return tx.Commit()
 }
 
-func (r *Repo) List() ([]Game, error) {
-	rows, err := r.db.Query(`SELECT ` + gameColumns + ` FROM games ORDER BY display_order ASC, id ASC;`)
+var ErrInvalidSort = errors.New("unknown sort field or direction")
+
+// sortableColumns whitelists what the admin list may be ordered by, mapping
+// the API's field names to SQL. Interpolating anything into ORDER BY has to
+// come from this map and nowhere else -- a caller-supplied column name would
+// be an injection point that no amount of quoting fixes.
+//
+// Text columns sort case-insensitively so "Zelda" and "asteroids" interleave
+// the way a person reading the list expects, rather than all upper-case
+// titles sorting ahead of all lower-case ones.
+var sortableColumns = map[string]string{
+	"title":         "title COLLATE NOCASE",
+	"slug":          "slug COLLATE NOCASE",
+	"is_published":  "is_published",
+	"display_order": "display_order",
+	"created_at":    "created_at",
+	"updated_at":    "updated_at",
+}
+
+// SortableFields lists the accepted sort fields, for error messages.
+func SortableFields() []string {
+	fields := make([]string, 0, len(sortableColumns))
+	for field := range sortableColumns {
+		fields = append(fields, field)
+	}
+	sort.Strings(fields)
+	return fields
+}
+
+// List returns every game ordered by the given field and direction. An empty
+// field means the manual display order, which is what the drag-to-reorder
+// control writes. id is always the final tiebreaker so that rows sharing a
+// value (every game on display_order 0, say) keep a stable order between
+// requests instead of shuffling.
+func (r *Repo) List(field string, descending bool) ([]Game, error) {
+	if field == "" {
+		field = "display_order"
+	}
+	column, ok := sortableColumns[field]
+	if !ok {
+		return nil, ErrInvalidSort
+	}
+	direction := "ASC"
+	if descending {
+		direction = "DESC"
+	}
+
+	rows, err := r.db.Query(
+		`SELECT ` + gameColumns + ` FROM games ORDER BY ` + column + ` ` + direction + `, id ASC;`,
+	)
 	if err != nil {
 		return nil, err
 	}

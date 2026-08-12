@@ -1,4 +1,4 @@
-import { IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconExternalLink, IconPencil, IconTrash } from "@tabler/icons-react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, DataTable } from "@/components/ui";
@@ -10,6 +10,9 @@ interface GamesTableProps {
   error?: string;
   onDelete: (game: ResponseGame) => void;
   toolbarActions?: React.ReactNode;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  onSortChange?: (columnId: string, direction: "asc" | "desc") => void;
 }
 
 const GamesTable: FC<GamesTableProps> = ({
@@ -18,6 +21,9 @@ const GamesTable: FC<GamesTableProps> = ({
   error,
   onDelete,
   toolbarActions,
+  sortBy,
+  sortDir,
+  onSortChange,
 }) => {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -41,17 +47,6 @@ const GamesTable: FC<GamesTableProps> = ({
       sortable: true,
       filterable: true,
       onClick: (game) => navigate(`/games/${game.id}`),
-    },
-    {
-      id: "slug",
-      header: t("games.columns.slug"),
-      accessor: "slug",
-      sortable: true,
-      cell: (value) => (
-        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-          {String(value)}
-        </span>
-      ),
     },
     {
       id: "is_published",
@@ -100,6 +95,15 @@ const GamesTable: FC<GamesTableProps> = ({
       align: "right",
       actions: [
         {
+          icon: IconExternalLink,
+          label: t("games.actions.viewOnSite"),
+          // /play/ is served by Go outside the SPA, so this leaves the app
+          // entirely rather than going through react-router.
+          disabled: (game: ResponseGame) => !game.is_browser_playable,
+          onClick: (game: ResponseGame) =>
+            window.open(`/play/${game.slug}/`, "_blank", "noreferrer"),
+        },
+        {
           icon: IconPencil,
           label: t("common.edit"),
           onClick: (game) => navigate(`/games/${game.id}`),
@@ -124,6 +128,9 @@ const GamesTable: FC<GamesTableProps> = ({
       isEmpty={!isLoading && games.length === 0}
       error={error}
       toolbarActions={toolbarActions}
+      sortBy={sortBy}
+      sortDir={sortDir}
+      onSortChange={onSortChange}
       hidePagination
     />
   );

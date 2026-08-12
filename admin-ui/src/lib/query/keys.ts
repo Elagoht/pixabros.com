@@ -3,7 +3,16 @@
 export const queryKeys = {
   games: {
     all: ["games"] as const,
-    list: () => [...queryKeys.games.all, "list"] as const,
+    // lists() is the prefix every sorted list shares. Invalidating the exact
+    // list(sort) key would only refresh the one ordering currently on screen
+    // and leave every other cached ordering stale.
+    lists: () => [...queryKeys.games.all, "list"] as const,
+    list: (sort?: GameSort) =>
+      [
+        ...queryKeys.games.lists(),
+        sort?.field ?? null,
+        sort?.direction ?? null,
+      ] as const,
     detail: (gameId: string) =>
       [...queryKeys.games.all, "detail", gameId] as const,
     screenshots: (gameId: string) =>

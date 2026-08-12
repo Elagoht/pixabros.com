@@ -115,3 +115,17 @@ interface GameFormValues {
   external_links: GameExternalLink[];
   is_published: boolean;
 }
+
+// Mirrors the sortable columns whitelisted by games.sortableColumns in Go.
+type GameSortField =
+  | "title"
+  | "slug"
+  | "is_published"
+  | "display_order"
+  | "created_at"
+  | "updated_at";
+
+interface GameSort {
+  field?: GameSortField;
+  direction: "asc" | "desc";
+}

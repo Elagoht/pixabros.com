@@ -2,6 +2,7 @@ package games
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"database/sql"
@@ -294,7 +295,7 @@ func TestRepo_ListOrdersByDisplayOrder(t *testing.T) {
 	repo.Create(CreateInput{Title: "First", DisplayOrder: 1})
 	repo.Create(CreateInput{Title: "Second", DisplayOrder: 2})
 
-	list, err := repo.List()
+	list, err := repo.List("", false)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -322,7 +323,7 @@ func TestRepo_ReorderSetsDisplayOrderToIndex(t *testing.T) {
 		t.Fatalf("Reorder() error = %v", err)
 	}
 
-	list, err := repo.List()
+	list, err := repo.List("", false)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -404,4 +405,74 @@ func TestRepo_AddScreenshotAssignsOpaqueIDs(t *testing.T) {
 	if !id.IsValid(shot.ID) {
 		t.Errorf("AddScreenshot() id = %q, which is not a well-formed id", shot.ID)
 	}
+}
+
+func TestRepo_ListSorting(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	// Created out of alphabetical order, and with mixed case, so a naive
+	// byte-wise sort would not match what a reader expects.
+	for _, title := range []string{"banana", "Apple", "cherry"} {
+		if _, err := repo.Create(CreateInput{Title: title}); err != nil {
+			t.Fatalf("Create(%q) error = %v", title, err)
+		}
+	}
+
+	titlesFor := func(t *testing.T, field string, descending bool) []string {
+		t.Helper()
+		list, err := repo.List(field, descending)
+		if err != nil {
+			t.Fatalf("List(%q, %v) error = %v", field, descending, err)
+		}
+		titles := make([]string, 0, len(list))
+		for _, g := range list {
+			titles = append(titles, g.Title)
+		}
+		return titles
+	}
+
+	t.Run("title ascending is case-insensitive", func(t *testing.T) {
+		got := titlesFor(t, "title", false)
+		want := []string{"Apple", "banana", "cherry"}
+		if !slices.Equal(got, want) {
+			t.Errorf("titles = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("title descending reverses it", func(t *testing.T) {
+		got := titlesFor(t, "title", true)
+		want := []string{"cherry", "banana", "Apple"}
+		if !slices.Equal(got, want) {
+			t.Errorf("titles = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("empty field falls back to the manual display order", func(t *testing.T) {
+		got := titlesFor(t, "", false)
+		want := titlesFor(t, "display_order", false)
+		if !slices.Equal(got, want) {
+			t.Errorf("default order = %v, want the display_order order %v", got, want)
+		}
+	})
+
+	t.Run("unknown field is rejected", func(t *testing.T) {
+		if _, err := repo.List("title; DROP TABLE games", false); !errors.Is(err, ErrInvalidSort) {
+			t.Errorf("List() with an unknown field error = %v, want ErrInvalidSort", err)
+		}
+		if _, err := repo.List("password_hash", false); !errors.Is(err, ErrInvalidSort) {
+			t.Errorf("List() with an off-whitelist column error = %v, want ErrInvalidSort", err)
+		}
+	})
+
+	// Every game here shares display_order 0, so without the id tiebreaker
+	// the order would be whatever SQLite felt like returning.
+	t.Run("ties are broken stably", func(t *testing.T) {
+		first := titlesFor(t, "display_order", false)
+		for range 5 {
+			if got := titlesFor(t, "display_order", false); !slices.Equal(got, first) {
+				t.Fatalf("repeated List() returned %v then %v", first, got)
+			}
+		}
+	})
 }

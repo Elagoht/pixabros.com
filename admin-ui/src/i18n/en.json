@@ -177,7 +177,6 @@
     },
     "columns": {
       "title": "Title",
-      "slug": "Slug",
       "status": "Status",
       "distribution": "Distribution",
       "order": "Order"
@@ -219,7 +218,7 @@
       "title": "Edit game",
       "submit": "Save game",
       "notFound": "This game no longer exists.",
-      "slugHint": "Changing the title also changes the public address. Current address:"
+      "slugHint": "Changing the title also changes the slug. Current slug:"
     },
     "artwork": {
       "title": "Artwork",
@@ -284,6 +283,9 @@
       "externalLinksJson": "External links must be a valid JSON array, for example [].",
       "linkLabel": "A label is required.",
       "linkUrl": "Enter a full URL, including https://"
+    },
+    "actions": {
+      "viewOnSite": "View on the site"
     }
   }
 }

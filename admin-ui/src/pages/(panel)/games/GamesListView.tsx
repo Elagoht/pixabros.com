@@ -1,7 +1,7 @@
 import { IconArrowsSort, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Container, Dialog } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
@@ -18,17 +18,44 @@ const GamesListView: FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<ResponseGame | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
 
+  // Sorting lives in the URL so a particular ordering can be linked to and
+  // survives a reload, rather than resetting on every visit.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sortField =
+    (searchParams.get("sort") as GameSortField | null) ?? undefined;
+  const sortDirection = searchParams.get("dir") === "desc" ? "desc" : "asc";
+  const sort: GameSort = { field: sortField, direction: sortDirection };
+
+  const setSort = (columnId: string, direction: "asc" | "desc") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("sort", columnId);
+      next.set("dir", direction);
+      return next;
+    });
+  };
+
   const {
     data: games = [],
     isLoading,
     isError,
   } = useQuery({
-    queryKey: queryKeys.games.list(),
-    queryFn: GameService.list,
+    queryKey: queryKeys.games.list(sort),
+    queryFn: () => GameService.list(sort),
   });
 
+  // The reorder modal edits display_order, so it must always show the manual
+  // order -- never whatever column the table happens to be sorted by, or
+  // dragging would rewrite the manual order to match an unrelated sort.
+  // Mirrors the server's "display_order ASC, id ASC".
+  const manualOrder = [...games].sort(
+    (a, b) =>
+      a.display_order - b.display_order ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+
   const invalidateList = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.games.list() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.games.lists() });
 
   const deleteMutation = useMutation({
     mutationFn: (game: ResponseGame) =>
@@ -67,6 +94,9 @@ const GamesListView: FC = () => {
         isLoading={isLoading}
         error={isError ? t("common.error") : undefined}
         onDelete={setDeleteTarget}
+        sortBy={sortField}
+        sortDir={sortDirection}
+        onSortChange={setSort}
         toolbarActions={
           <div className="flex items-center gap-2">
             <Button
@@ -92,7 +122,7 @@ const GamesListView: FC = () => {
 
       <ReorderGamesModal
         open={reorderOpen}
-        games={games}
+        games={manualOrder}
         isSaving={reorderMutation.isPending}
         onClose={() => setReorderOpen(false)}
         onSave={(ids) => reorderMutation.mutate(ids)}

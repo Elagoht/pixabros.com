@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui";
+import { Button, Tooltip } from "@/components/ui";
 import { chipColors } from "@/utilities/constants";
 import {
   formatDate,
@@ -118,13 +118,11 @@ export const renderActions = <T,>(
           typeof action.disabled === "function"
             ? action.disabled(row)
             : action.disabled;
-        return (
+        const button = (
           <Button
-            key={i}
             variant={action.variant ?? "ghost"}
             size="sm"
             disabled={isDisabled}
-            title={action.label}
             onClick={(e) => {
               e.stopPropagation();
               action.onClick(row);
@@ -136,6 +134,19 @@ export const renderActions = <T,>(
           >
             <Icon size={16} />
           </Button>
+        );
+
+        // A disabled Button stops firing pointer events, which would also
+        // swallow the tooltip's hover -- exactly when the label explaining
+        // why it is unavailable matters most. The wrapper listens instead.
+        return (
+          <Tooltip key={i} content={action.label} position="top">
+            {isDisabled ? (
+              <span className="inline-flex">{button}</span>
+            ) : (
+              button
+            )}
+          </Tooltip>
         );
       })}
     </div>

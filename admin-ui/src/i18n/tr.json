@@ -177,7 +177,6 @@
     },
     "columns": {
       "title": "Başlık",
-      "slug": "Adres",
       "status": "Durum",
       "distribution": "Dağıtım",
       "order": "Sıra"
@@ -219,7 +218,7 @@
       "title": "Oyunu düzenle",
       "submit": "Oyunu kaydet",
       "notFound": "Bu oyun artık mevcut değil.",
-      "slugHint": "Başlığı değiştirmek genel adresi de değiştirir. Şu anki adres:"
+      "slugHint": "Başlığı değiştirmek slug'ı da değiştirir. Şu anki slug:"
     },
     "artwork": {
       "title": "Görseller",
@@ -284,6 +283,9 @@
       "externalLinksJson": "Dış bağlantılar geçerli bir JSON dizisi olmalı, örneğin [].",
       "linkLabel": "Etiket zorunludur.",
       "linkUrl": "https:// dahil tam bir adres girin"
+    },
+    "actions": {
+      "viewOnSite": "Sitede görüntüle"
     }
   }
 }

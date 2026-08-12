@@ -75,8 +75,29 @@ func toGameResponse(g games.Game) gameResponse {
 	}
 }
 
+// List orders by ?sort= and ?dir=, defaulting to the manual display order.
+// An unknown field is rejected rather than quietly ignored: silently falling
+// back would make a mistyped column look like the data is simply unsorted.
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) {
-	list, err := h.repo.List()
+	field := r.URL.Query().Get("sort")
+
+	var descending bool
+	switch dir := r.URL.Query().Get("dir"); dir {
+	case "", "asc":
+		descending = false
+	case "desc":
+		descending = true
+	default:
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_sort", `dir must be "asc" or "desc"`)
+		return
+	}
+
+	list, err := h.repo.List(field, descending)
+	if errors.Is(err, games.ErrInvalidSort) {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_sort",
+			"sort must be one of: "+strings.Join(games.SortableFields(), ", "))
+		return
+	}
 	if err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not list games")
 		return

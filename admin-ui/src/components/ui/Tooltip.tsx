@@ -94,7 +94,7 @@ const Tooltip: FC<TooltipProps> = ({
           <div
             className={classNames(
               "pointer-events-none fixed z-[9999] whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-gray-500/30 transition-opacity duration-150",
-              "bg-gray-800 dark:bg-gray-700",
+              "bg-gray-800 dark:bg-gray-900 dark:ring-1 dark:ring-white/10",
               transformClass[position],
             )}
             style={{ top: coords.top, left: coords.left }}

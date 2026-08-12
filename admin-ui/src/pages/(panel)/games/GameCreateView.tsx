@@ -18,7 +18,7 @@ const GameCreateView: FC = () => {
   // list page. This read is normally already cached by that page.
   const { data: games = [] } = useQuery({
     queryKey: queryKeys.games.list(),
-    queryFn: GameService.list,
+    queryFn: () => GameService.list(),
   });
 
   return (
@@ -48,7 +48,7 @@ const GameCreateView: FC = () => {
           );
           if (data) {
             queryClient.invalidateQueries({
-              queryKey: queryKeys.games.list(),
+              queryKey: queryKeys.games.lists(),
             });
             navigate(`/games/${data.id}`, { replace: true });
           }

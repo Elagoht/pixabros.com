@@ -59,7 +59,7 @@ const GameEditView: FC = () => {
         successMessage: "games.toast.deleted",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.games.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.games.lists() });
       navigate("/games", { replace: true });
     },
   });
@@ -127,7 +127,7 @@ const GameEditView: FC = () => {
                   queryKey: queryKeys.games.detail(gameId),
                 });
                 queryClient.invalidateQueries({
-                  queryKey: queryKeys.games.list(),
+                  queryKey: queryKeys.games.lists(),
                 });
               }
             }}
@@ -177,7 +177,7 @@ const GameEditView: FC = () => {
               });
               // The list shows a "browser playable" badge derived from this.
               queryClient.invalidateQueries({
-                queryKey: queryKeys.games.list(),
+                queryKey: queryKeys.games.lists(),
               });
             }}
           />

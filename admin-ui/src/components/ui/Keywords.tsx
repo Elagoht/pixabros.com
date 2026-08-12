@@ -39,13 +39,34 @@ const Keywords: FC<KeywordsProps> = ({
     helpers.setValue(output === "string" ? next.join(separator) : next);
   };
 
-  const add = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed || keywords.includes(trimmed)) {
-      return;
+  // A value may carry several keywords at once -- pasted from a document or
+  // a spreadsheet column -- so it is always split before being added. Tabs
+  // and newlines count as separators too, since that is what a pasted list or
+  // spreadsheet cell range actually contains.
+  const splitValues = (raw: string): string[] => {
+    let parts = [raw];
+    for (const token of [separator.trim(), "\n", "\r", "\t"]) {
+      if (token) {
+        parts = parts.flatMap((part) => part.split(token));
+      }
     }
-    commitValue([...keywords, trimmed]);
+    return parts.map((part) => part.trim()).filter(Boolean);
+  };
+
+  const add = (value: string) => {
+    const incoming = splitValues(value);
+    const next = [...keywords];
+    for (const keyword of incoming) {
+      if (!next.includes(keyword)) {
+        next.push(keyword);
+      }
+    }
+    // Clear the field even when everything pasted was a duplicate, so the
+    // text does not linger looking like it failed to register.
     setInput("");
+    if (next.length !== keywords.length) {
+      commitValue(next);
+    }
   };
 
   const remove = (index: number) => {
@@ -66,6 +87,18 @@ const Keywords: FC<KeywordsProps> = ({
     if (input.trim()) {
       add(input);
     }
+  };
+
+  // Pasting a separated list turns straight into chips. A paste with no
+  // separator in it is left to the browser so it can be edited before being
+  // committed, exactly like typing.
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text");
+    if (splitValues(pasted).length < 2) {
+      return;
+    }
+    e.preventDefault();
+    add(input + pasted);
   };
 
   return (
@@ -112,6 +145,7 @@ const Keywords: FC<KeywordsProps> = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onBlur={handleBlur}
           placeholder={keywords.length === 0 ? placeholder : ""}
           className="min-w-[80px] flex-1 bg-transparent outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500"

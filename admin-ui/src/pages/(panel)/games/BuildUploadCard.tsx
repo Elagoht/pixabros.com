@@ -1,4 +1,8 @@
-import { IconExternalLink, IconUpload } from "@tabler/icons-react";
+import {
+  IconDeviceGamepad2,
+  IconExternalLink,
+  IconUpload,
+} from "@tabler/icons-react";
 import { type ChangeEvent, type FC, useRef, useState } from "react";
 import { Alert, Button, Card } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
@@ -48,7 +52,7 @@ const BuildUploadCard: FC<BuildUploadCardProps> = ({
 
   return (
     <Card>
-      <Card.Header>
+      <Card.Header icon={IconDeviceGamepad2}>
         <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
           {t("games.build.title")}
         </h2>

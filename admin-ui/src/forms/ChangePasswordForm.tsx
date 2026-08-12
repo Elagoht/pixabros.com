@@ -1,4 +1,4 @@
-import { IconLock, IconLockPlus } from "@tabler/icons-react";
+import { IconKey, IconLock, IconLockPlus } from "@tabler/icons-react";
 import { Form, Formik } from "formik";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +16,7 @@ const ChangePasswordForm: FC = () => {
 
   return (
     <Card>
-      <Card.Header>
+      <Card.Header icon={IconKey}>
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
           {t("pages.changePassword.title")}
         </h1>

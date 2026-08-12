@@ -1,4 +1,4 @@
-import { IconTrash } from "@tabler/icons-react";
+import { IconAlertTriangle, IconPhoto, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -136,7 +136,7 @@ const GameEditView: FC = () => {
 
         <div className="space-y-4">
           <Card>
-            <Card.Header>
+            <Card.Header icon={IconPhoto}>
               <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                 {t("games.artwork.title")}
               </h2>
@@ -178,7 +178,10 @@ const GameEditView: FC = () => {
           />
 
           <Card className="border-red-300/60 dark:border-red-900/60">
-            <Card.Header className="border-red-200 dark:border-red-900/60">
+            <Card.Header
+              icon={IconAlertTriangle}
+              className="border-red-200 dark:border-red-900/60"
+            >
               <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">
                 {t("games.danger.title")}
               </h2>

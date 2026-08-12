@@ -59,7 +59,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 
 | Component        | Props                                                                                                                |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `Card`           | `children`, `className?` — use `Card.Header`, `Card.Body`, `Card.Footer`                                             |
+| `Card`           | `children`, `className?` — use `Card.Header` (`icon?`), `Card.Body`, `Card.Footer`                                             |
 | `Badge`          | `variant?: "default" \| "secondary" \| "success" \| "warning" \| "destructive" \| "outline"`, `children`             |
 | `Avatar`         | `name?`, `src?`, `size?: "xs" \| "sm" \| "md" \| "lg" \| "xl"`, `status?: "online" \| "away" \| "busy" \| "offline"` |
 | `Kbd`            | `children` (for keyboard shortcuts like `⌘K`)                                                                        |

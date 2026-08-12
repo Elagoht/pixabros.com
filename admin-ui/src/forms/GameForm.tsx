@@ -1,3 +1,4 @@
+import { IconInfoCircle, IconRocket, IconWorldWww } from "@tabler/icons-react";
 import { Form, Formik } from "formik";
 import type { FC, ReactNode } from "react";
 import {
@@ -91,7 +92,7 @@ const GameForm: FC<GameFormProps> = ({
       {({ values }) => (
         <Form noValidate className="space-y-4">
           <Card>
-            <Card.Header>
+            <Card.Header icon={IconInfoCircle}>
               <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                 {t("games.form.basics")}
               </h2>
@@ -128,7 +129,7 @@ const GameForm: FC<GameFormProps> = ({
           </Card>
 
           <Card>
-            <Card.Header>
+            <Card.Header icon={IconWorldWww}>
               <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                 {t("games.form.availability")}
               </h2>
@@ -175,7 +176,7 @@ const GameForm: FC<GameFormProps> = ({
           {beforePublishing}
 
           <Card>
-            <Card.Header>
+            <Card.Header icon={IconRocket}>
               <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                 {t("games.form.publishing")}
               </h2>

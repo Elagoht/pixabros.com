@@ -6,7 +6,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { IconPhotoPlus } from "@tabler/icons-react";
+import { IconCamera, IconPhotoPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, type FC, useEffect, useRef, useState } from "react";
 import { Button, Card, EmptyState, Loading } from "@/components/ui";
@@ -127,7 +127,7 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
 
   return (
     <Card>
-      <Card.Header className="justify-between">
+      <Card.Header icon={IconCamera} className="justify-between">
         <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
           {t("games.screenshots.title")}
         </h2>

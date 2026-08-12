@@ -11,8 +11,12 @@ interface CardSectionProps {
   className?: string;
 }
 
+interface CardHeaderProps extends CardSectionProps {
+  icon?: IconElement;
+}
+
 const Card: FC<CardProps> & {
-  Header: FC<CardSectionProps>;
+  Header: FC<CardHeaderProps>;
   Body: FC<CardSectionProps>;
   Footer: FC<CardSectionProps>;
 } = ({ children, className }) => (
@@ -28,13 +32,18 @@ const Card: FC<CardProps> & {
   </div>
 );
 
-const Header: FC<CardSectionProps> = ({ children, className }) => (
+const Header: FC<CardHeaderProps> = ({ icon: Icon, children, className }) => (
   <div
     className={classNames(
       "flex items-center border-b border-gray-200 px-5 py-4 dark:border-gray-700",
       className,
     )}
   >
+    {Icon && (
+      <span className="mr-2.5 inline-flex shrink-0 items-center justify-center rounded-md bg-primary-50 p-1.5 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
+        <Icon size={16} />
+      </span>
+    )}
     {children}
   </div>
 );

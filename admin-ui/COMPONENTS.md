@@ -43,6 +43,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 | `Rating`         | `value`, `onChange`, `size?`, `allowHalf?`, `disabled?`                      |
 | `Keywords`       | `name`, `label?`, `placeholder?`, `output: "string" \| "array"`              |
 | `LinkListField`  | `name`, `labelPlaceholder`, `urlPlaceholder`, `addLabel`, `emptyLabel`, `removeLabel` — repeatable `{label, url}` rows |
+| `UrlListField`   | `name`, `label?`, `placeholder`, `addLabel`, `emptyLabel`, `removeLabel` — repeatable, drag-orderable list of bare URLs |
 | `Label`          | `children`, `htmlFor?`, `className?`                                         |
 | `FieldSet`       | `legend`, `icon?`, `description?`, `error?`, `children`, `className?`        |
 | `Chip`           | `children`, `onRemove`                                                       |

@@ -62,3 +62,29 @@ describe("settingsValidationSchema", () => {
     );
   });
 });
+
+describe("uri_list settings", () => {
+  const withList = settingsValidationSchema(mockT, [
+    { key: "org_sameas_json", kind: "uri_list", multiline: false },
+  ]);
+
+  it("accepts a list of full URLs", async () => {
+    await expect(
+      withList.isValid({
+        org_sameas_json: ["https://twitter.com/x", "https://github.com/x"],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("accepts an empty list", async () => {
+    await expect(withList.isValid({ org_sameas_json: [] })).resolves.toBe(true);
+  });
+
+  // Each entry is validated on its own, so the wrong row is the row that
+  // shows an error.
+  it("rejects an entry that is not a full URL", async () => {
+    await expect(
+      withList.isValid({ org_sameas_json: ["https://ok.dev", "example.com"] }),
+    ).resolves.toBe(false);
+  });
+});

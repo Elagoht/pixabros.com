@@ -209,3 +209,46 @@ func TestUpdate_UnknownGroupIsNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
+
+// org_sameas_json is a list of profile addresses, not free text: the public
+// site emits it into JSON-LD, where a bad entry is invalid structured data
+// rather than a visible mistake.
+func TestUpdate_ValidatesURILists(t *testing.T) {
+	handlers, _ := setup(t)
+
+	rejected := []string{
+		`"not json"`,
+		`{"a":1}`,
+		`["example.com"]`,
+		`["https://ok.dev","/relative"]`,
+		`[1,2]`,
+	}
+	for _, value := range rejected {
+		body, _ := json.Marshal(map[string]any{"values": map[string]string{"org_sameas_json": value}})
+		if rec := put(t, handlers, "site", string(body)); rec.Code != http.StatusBadRequest {
+			t.Errorf("org_sameas_json %s: status = %d, want %d", value, rec.Code, http.StatusBadRequest)
+		}
+	}
+
+	accepted := []string{
+		`[]`,
+		`["https://twitter.com/pixabros"]`,
+		`["https://twitter.com/pixabros","https://github.com/pixabros"]`,
+	}
+	for _, value := range accepted {
+		body, _ := json.Marshal(map[string]any{"values": map[string]string{"org_sameas_json": value}})
+		if rec := put(t, handlers, "site", string(body)); rec.Code != http.StatusOK {
+			t.Errorf("org_sameas_json %s: status = %d, want %d, body = %s",
+				value, rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+}
+
+// Blank still means "not set", even for a list.
+func TestUpdate_AllowsABlankURIList(t *testing.T) {
+	handlers, _ := setup(t)
+
+	if rec := put(t, handlers, "site", `{"values":{"org_sameas_json":""}}`); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+}

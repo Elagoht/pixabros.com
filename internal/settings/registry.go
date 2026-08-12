@@ -18,9 +18,14 @@ import (
 type Kind string
 
 const (
-	KindText  Kind = "text"
-	KindURI   Kind = "uri"
-	KindMedia Kind = "media"
+	KindText Kind = "text"
+	KindURI  Kind = "uri"
+	// KindURIList is a JSON array of absolute URLs, stored as text. JSON-LD's
+	// sameAs is exactly this: a bare list of profile addresses with no labels.
+	// The kind exists so the value is really validated and the admin edits a
+	// list of fields rather than hand-writing JSON.
+	KindURIList Kind = "uri_list"
+	KindMedia   Kind = "media"
 )
 
 var ErrUnknownGroup = errors.New("unknown settings group")
@@ -61,7 +66,7 @@ var site = Group{
 		{Key: "twitter_handle", Kind: KindText},
 		{Key: "org_logo", Kind: KindMedia, Target: "org_logo"},
 		{Key: "default_og_image", Kind: KindMedia, Target: "og_image"},
-		{Key: "org_sameas_json", Kind: KindText, Multiline: true},
+		{Key: "org_sameas_json", Kind: KindURIList},
 	},
 }
 

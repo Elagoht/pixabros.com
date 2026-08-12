@@ -249,3 +249,36 @@ func TestMediaDefinitionsDeclareATarget(t *testing.T) {
 		}
 	}
 }
+
+// The database constrains value_type, so every kind the registry can produce
+// has to be allowed by the CHECK -- otherwise saving that setting fails at
+// write time rather than at review time.
+func TestEveryRegistryKindIsStorable(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	seen := map[Kind]bool{}
+	for _, name := range GroupNames() {
+		group, err := LookupGroup(name)
+		if err != nil {
+			t.Fatalf("LookupGroup(%q) error = %v", name, err)
+		}
+		for _, definition := range group.Definitions {
+			if seen[definition.Kind] {
+				continue
+			}
+			seen[definition.Kind] = true
+			if err := repo.Replace(group, map[string]string{definition.Key: ""}); err != nil {
+				t.Errorf("storing a %q setting (%s.%s) failed: %v",
+					definition.Kind, name, definition.Key, err)
+			}
+		}
+	}
+
+	// Guard against a kind being added to the registry but used nowhere, which
+	// would leave it untested by the loop above.
+	for _, kind := range []Kind{KindText, KindURI, KindURIList, KindMedia} {
+		if !seen[kind] {
+			t.Errorf("kind %q is defined but no setting uses it, so it is untested", kind)
+		}
+	}
+}

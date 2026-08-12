@@ -81,6 +81,20 @@ func (h *Handlers) validate(group settings.Group, values map[string]string) (str
 			if err != nil || !parsed.IsAbs() || parsed.Host == "" {
 				return "invalid_uri", key + " must be a full URL, including its scheme", false
 			}
+		case settings.KindURIList:
+			// Stored as text, but it must really be a list of addresses: the
+			// public site emits these straight into JSON-LD, where a bad entry
+			// is invalid structured data rather than a visible mistake.
+			var urls []string
+			if err := json.Unmarshal([]byte(value), &urls); err != nil {
+				return "invalid_uri_list", key + " must be a JSON array of URLs", false
+			}
+			for _, raw := range urls {
+				parsed, err := url.Parse(raw)
+				if err != nil || !parsed.IsAbs() || parsed.Host == "" {
+					return "invalid_uri_list", key + " contains an entry that is not a full URL: " + raw, false
+				}
+			}
 		case settings.KindMedia:
 			if !id.IsValid(value) {
 				return "invalid_body", key + " is not a valid media id", false

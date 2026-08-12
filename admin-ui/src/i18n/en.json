@@ -109,7 +109,7 @@
       "twitter_handle": "Twitter handle",
       "org_logo": "Organisation logo",
       "default_og_image": "Default share image",
-      "org_sameas_json": "Social profile links (JSON)",
+      "org_sameas_json": "Social profile links",
       "hero_logo": "Hero logo",
       "hero_slogan": "Hero slogan",
       "hero_description": "Hero description",
@@ -119,6 +119,11 @@
       "sales_section_title": "For-sale section title",
       "members_section_title": "Team section title",
       "members_section_subtitle": "Team section subtitle"
+    },
+    "urlList": {
+      "placeholder": "https://twitter.com/pixabros",
+      "add": "Add address",
+      "empty": "No addresses yet."
     }
   },
   "pages": {

@@ -109,7 +109,7 @@
       "twitter_handle": "Twitter kullanıcı adı",
       "org_logo": "Kurum logosu",
       "default_og_image": "Varsayılan paylaşım görseli",
-      "org_sameas_json": "Sosyal profil bağlantıları (JSON)",
+      "org_sameas_json": "Sosyal profil bağlantıları",
       "hero_logo": "Hero logosu",
       "hero_slogan": "Hero sloganı",
       "hero_description": "Hero açıklaması",
@@ -119,6 +119,11 @@
       "sales_section_title": "Satıştakiler bölüm başlığı",
       "members_section_title": "Ekip bölüm başlığı",
       "members_section_subtitle": "Ekip bölüm alt başlığı"
+    },
+    "urlList": {
+      "placeholder": "https://twitter.com/pixabros",
+      "add": "Adres ekle",
+      "empty": "Henüz adres yok."
     }
   },
   "pages": {

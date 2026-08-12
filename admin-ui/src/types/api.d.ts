@@ -301,7 +301,7 @@ interface ContactSort {
 
 // Mirrors settings.Kind in Go. The kind decides both validation and which
 // control the admin gets.
-type SettingKind = "text" | "uri" | "media";
+type SettingKind = "text" | "uri" | "uri_list" | "media";
 
 interface SettingDefinition {
   key: string;
@@ -323,5 +323,9 @@ interface ResponseSettingsGroup {
 interface RequestUpdateSettings {
   values: Record<string, string>;
 }
+
+// A uri_list setting is edited as a list and serialised to JSON on submit, so
+// the form works in a wider shape than the API does.
+type SettingsFormValues = Record<string, string | string[]>;
 
 type SettingsGroupName = "site" | "homepage";

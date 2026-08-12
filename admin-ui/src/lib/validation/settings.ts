@@ -7,13 +7,24 @@ export const settingsValidationSchema = (
   t: TranslateFunction,
   definitions: SettingDefinition[],
 ) => {
-  const shape: Record<string, Yup.StringSchema> = {};
+  const shape: Record<string, Yup.Schema> = {};
 
   for (const definition of definitions) {
-    shape[definition.key] =
-      definition.kind === "uri"
-        ? Yup.string().trim().url(t("settings.validation.uri"))
-        : Yup.string();
+    if (definition.kind === "uri") {
+      shape[definition.key] = Yup.string()
+        .trim()
+        .url(t("settings.validation.uri"));
+      continue;
+    }
+    if (definition.kind === "uri_list") {
+      // Each entry is validated on its own so the row that is wrong is the
+      // row that shows an error.
+      shape[definition.key] = Yup.array().of(
+        Yup.string().trim().url(t("settings.validation.uri")),
+      );
+      continue;
+    }
+    shape[definition.key] = Yup.string();
   }
 
   return Yup.object(shape);

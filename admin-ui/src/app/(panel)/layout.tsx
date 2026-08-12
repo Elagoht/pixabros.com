@@ -9,6 +9,7 @@ import { sidebarGroups } from "@/data/sidebar";
 import { useBreadcrumbStore } from "@/lib/stores/breadcrumb";
 import { useI18n } from "@/lib/stores/i18n";
 import { useUIStore } from "@/lib/stores/ui";
+import { Navigation } from "@/utilities/navigation";
 
 const PanelLayout: FC = () => {
   const { t } = useI18n();
@@ -20,7 +21,10 @@ const PanelLayout: FC = () => {
   return (
     <AuthGuard>
       <div className="flex h-screen flex-col overflow-hidden">
-        <Header logo="/assets/logo.svg" appName={t("app.name")} />
+        <Header
+          logo={`${Navigation.basePath}/assets/logo.svg`}
+          appName={t("app.name")}
+        />
 
         <div className="flex flex-1 overflow-hidden">
           <div

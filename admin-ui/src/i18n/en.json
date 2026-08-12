@@ -46,7 +46,22 @@
     "forgotPassword": "Forgot your password?"
   },
   "menu": {
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "games": "Games",
+    "devlog": "Devlog",
+    "awards": "Awards",
+    "members": "Team",
+    "homepage": "Homepage",
+    "siteSettings": "Site settings",
+    "media": "Media",
+    "contact": "Contact messages",
+    "regenJobs": "Regeneration jobs",
+    "comingSoon": "Not built yet",
+    "groups": {
+      "content": "Content",
+      "site": "Site",
+      "system": "System"
+    }
   },
   "validation": {
     "email": {

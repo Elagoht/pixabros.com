@@ -46,7 +46,22 @@
     "forgotPassword": "Şifrenizi mi unuttunuz?"
   },
   "menu": {
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "games": "Oyunlar",
+    "devlog": "Devlog",
+    "awards": "Ödüller",
+    "members": "Ekip",
+    "homepage": "Anasayfa",
+    "siteSettings": "Site Ayarları",
+    "media": "Medya",
+    "contact": "İletişim Mesajları",
+    "regenJobs": "Yenileme İşleri",
+    "comingSoon": "Henüz hazır değil",
+    "groups": {
+      "content": "İçerik",
+      "site": "Site",
+      "system": "Sistem"
+    }
   },
   "validation": {
     "email": {

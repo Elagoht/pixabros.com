@@ -67,12 +67,19 @@ const SidebarItemRenderer: FC<SidebarItemRendererProps> = ({
     }
   };
 
+  // An item with neither a path nor children cannot be navigated to: it is a
+  // module whose screens do not exist yet. Render it visibly inert rather
+  // than as something that looks clickable but silently does nothing.
+  const isDisabled = !(item.path || hasChildren);
+
   const linkClasses = classNames(
     "group relative flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium outline-none transition-all duration-200",
     hasChildren && "font-semibold",
-    isActive
-      ? "sidebar-item-active text-primary-600 dark:text-primary-400 shadow-md shadow-primary-500/20"
-      : "sidebar-item-hover text-gray-600 dark:text-gray-400",
+    isDisabled
+      ? "cursor-not-allowed text-gray-400 opacity-60 dark:text-gray-600"
+      : isActive
+        ? "sidebar-item-active text-primary-600 dark:text-primary-400 shadow-md shadow-primary-500/20"
+        : "sidebar-item-hover text-gray-600 dark:text-gray-400",
   );
 
   const content = (
@@ -82,9 +89,11 @@ const SidebarItemRenderer: FC<SidebarItemRendererProps> = ({
           <span
             className={classNames(
               "inline-flex rounded-md p-1",
-              isActive
-                ? "sidebar-icon-active"
-                : "sidebar-icon-idle text-gray-500 dark:text-gray-400",
+              isDisabled
+                ? "text-gray-400 dark:text-gray-600"
+                : isActive
+                  ? "sidebar-icon-active"
+                  : "sidebar-icon-idle text-gray-500 dark:text-gray-400",
             )}
           >
             <item.icon size={16} />
@@ -141,7 +150,12 @@ const SidebarItemRenderer: FC<SidebarItemRendererProps> = ({
         style={{ marginLeft: `${level}rem` }}
       >
         <Tooltip
-          content={item.tooltip || t(item.labelKey as TranslationKey)}
+          content={
+            item.tooltip ||
+            (isDisabled
+              ? t("menu.comingSoon")
+              : t(item.labelKey as TranslationKey))
+          }
           position="right"
           block
         >

@@ -138,6 +138,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 		Title:       chrome.Name + " — game studio",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
 		Path:        "/",
+		Scripts:     []string{s.renderer.bundle.URL("carousel.js")},
 		Site:        chrome,
 		Data:        page,
 	})

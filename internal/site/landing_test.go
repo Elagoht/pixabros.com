@@ -209,8 +209,9 @@ func TestRenderLanding_RendersTagsAsPills(t *testing.T) {
 	}
 }
 
-// The carousel has no JavaScript: arrows are anchors to the neighbouring
-// slide, computed at render time. Losing that would leave dead controls.
+// The carousel works without JavaScript: the arrows and dots are anchors to a
+// slide's id, computed at render time. A script only upgrades the click so it
+// scrolls the track instead of yanking the page, so the anchors must survive.
 func TestRenderLanding_CarouselArrowsPointAtNeighbouringSlides(t *testing.T) {
 	conn := setupTestDB(t)
 	seedGame(t, conn, "One", "one", true, false, "")
@@ -227,8 +228,10 @@ func TestRenderLanding_CarouselArrowsPointAtNeighbouringSlides(t *testing.T) {
 	if !strings.Contains(html, "id=slide-1") {
 		t.Error("slides have no ids, so the arrows and dots have nothing to target")
 	}
-	if strings.Contains(html, "<script") {
-		t.Error("the carousel should need no JavaScript")
+	// Every control the script hooks has to be a real anchor too, or the
+	// carousel dies the moment scripting is off.
+	if !strings.Contains(html, `href=#slide-2 data-carousel-target=slide-2`) {
+		t.Error("a control is missing either its href or the hook the script needs")
 	}
 }
 

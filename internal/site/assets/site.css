@@ -500,6 +500,7 @@ a:hover {
 }
 
 .slide {
+  position: relative;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -558,7 +559,10 @@ a:hover {
 
 .carousel__arrow {
   align-items: center;
-  background-color: rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(4px);
+  background-color: rgb(0 0 0 / 0.6);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  z-index: 2;
   border-radius: 999px;
   color: var(--color-text);
   display: flex;
@@ -573,6 +577,13 @@ a:hover {
   transform: translateY(-50%);
   transition: opacity 0.15s ease, background-color 0.15s ease;
   width: 2.5rem;
+}
+
+/* On a touch screen there is no hover to reveal them, so they stay visible. */
+@media (hover: none) {
+  .carousel__arrow {
+    opacity: 1;
+  }
 }
 
 .slide:hover .carousel__arrow,

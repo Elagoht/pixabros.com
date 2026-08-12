@@ -91,7 +91,10 @@ func newRenderer(bundle *Bundle) (*renderer, error) {
 	pages := make(map[string]*template.Template, len(pageTemplates))
 	for _, name := range pageTemplates {
 		parsed, err := template.New(name).Funcs(funcMap()).ParseFS(
-			templateFS, "templates/layout.html", "templates/"+name,
+			// partials.html carries the pieces more than one page draws -- the
+			// console, for one -- so the two cannot drift apart.
+			templateFS, "templates/layout.html", "templates/partials.html",
+			"templates/"+name,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", name, err)

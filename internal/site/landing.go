@@ -31,6 +31,7 @@ type heroView struct {
 // slideView is one game in the portfolio carousel.
 type slideView struct {
 	Title string
+	Slug  string
 	Tags  []string
 	Cover imageView
 	Shots []imageView
@@ -205,6 +206,7 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 
 		slides = append(slides, slideView{
 			Title: game.Title,
+			Slug:  game.Slug,
 			Tags:  splitTags(game.Tags),
 			// The OG image comes first here: it is the wide 1200x630 one, and
 			// the carousel's media area is 16:9. Cover art is portrait, so it

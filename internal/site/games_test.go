@@ -46,8 +46,14 @@ func TestRenderArcade_SplitsPlayableFromTheRest(t *testing.T) {
 	if strings.Contains(cartridges, "Shelf Only") {
 		t.Error("a non-playable game was put on a cartridge")
 	}
-	if !strings.Contains(html, "Shelf Only") {
-		t.Error("a non-playable game vanished entirely instead of going on the shelf")
+
+	// The shelf holds the whole catalogue: a cartridge is how you start a game,
+	// a case is how you read about it, and a playable game has both.
+	shelf := html[strings.Index(html, "cases"):]
+	for _, title := range []string{"Playable One", "Shelf Only"} {
+		if !strings.Contains(shelf, title) {
+			t.Errorf("%q is missing from the shelf", title)
+		}
 	}
 
 	if len(tags) != 2 || tags[0] != "game:list" || tags[1] != "site_settings" {

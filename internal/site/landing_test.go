@@ -328,3 +328,16 @@ func TestRenderLanding_MemberTagsSitBetweenNameAndBio(t *testing.T) {
 		t.Error("member order is not name, tags, bio")
 	}
 }
+
+// Game pages exist now, so the portfolio has to lead to them -- the artwork is
+// the way in, per the visual spec.
+func TestRenderLanding_PortfolioCardsLinkToTheGame(t *testing.T) {
+	conn := setupTestDB(t)
+	seedGame(t, conn, "Linked Game", "linked-game", true, false, "")
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if strings.Count(html, "href=/games/linked-game") < 2 {
+		t.Error("the card's artwork and its title should both lead to the game")
+	}
+}

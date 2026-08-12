@@ -11,23 +11,7 @@
   </div>
 
   {{if .Data.Playable}}
-    {{/* The CRT is the frame the build runs inside -- the one retro flourish
-         the design language allows, and only here. */}}
-    <div class="console console--live">
-      <div class="crt">
-        <iframe
-          class="crt__screen crt__screen--live"
-          src="{{.Data.PlayURL}}"
-          title="{{.Data.Title}}"
-          loading="lazy"
-          allow="autoplay; gamepad; fullscreen"
-        ></iframe>
-      </div>
-      <div class="console__deck">
-        <span class="console__slot"></span>
-        <span class="console__led console__led--on"></span>
-      </div>
-    </div>
+    {{template "console" .Data.Console}}
     <p class="play-note">
       <a href="{{.Data.PlayURL}}">Open the game on its own</a> if it does not
       fit here.

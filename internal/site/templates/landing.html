@@ -42,7 +42,10 @@
         <div class="carousel__track">
           {{range .Data.Slides}}
             <article class="slide" id="{{.ID}}">
-              <div class="slide__media">
+              {{/* The artwork is the way into the game, per the visual spec.
+                   The arrows sit outside this link so a click on one is never
+                   swallowed by it. */}}
+              <a class="slide__media" href="/games/{{.Slug}}" aria-label="{{.Title}}">
                 {{if .Cover.URL}}
                   <img
                     class="slide__image slide__image--cover"
@@ -66,10 +69,12 @@
                   />
                 {{end}}
 
-              </div>
+              </a>
 
               <div class="slide__info">
-                <h3 class="slide__title">{{.Title}}</h3>
+                <h3 class="slide__title">
+                  <a class="slide__link" href="/games/{{.Slug}}">{{.Title}}</a>
+                </h3>
                 {{if .Tags}}
                   <ul class="tags">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}

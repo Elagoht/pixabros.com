@@ -35,7 +35,20 @@ type caseView struct {
 	Link        string
 }
 
+// consoleView is what the shared console partial needs. Interactive is the
+// arcade's version: an empty bay you load a cartridge into. A game's own page
+// gets the machine already running.
+type consoleView struct {
+	Interactive bool
+	SiteName    string
+	Title       string
+	Playable    bool
+	PlayURL     string
+	Cartridge   imageView
+}
+
 type arcadePage struct {
+	Console    consoleView
 	Cartridges []cartridgeView
 	Cases      []caseView
 }
@@ -61,7 +74,9 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 		return nil, nil, err
 	}
 
-	page := arcadePage{}
+	page := arcadePage{
+		Console: consoleView{Interactive: true, SiteName: chrome.Name, Playable: true},
+	}
 	for _, game := range published {
 		if game.IsBrowserPlayable {
 			page.Cartridges = append(page.Cartridges, cartridgeView{
@@ -71,8 +86,9 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 				Tags:    splitTags(game.Tags),
 				PlayURL: "/play/" + game.Slug + "/",
 			})
-			continue
 		}
+		// The shelf holds the whole catalogue, playable games included: the
+		// cartridge is how you start one, the case is how you read about it.
 		page.Cases = append(page.Cases, caseView{
 			Title:       game.Title,
 			Slug:        game.Slug,
@@ -104,6 +120,7 @@ type gameLink struct {
 }
 
 type gamePage struct {
+	Console     consoleView
 	Title       string
 	Slug        string
 	Tags        []string
@@ -163,6 +180,13 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 	}
 
 	page := gamePage{
+		Console: consoleView{
+			SiteName:  chrome.Name,
+			Title:     game.Title,
+			Playable:  game.IsBrowserPlayable,
+			PlayURL:   "/play/" + game.Slug + "/",
+			Cartridge: lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
+		},
 		Title:    game.Title,
 		Slug:     game.Slug,
 		Tags:     splitTags(game.Tags),

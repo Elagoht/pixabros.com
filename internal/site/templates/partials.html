@@ -1,0 +1,122 @@
+{{/* The machine, shared by the arcade and by a game's own page so the two can
+     never drift apart. Fields: Interactive (arcade controls and an empty bay),
+     Title, Cartridge (an imageView), Playable, PlayURL. */}}
+{{define "console"}}
+  <div class="console" data-console>
+    <div class="crt">
+      <div class="crt__screen" data-console-stage>
+        {{if .Playable}}
+          {{if .Interactive}}
+            <span class="crt__message" data-console-idle>INSERT CARTRIDGE</span>
+            <iframe
+              class="crt__frame"
+              title="Game"
+              hidden
+              data-console-screen
+              allow="autoplay; gamepad; fullscreen"
+            ></iframe>
+          {{else}}
+            <iframe
+              class="crt__frame"
+              src="{{.PlayURL}}"
+              title="{{.Title}}"
+              loading="lazy"
+              data-console-screen
+              allow="autoplay; gamepad; fullscreen"
+            ></iframe>
+          {{end}}
+        {{else}}
+          <span class="crt__message">NO SIGNAL</span>
+        {{end}}
+      </div>
+
+      {{/* Screen controls. They do nothing without JavaScript, so on the
+           arcade the script reveals them; on a game's own page the frame is
+           already running, so they are shown from the start. */}}
+      <div
+        class="crt__controls"
+        {{if .Interactive}}hidden{{end}}
+        data-console-controls
+      >
+        <button
+          class="crt__knob"
+          type="button"
+          aria-pressed="true"
+          aria-label="CRT effect"
+          title="CRT effect"
+          data-console-crt
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="2.5" y="4.5" width="19" height="13" rx="2.5" />
+            <path d="M8 20.5h8" />
+          </svg>
+        </button>
+        <button
+          class="crt__knob"
+          type="button"
+          aria-label="Fullscreen"
+          title="Fullscreen"
+          data-console-fullscreen
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 3.5H3.5V9M15 3.5h5.5V9M9 20.5H3.5V15M15 20.5h5.5V15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="nes">
+      <div class="nes__bay">
+        <span class="nes__lid" aria-hidden="true"></span>
+        <span class="console__cartridge" data-console-cartridge>
+          {{/* A game's own page knows which cartridge is in the machine, so it
+               is drawn here rather than waiting for a click. */}}
+          {{if and (not .Interactive) .Cartridge.URL}}
+            <span class="cartridge cartridge--slotted" aria-hidden="true">
+              <span class="cartridge__grip"></span>
+              <span class="cartridge__label">
+                <img src="{{.Cartridge.URL}}" alt="" loading="lazy" />
+              </span>
+              <span class="cartridge__notch"></span>
+            </span>
+          {{end}}
+        </span>
+      </div>
+
+      <div class="nes__panel">
+        <p class="nes__brand" aria-hidden="true">
+          <span class="nes__brand-mark">{{.SiteName}}</span>
+          <span class="nes__brand-sub">Entertainment System</span>
+        </p>
+
+        <div class="nes__switches">
+          <span
+            class="nes__led{{if not .Interactive}} nes__led--on{{end}}"
+            data-console-led
+          ></span>
+          {{if .Interactive}}
+            <button class="nes__button" type="button" hidden data-console-reset>
+              Reset
+            </button>
+            <button class="nes__button" type="button" hidden data-console-eject>
+              Eject
+            </button>
+          {{else}}
+            <button class="nes__button" type="button" data-console-reset>
+              Reset
+            </button>
+          {{end}}
+        </div>
+
+        <p class="nes__now" data-console-title>
+          {{if not .Interactive}}{{.Title}}{{end}}
+        </p>
+      </div>
+
+      <div class="nes__ports" aria-hidden="true">
+        <span class="nes__port"></span>
+        <span class="nes__port"></span>
+      </div>
+    </div>
+  </div>
+{{end}}

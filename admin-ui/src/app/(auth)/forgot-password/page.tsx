@@ -1,6 +1,6 @@
 import type { FC } from "react";
-import ForgotPasswordForm from "@/forms/ForgotPasswordForm";
+import ForgotPasswordPanel from "@/pages/(auth)/forgot-password/ForgotPasswordPanel";
 
-const ForgotPasswordPage: FC = () => <ForgotPasswordForm />;
+const ForgotPasswordPage: FC = () => <ForgotPasswordPanel />;
 
 export default ForgotPasswordPage;

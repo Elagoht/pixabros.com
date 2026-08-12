@@ -1,10 +1,10 @@
+import classNames from "classnames";
+import type { FC } from "react";
+import { Outlet } from "react-router-dom";
 import GuestGuard from "@/components/guards/GuestGuard";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
 import { getFlag, getLanguageLabel } from "@/utilities/localization";
-import classNames from "classnames";
-import type { FC } from "react";
-import { Outlet } from "react-router-dom";
 
 const LANGUAGES: Locale[] = ["en", "tr"];
 

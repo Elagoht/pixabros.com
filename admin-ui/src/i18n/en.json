@@ -1,107 +1,156 @@
 {
-	"meta": {
-		"locale": "en-us",
-		"lang": "en"
-	},
-	"app": {
-		"name": "PixaBros Admin"
-	},
-	"common": {
-		"submit": "Submit",
-		"cancel": "Cancel",
-		"create": "Create",
-		"edit": "Edit",
-		"delete": "Delete",
-		"save": "Save",
-		"loading": "Loading...",
-		"error": "An error occurred",
-		"retry": "Try again",
-		"back": "Back",
-		"next": "Next",
-		"close": "Close",
-		"detail": "Detail",
-		"confirm": "Confirm",
-		"yes": "Yes",
-		"no": "No",
-		"today": "Today",
-		"selectDate": "Select a date",
-		"selectDateTime": "Select date & time",
-		"chooseFile": "Choose a file",
-		"noFileChosen": "No file chosen",
-		"browse": "Browse",
-		"dragAndDrop": "or drag and drop",
-		"noResults": "No results found",
-		"search": "Search...",
-		"previous": "Previous",
-		"noData": "No data to display",
-		"uploading": "Uploading...",
-		"logo": "Logo",
-		"exampleUrl": "www.example.com"
-	},
-	"validation": {
-		"email": {
-			"invalid": "Invalid email address",
-			"required": "Email is required"
-		},
-		"password": {
-			"required": "Password is required",
-			"min": "Password must be at least 8 characters"
-		},
-		"confirmPassword": {
-			"required": "Please confirm your password",
-			"match": "Passwords do not match"
-		},
-		"required": "This field is required",
-		"atLeastOneEmail": "Enter at least one email address"
-	},
-	"settings": {
-		"title": "Settings",
-		"language": {
-			"title": "Language",
-			"subtitle": "App display language",
-			"saved": "Language preference saved"
-		}
-	},
-	"pages": {
-		"auth": {
-			"login": {
-				"title": "Login"
-			}
-		},
-		"notFound": {
-			"subtitle": "Page not found",
-			"description": "The page you are looking for does not exist or has been moved.",
-			"previousPage": "Go back",
-			"backHome": "Home"
-		}
-	},
-	"filters": {
-		"title": "Filters",
-		"clear": "Clear",
-		"sort": "Sort",
-		"direction": "Direction",
-		"ascending": "Ascending",
-		"descending": "Descending"
-	},
-	"months": {
-		"1": "January",
-		"2": "February",
-		"3": "March",
-		"4": "April",
-		"5": "May",
-		"6": "June",
-		"7": "July",
-		"8": "August",
-		"9": "September",
-		"10": "October",
-		"11": "November",
-		"12": "December"
-	},
-	"errorBoundary": {
-		"somethingWentWrong": "Something went wrong.",
-		"tryAgain": "Try again"
-	},
-	"errors": {
-		"invalidCredentials": "Invalid credentials"
-	}
+  "meta": {
+    "locale": "en-us",
+    "lang": "en"
+  },
+  "app": {
+    "name": "PixaBros Admin"
+  },
+  "common": {
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try again",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "detail": "Detail",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "today": "Today",
+    "selectDate": "Select a date",
+    "selectDateTime": "Select date & time",
+    "chooseFile": "Choose a file",
+    "noFileChosen": "No file chosen",
+    "browse": "Browse",
+    "dragAndDrop": "or drag and drop",
+    "noResults": "No results found",
+    "search": "Search...",
+    "previous": "Previous",
+    "noData": "No data to display",
+    "uploading": "Uploading...",
+    "logo": "Logo",
+    "exampleUrl": "www.example.com"
+  },
+  "auth": {
+    "username": "Username",
+    "password": "Password",
+    "login": "Log in",
+    "logout": "Log out",
+    "forgotPassword": "Forgot your password?"
+  },
+  "menu": {
+    "dashboard": "Dashboard"
+  },
+  "validation": {
+    "email": {
+      "invalid": "Invalid email address",
+      "required": "Email is required"
+    },
+    "username": {
+      "required": "Username is required"
+    },
+    "password": {
+      "required": "Password is required",
+      "min": "Password must be at least 8 characters",
+      "max": "Password must be at most 72 characters"
+    },
+    "confirmPassword": {
+      "required": "Please confirm your password",
+      "match": "Passwords do not match"
+    },
+    "required": "This field is required",
+    "atLeastOneEmail": "Enter at least one email address"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "title": "Language",
+      "subtitle": "App display language",
+      "saved": "Language preference saved"
+    }
+  },
+  "pages": {
+    "auth": {
+      "login": {
+        "title": "Login",
+        "subtitle": "Sign in to the PixaBros admin panel"
+      },
+      "forgotPassword": {
+        "title": "Forgot your password?",
+        "subtitle": "Admin accounts have no email address on file.",
+        "noSelfService": "This panel cannot reset passwords by itself. Only someone with shell access to the PixaBros server can do it.",
+        "instructions": "Ask whoever runs the server to log in to it and run:",
+        "sessionsNote": "Resetting the password signs out every device that is currently logged in as that admin.",
+        "backToLogin": "Back to login"
+      }
+    },
+    "changePassword": {
+      "title": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Change password",
+      "success": "Your password has been changed. Please log in again.",
+      "signsOutWarning": "Changing your password signs you out everywhere, including this tab."
+    },
+    "notFound": {
+      "subtitle": "Page not found",
+      "description": "The page you are looking for does not exist or has been moved.",
+      "previousPage": "Go back",
+      "backHome": "Home"
+    }
+  },
+  "categories": {
+    "table": {
+      "header": "Categories",
+      "topLevel": "Top level",
+      "parentCategory": "Parent category",
+      "createCategory": "New category",
+      "createSubcategory": "New subcategory",
+      "editCategory": "Edit category",
+      "deleteCategory": "Delete category",
+      "deleteDescription": "Are you sure you want to delete \"{{name}}\"?",
+      "deleteDescriptionWithChildren": "\"{{name}}\" has subcategories. Deleting it will delete all of them too. Continue?",
+      "noCategories": "No categories yet",
+      "cycleError": "A category cannot be moved inside one of its own subcategories"
+    }
+  },
+  "filters": {
+    "title": "Filters",
+    "clear": "Clear",
+    "sort": "Sort",
+    "direction": "Direction",
+    "ascending": "Ascending",
+    "descending": "Descending"
+  },
+  "months": {
+    "1": "January",
+    "2": "February",
+    "3": "March",
+    "4": "April",
+    "5": "May",
+    "6": "June",
+    "7": "July",
+    "8": "August",
+    "9": "September",
+    "10": "October",
+    "11": "November",
+    "12": "December"
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Something went wrong.",
+    "tryAgain": "Try again"
+  },
+  "errors": {
+    "invalidCredentials": "Username or password is incorrect",
+    "currentPasswordIncorrect": "Your current password is incorrect",
+    "weakPassword": "Password must be between 8 and 72 characters"
+  }
 }

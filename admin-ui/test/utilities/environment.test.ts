@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Environment } from "@/utilities/environment";
 
 describe("Environment", () => {
@@ -10,26 +10,22 @@ describe("Environment", () => {
     expect(Environment).toHaveProperty("mediaBase");
   });
 
-  it("has pageSize property", () => {
-    expect(Environment).toHaveProperty("pageSize");
-  });
-
   it("pageSize is a number", () => {
     expect(typeof Environment.pageSize).toBe("number");
   });
 
-  it("apiBase defaults to localhost:3000 when no env var", () => {
-    const expected = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
-    expect(Environment.apiBase).toBe(expected);
+  // The Go server serves the SPA and the API from one origin, so the default
+  // base must stay relative -- an absolute default would break the
+  // SameSite=Strict session cookie.
+  it("apiBase defaults to same-origin", () => {
+    expect(Environment.apiBase).toBe(import.meta.env.VITE_API_BASE ?? "");
   });
 
-  it("mediaBase defaults to localhost:3001 when no env var", () => {
-    const expected = import.meta.env.VITE_MEDIA_BASE ?? "http://localhost:3001";
-    expect(Environment.mediaBase).toBe(expected);
+  it("mediaBase defaults to same-origin", () => {
+    expect(Environment.mediaBase).toBe(import.meta.env.VITE_MEDIA_BASE ?? "");
   });
 
   it("pageSize defaults to 12 when no env var", () => {
-    const expected = Number(import.meta.env.VITE_PAGE_SIZE) || 12;
-    expect(Environment.pageSize).toBe(expected);
+    expect(Environment.pageSize).toBe(Number(import.meta.env.VITE_PAGE_SIZE) || 12);
   });
 });

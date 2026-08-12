@@ -1,48 +1,67 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/utilities/http", () => ({
   Http: {
+    get: vi.fn(),
     post: vi.fn(),
-    delete: vi.fn(),
   },
 }));
 
-describe("sessionService", () => {
-  it("create calls Http.post with skipAuthRefresh", async () => {
+describe("SessionService", () => {
+  it("create posts credentials to the admin login endpoint", async () => {
     const { Http } = await import("@/utilities/http");
-    vi.mocked(Http.post).mockResolvedValueOnce(undefined as never);
+    vi.mocked(Http.post).mockResolvedValueOnce({ username: "furkan" });
 
-    const { sessionService } = await import("@/services/session");
-    await sessionService.create({ email: "test@test.com", password: "pass" } as never);
+    const { SessionService } = await import("@/services/session");
+    await SessionService.create({ username: "furkan", password: "pass" });
 
     expect(Http.post).toHaveBeenCalledWith(
-      "/user/token/",
-      { email: "test@test.com", password: "pass" },
-      { skipAuthRefresh: true },
+      "/api/admin/login",
+      { username: "furkan", password: "pass" },
+      { silent: true, skipAuthRedirect: true },
     );
   });
 
-  it("refresh calls Http.post with skipAuthRefresh", async () => {
+  it("me reads whoami without redirecting on 401", async () => {
     const { Http } = await import("@/utilities/http");
-    vi.mocked(Http.post).mockResolvedValueOnce({} as never);
+    vi.mocked(Http.get).mockResolvedValueOnce({ username: "furkan" });
 
-    const { sessionService } = await import("@/services/session");
-    await sessionService.refresh();
+    const { SessionService } = await import("@/services/session");
+    await SessionService.me();
 
-    expect(Http.post).toHaveBeenCalledWith(
-      "/user/token/refresh/",
-      undefined,
-      { skipAuthRefresh: true },
-    );
+    expect(Http.get).toHaveBeenCalledWith("/api/admin/whoami", {
+      silent: true,
+      skipAuthRedirect: true,
+    });
   });
 
-  it("delete calls Http.post to logout", async () => {
+  it("delete posts to the admin logout endpoint", async () => {
     const { Http } = await import("@/utilities/http");
-    vi.mocked(Http.post).mockResolvedValueOnce(undefined as never);
+    vi.mocked(Http.post).mockResolvedValueOnce(undefined);
 
-    const { sessionService } = await import("@/services/session");
-    await sessionService.delete();
+    const { SessionService } = await import("@/services/session");
+    await SessionService.delete();
 
-    expect(Http.post).toHaveBeenCalledWith("/user/logout/");
+    expect(Http.post).toHaveBeenCalledWith("/api/admin/logout", undefined, {
+      silent: true,
+      skipAuthRedirect: true,
+    });
+  });
+
+  it("changePassword posts snake_case fields the Go API expects", async () => {
+    const { Http } = await import("@/utilities/http");
+    vi.mocked(Http.post).mockResolvedValueOnce(undefined);
+
+    const { SessionService } = await import("@/services/session");
+    await SessionService.changePassword({
+      current_password: "old-password",
+      new_password: "new-password",
+    });
+
+    expect(Http.post).toHaveBeenCalledWith(
+      "/api/admin/change-password",
+      { current_password: "old-password", new_password: "new-password" },
+      { silent: true },
+    );
   });
 });

@@ -1,17 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/lib/stores/auth";
 
 vi.mock("@/services/session", () => ({
-  sessionService: {
-    refresh: vi.fn(),
+  SessionService: {
     me: vi.fn(),
     delete: vi.fn(),
   },
 }));
 
+vi.mock("@/utilities/navigation", () => ({
+  Navigation: {
+    redirectToLogin: vi.fn(),
+  },
+}));
+
 describe("useAuthStore", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     useAuthStore.setState({
+      user: null,
       isAuthenticated: false,
       isLoading: true,
     });
@@ -31,38 +38,75 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 
-  it("checkAuth sets authenticated on success", async () => {
-    const { sessionService } = await import("@/services/session");
-    vi.mocked(sessionService.refresh).mockResolvedValueOnce({} as never);
-    vi.mocked(sessionService.me).mockResolvedValueOnce({} as never);
+  it("setSession seeds the admin without hitting the network", async () => {
+    const { SessionService } = await import("@/services/session");
+
+    useAuthStore.getState().setSession({ username: "furkan" });
+
+    const state = useAuthStore.getState();
+    expect(state.user).toEqual({ username: "furkan" });
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isLoading).toBe(false);
+    expect(SessionService.me).not.toHaveBeenCalled();
+  });
+
+  it("checkAuth stores the admin returned by whoami", async () => {
+    const { SessionService } = await import("@/services/session");
+    vi.mocked(SessionService.me).mockResolvedValueOnce({ username: "furkan" });
 
     await useAuthStore.getState().checkAuth();
 
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isLoading).toBe(false);
+    expect(state.user).toEqual({ username: "furkan" });
+  });
+
+  it("checkAuth sets unauthenticated when whoami rejects", async () => {
+    const { SessionService } = await import("@/services/session");
+    vi.mocked(SessionService.me).mockRejectedValueOnce(new Error("401"));
+
+    await useAuthStore.getState().checkAuth();
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.isLoading).toBe(false);
+    expect(state.user).toBeNull();
+  });
+
+  it("checkAuth can run again after a failure", async () => {
+    const { SessionService } = await import("@/services/session");
+    vi.mocked(SessionService.me).mockRejectedValueOnce(new Error("401"));
+    await useAuthStore.getState().checkAuth();
+
+    vi.mocked(SessionService.me).mockResolvedValueOnce({ username: "furkan" });
+    await useAuthStore.getState().checkAuth();
+
+    expect(SessionService.me).toHaveBeenCalledTimes(2);
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
-    expect(useAuthStore.getState().isLoading).toBe(false);
   });
 
-  it("checkAuth sets unauthenticated on failure", async () => {
-    const { sessionService } = await import("@/services/session");
-    vi.mocked(sessionService.refresh).mockRejectedValueOnce(new Error("fail"));
+  it("logout clears the session and redirects to login", async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { username: "f" } });
 
-    await useAuthStore.getState().checkAuth();
-
-    expect(useAuthStore.getState().isAuthenticated).toBe(false);
-    expect(useAuthStore.getState().isLoading).toBe(false);
-  });
-
-  it("logout sets isAuthenticated to false", async () => {
-    useAuthStore.setState({ isAuthenticated: true });
-
-    const { sessionService } = await import("@/services/session");
-    vi.mocked(sessionService.delete).mockResolvedValueOnce(undefined as never);
-
-    delete (window as unknown as Record<string, unknown>).location;
-    (window as unknown as Record<string, unknown>).location = { href: "", pathname: "/dashboard", search: "", hash: "" };
+    const { SessionService } = await import("@/services/session");
+    const { Navigation } = await import("@/utilities/navigation");
+    vi.mocked(SessionService.delete).mockResolvedValueOnce(undefined);
 
     await useAuthStore.getState().logout();
 
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(Navigation.redirectToLogin).toHaveBeenCalled();
+  });
+
+  it("logout still clears state when the API call fails", async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { username: "f" } });
+
+    const { SessionService } = await import("@/services/session");
+    vi.mocked(SessionService.delete).mockRejectedValueOnce(new Error("boom"));
+
+    await expect(useAuthStore.getState().logout()).rejects.toThrow("boom");
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });

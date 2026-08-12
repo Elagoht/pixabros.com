@@ -1,30 +1,51 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/utilities/api-error";
 
 vi.mock("@/utilities/environment", () => ({
   Environment: {
     apiBase: "http://localhost:3000",
-    mediaBase: "http://localhost:3000/media",
+    mediaBase: "",
     pageSize: 12,
   },
 }));
 
+vi.mock("@/utilities/navigation", () => ({
+  Navigation: {
+    redirectToLogin: vi.fn(),
+  },
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
+
+import { toast } from "sonner";
 import { Http } from "@/utilities/http";
+import { Navigation } from "@/utilities/navigation";
+
+const jsonResponse = (body: unknown, status = 200) =>
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers({ "content-type": "application/json" }),
+    json: () => Promise.resolve(body),
+    text: () => Promise.resolve(JSON.stringify(body)),
+  }) as Response;
 
 describe("Http", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.restoreAllMocks();
   });
 
   describe("Http.get", () => {
     it("makes a GET request", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({ id: 1 }),
-        text: () => Promise.resolve(JSON.stringify({ id: 1 })),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        jsonResponse({ id: 1 }),
+      );
 
       await Http.get("/api/test");
       expect(fetch).toHaveBeenCalledWith(
@@ -34,12 +55,9 @@ describe("Http", () => {
     });
 
     it("throws ApiError on non-ok response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        headers: new Headers(),
-        json: () => Promise.resolve({ error: "Not found" }),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        jsonResponse({ error: { code: "not_found", message: "no" } }, 404),
+      );
 
       await expect(Http.get("/api/test")).rejects.toThrow(ApiError);
     });
@@ -48,13 +66,7 @@ describe("Http", () => {
   describe("Http.post", () => {
     it("makes a POST request with body", async () => {
       const body = { name: "test" };
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({}),
-        text: () => Promise.resolve(JSON.stringify({})),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}));
 
       await Http.post("/api/test", body);
       expect(fetch).toHaveBeenCalledWith(
@@ -70,13 +82,7 @@ describe("Http", () => {
   describe("Http.put", () => {
     it("makes a PUT request with body", async () => {
       const body = { name: "updated" };
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({}),
-        text: () => Promise.resolve(JSON.stringify({})),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}));
 
       await Http.put("/api/test", body);
       expect(fetch).toHaveBeenCalledWith(
@@ -91,13 +97,7 @@ describe("Http", () => {
 
   describe("Http.delete", () => {
     it("makes a DELETE request", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        json: () => Promise.resolve(undefined),
-        text: () => Promise.resolve(""),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}));
 
       await Http.delete("/api/test");
       expect(fetch).toHaveBeenCalledWith(
@@ -111,13 +111,7 @@ describe("Http", () => {
     it("sends FormData without Content-Type header", async () => {
       const formData = new FormData();
       formData.append("file", new Blob(["test"]), "test.txt");
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        json: () => Promise.resolve({}),
-        text: () => Promise.resolve(""),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}));
 
       await Http.post("/api/upload", formData);
       const callArgs = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -125,42 +119,61 @@ describe("Http", () => {
     });
   });
 
+  describe("error reporting", () => {
+    it("toasts the message from the Go error envelope", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        jsonResponse(
+          { error: { code: "weak_password", message: "password too short" } },
+          400,
+        ),
+      );
+
+      await expect(Http.post("/api/test", {})).rejects.toThrow(ApiError);
+      expect(toast.error).toHaveBeenCalledWith("password too short");
+    });
+
+    it("stays quiet when silent is set", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        jsonResponse({ error: { code: "boom", message: "nope" } }, 400),
+      );
+
+      await expect(
+        Http.post("/api/test", {}, { silent: true }),
+      ).rejects.toThrow(ApiError);
+      expect(toast.error).not.toHaveBeenCalled();
+    });
+  });
+
   describe("401 handling", () => {
-    it("attempts refresh on 401 and retries", async () => {
-      const refreshMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({}),
-        text: () => Promise.resolve(""),
-      });
-      const successMock = {
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({ id: 1 }),
-        text: () => Promise.resolve(JSON.stringify({ id: 1 })),
-      };
+    it("redirects to login and does not retry", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          jsonResponse(
+            { error: { code: "unauthorized", message: "not logged in" } },
+            401,
+          ),
+        );
 
-      let callCount = 0;
-      vi.spyOn(globalThis, "fetch").mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return Promise.resolve({
-            ok: false,
-            status: 401,
-            headers: new Headers(),
-            json: () => Promise.resolve({}),
-          });
-        }
-        if (callCount === 2) {
-          return refreshMock();
-        }
-        return Promise.resolve(successMock);
-      });
+      await expect(Http.get("/api/test")).rejects.toThrow(ApiError);
 
-      await Http.get("/api/test");
-      expect(callCount).toBeGreaterThanOrEqual(2);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(Navigation.redirectToLogin).toHaveBeenCalled();
+    });
+
+    it("does not redirect when skipAuthRedirect is set", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        jsonResponse(
+          { error: { code: "unauthorized", message: "not logged in" } },
+          401,
+        ),
+      );
+
+      await expect(
+        Http.get("/api/test", { skipAuthRedirect: true, silent: true }),
+      ).rejects.toThrow(ApiError);
+
+      expect(Navigation.redirectToLogin).not.toHaveBeenCalled();
     });
   });
 });

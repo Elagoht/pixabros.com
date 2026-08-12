@@ -2,10 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   DAYS_EN,
   DAYS_TR,
-  DAYS_RU,
   MONTHS_EN,
   MONTHS_TR,
-  MONTHS_RU,
   localeData,
   getDaysInMonth,
   getFirstDay,
@@ -20,10 +18,6 @@ describe("DAYS constants", () => {
   it("DAYS_TR has 7 entries", () => {
     expect(DAYS_TR).toHaveLength(7);
   });
-
-  it("DAYS_RU has 7 entries", () => {
-    expect(DAYS_RU).toHaveLength(7);
-  });
 });
 
 describe("MONTHS constants", () => {
@@ -33,10 +27,6 @@ describe("MONTHS constants", () => {
 
   it("MONTHS_TR has 12 entries", () => {
     expect(MONTHS_TR).toHaveLength(12);
-  });
-
-  it("MONTHS_RU has 12 entries", () => {
-    expect(MONTHS_RU).toHaveLength(12);
   });
 });
 

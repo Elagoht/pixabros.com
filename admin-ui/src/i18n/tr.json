@@ -1,107 +1,156 @@
 {
-	"meta": {
-		"locale": "tr-tr",
-		"lang": "tr"
-	},
-	"app": {
-		"name": "Pixabros Yönetici"
-	},
-	"common": {
-		"submit": "Gönder",
-		"cancel": "İptal",
-		"create": "Oluştur",
-		"edit": "Düzenle",
-		"delete": "Sil",
-		"save": "Kaydet",
-		"loading": "Yükleniyor...",
-		"error": "Bir hata oluştu",
-		"retry": "Tekrar dene",
-		"back": "Geri",
-		"next": "İleri",
-		"close": "Kapat",
-		"detail": "Detay",
-		"confirm": "Onayla",
-		"yes": "Evet",
-		"no": "Hayır",
-		"today": "Bugün",
-		"selectDate": "Tarih seçin",
-		"selectDateTime": "Tarih ve saat seçin",
-		"chooseFile": "Dosya seçin",
-		"noFileChosen": "Dosya seçilmedi",
-		"browse": "Gözat",
-		"dragAndDrop": "veya sürükleyip bırakın",
-		"noResults": "Sonuç bulunamadı",
-		"search": "Ara...",
-		"previous": "Önceki",
-		"noData": "Gösterilecek veri yok",
-		"uploading": "Yükleniyor...",
-		"logo": "Logo",
-		"exampleUrl": "www.example.com"
-	},
-	"validation": {
-		"email": {
-			"invalid": "Geçersiz e-posta adresi",
-			"required": "E-posta zorunludur"
-		},
-		"password": {
-			"required": "Şifre zorunludur",
-			"min": "Şifre en az 8 karakter olmalıdır"
-		},
-		"confirmPassword": {
-			"required": "Lütfen şifrenizi onaylayın",
-			"match": "Şifreler eşleşmiyor"
-		},
-		"required": "Bu alan zorunludur",
-		"atLeastOneEmail": "En az bir e-posta adresi girin"
-	},
-	"settings": {
-		"title": "Ayarlar",
-		"language": {
-			"title": "Dil",
-			"subtitle": "Uygulama görüntüleme dili",
-			"saved": "Dil tercihi kaydedildi"
-		}
-	},
-	"pages": {
-		"auth": {
-			"login": {
-				"title": "Giriş Yap"
-			}
-		},
-		"notFound": {
-			"subtitle": "Sayfa bulunamadı",
-			"description": "Aradığınız sayfa mevcut değil veya taşınmış.",
-			"previousPage": "Geri dön",
-			"backHome": "Ana sayfa"
-		}
-	},
-	"filters": {
-		"title": "Filtreler",
-		"clear": "Temizle",
-		"sort": "Sıralama",
-		"direction": "Yön",
-		"ascending": "Artan",
-		"descending": "Azalan"
-	},
-	"months": {
-		"1": "Ocak",
-		"2": "Şubat",
-		"3": "Mart",
-		"4": "Nisan",
-		"5": "Mayıs",
-		"6": "Haziran",
-		"7": "Temmuz",
-		"8": "Ağustos",
-		"9": "Eylül",
-		"10": "Ekim",
-		"11": "Kasım",
-		"12": "Aralık"
-	},
-	"errorBoundary": {
-		"somethingWentWrong": "Bir şeyler yanlış gitti.",
-		"tryAgain": "Tekrar dene"
-	},
-	"errors": {
-		"invalidCredentials": "Geçersiz bilgiler"
-	}
+  "meta": {
+    "locale": "tr-tr",
+    "lang": "tr"
+  },
+  "app": {
+    "name": "Pixabros Yönetici"
+  },
+  "common": {
+    "submit": "Gönder",
+    "cancel": "İptal",
+    "create": "Oluştur",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "save": "Kaydet",
+    "loading": "Yükleniyor...",
+    "error": "Bir hata oluştu",
+    "retry": "Tekrar dene",
+    "back": "Geri",
+    "next": "İleri",
+    "close": "Kapat",
+    "detail": "Detay",
+    "confirm": "Onayla",
+    "yes": "Evet",
+    "no": "Hayır",
+    "today": "Bugün",
+    "selectDate": "Tarih seçin",
+    "selectDateTime": "Tarih ve saat seçin",
+    "chooseFile": "Dosya seçin",
+    "noFileChosen": "Dosya seçilmedi",
+    "browse": "Gözat",
+    "dragAndDrop": "veya sürükleyip bırakın",
+    "noResults": "Sonuç bulunamadı",
+    "search": "Ara...",
+    "previous": "Önceki",
+    "noData": "Gösterilecek veri yok",
+    "uploading": "Yükleniyor...",
+    "logo": "Logo",
+    "exampleUrl": "www.example.com"
+  },
+  "auth": {
+    "username": "Kullanıcı adı",
+    "password": "Şifre",
+    "login": "Giriş yap",
+    "logout": "Çıkış yap",
+    "forgotPassword": "Şifrenizi mi unuttunuz?"
+  },
+  "menu": {
+    "dashboard": "Panel"
+  },
+  "validation": {
+    "email": {
+      "invalid": "Geçersiz e-posta adresi",
+      "required": "E-posta zorunludur"
+    },
+    "username": {
+      "required": "Kullanıcı adı zorunludur"
+    },
+    "password": {
+      "required": "Şifre zorunludur",
+      "min": "Şifre en az 8 karakter olmalıdır",
+      "max": "Şifre en fazla 72 karakter olmalıdır"
+    },
+    "confirmPassword": {
+      "required": "Lütfen şifrenizi onaylayın",
+      "match": "Şifreler eşleşmiyor"
+    },
+    "required": "Bu alan zorunludur",
+    "atLeastOneEmail": "En az bir e-posta adresi girin"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "language": {
+      "title": "Dil",
+      "subtitle": "Uygulama görüntüleme dili",
+      "saved": "Dil tercihi kaydedildi"
+    }
+  },
+  "pages": {
+    "auth": {
+      "login": {
+        "title": "Giriş Yap",
+        "subtitle": "PixaBros yönetici paneline giriş yapın"
+      },
+      "forgotPassword": {
+        "title": "Şifrenizi mi unuttunuz?",
+        "subtitle": "Yönetici hesaplarına kayıtlı bir e-posta adresi bulunmuyor.",
+        "noSelfService": "Bu panel şifreyi kendi başına sıfırlayamaz. Bunu yalnızca PixaBros sunucusuna erişimi olan biri yapabilir.",
+        "instructions": "Sunucuyu yöneten kişiden sunucuya bağlanıp şu komutu çalıştırmasını isteyin:",
+        "sessionsNote": "Şifre sıfırlandığında o yönetici hesabıyla açık olan tüm oturumlar kapatılır.",
+        "backToLogin": "Girişe dön"
+      }
+    },
+    "changePassword": {
+      "title": "Şifre değiştir",
+      "currentPassword": "Mevcut şifre",
+      "newPassword": "Yeni şifre",
+      "confirmPassword": "Yeni şifre (tekrar)",
+      "submit": "Şifreyi değiştir",
+      "success": "Şifreniz değiştirildi. Lütfen tekrar giriş yapın.",
+      "signsOutWarning": "Şifrenizi değiştirdiğinizde bu sekme dahil tüm oturumlarınız kapatılır."
+    },
+    "notFound": {
+      "subtitle": "Sayfa bulunamadı",
+      "description": "Aradığınız sayfa mevcut değil veya taşınmış.",
+      "previousPage": "Geri dön",
+      "backHome": "Ana sayfa"
+    }
+  },
+  "categories": {
+    "table": {
+      "header": "Kategoriler",
+      "topLevel": "Üst seviye",
+      "parentCategory": "Üst kategori",
+      "createCategory": "Yeni kategori",
+      "createSubcategory": "Yeni alt kategori",
+      "editCategory": "Kategoriyi düzenle",
+      "deleteCategory": "Kategoriyi sil",
+      "deleteDescription": "\"{{name}}\" kategorisini silmek istediğinize emin misiniz?",
+      "deleteDescriptionWithChildren": "\"{{name}}\" kategorisinin alt kategorileri var. Silerseniz hepsi de silinecek. Devam edilsin mi?",
+      "noCategories": "Henüz kategori yok",
+      "cycleError": "Bir kategori kendi alt kategorisinin içine taşınamaz"
+    }
+  },
+  "filters": {
+    "title": "Filtreler",
+    "clear": "Temizle",
+    "sort": "Sıralama",
+    "direction": "Yön",
+    "ascending": "Artan",
+    "descending": "Azalan"
+  },
+  "months": {
+    "1": "Ocak",
+    "2": "Şubat",
+    "3": "Mart",
+    "4": "Nisan",
+    "5": "Mayıs",
+    "6": "Haziran",
+    "7": "Temmuz",
+    "8": "Ağustos",
+    "9": "Eylül",
+    "10": "Ekim",
+    "11": "Kasım",
+    "12": "Aralık"
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Bir şeyler yanlış gitti.",
+    "tryAgain": "Tekrar dene"
+  },
+  "errors": {
+    "invalidCredentials": "Kullanıcı adı veya şifre hatalı",
+    "currentPasswordIncorrect": "Mevcut şifreniz hatalı",
+    "weakPassword": "Şifre 8 ile 72 karakter arasında olmalıdır"
+  }
 }

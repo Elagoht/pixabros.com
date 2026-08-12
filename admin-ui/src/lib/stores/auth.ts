@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import { sessionService } from "@/services/session";
+import { SessionService } from "@/services/session";
+import { Navigation } from "@/utilities/navigation";
 
 interface AuthState {
-  user: ResponseMe | null;
+  user: ResponseWhoami | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setUser: (user: ResponseMe | null) => void;
+  setUser: (user: ResponseWhoami | null) => void;
   setAuthenticated: (value: boolean) => void;
+  setSession: (user: ResponseWhoami) => void;
   checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -21,6 +23,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
   setAuthenticated: (value) => set({ isAuthenticated: value }),
 
+  // Login already returns the admin, so the form can seed the store directly
+  // instead of paying for a second round-trip to /whoami.
+  setSession: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+
   checkAuth: async () => {
     if (checkAuthPromise) {
       return checkAuthPromise;
@@ -29,17 +35,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     checkAuthPromise = (async () => {
       set({ isLoading: true });
       try {
-        await sessionService.refresh();
-        const currentUser = await sessionService.me();
-        set({
-          isAuthenticated: true,
-          isLoading: false,
-          user: currentUser,
-        });
+        const user = await SessionService.me();
+        set({ isAuthenticated: true, isLoading: false, user });
       } catch {
         set({ isAuthenticated: false, isLoading: false, user: null });
+      } finally {
+        checkAuthPromise = null;
       }
-      checkAuthPromise = null;
     })();
 
     return checkAuthPromise;
@@ -47,19 +49,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     try {
-      await sessionService.delete();
+      await SessionService.delete();
     } finally {
       set({ isAuthenticated: false, user: null });
     }
-    const isOnAuthPage =
-      window.location.pathname.startsWith("/login") ||
-      window.location.pathname.startsWith("/register");
-    if (!isOnAuthPage) {
-      const currentPath =
-        window.location.pathname +
-        window.location.search +
-        window.location.hash;
-      window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
-    }
+    Navigation.redirectToLogin();
   },
 }));

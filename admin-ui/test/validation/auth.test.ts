@@ -1,49 +1,82 @@
-import { describe, it, expect } from "vitest";
-import { loginValidationSchema } from "@/lib/validation/auth";
+import { describe, expect, it } from "vitest";
+import {
+  changePasswordValidationSchema,
+  loginValidationSchema,
+} from "@/lib/validation/auth";
 
-const mockT = (key: string) => key;
+const mockT = ((key: string) => key) as TranslateFunction;
 
 describe("loginValidationSchema", () => {
   const schema = loginValidationSchema(mockT);
 
-  it("validates correct email and password", async () => {
-    const result = await schema.isValid({ email: "test@example.com", password: "123456", recaptcha: "test-token" });
-    expect(result).toBe(true);
+  it("accepts a username and password", async () => {
+    await expect(
+      schema.isValid({ username: "furkan", password: "s3cret-password" }),
+    ).resolves.toBe(true);
   });
 
-  it("rejects invalid email", async () => {
-    try {
-      await schema.validate({ email: "not-an-email", password: "123456" });
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeDefined();
-    }
+  it("rejects a missing username", async () => {
+    await expect(
+      schema.isValid({ username: "", password: "s3cret-password" }),
+    ).resolves.toBe(false);
   });
 
-  it("rejects missing email", async () => {
-    try {
-      await schema.validate({ email: "", password: "123456" });
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeDefined();
-    }
+  it("rejects a missing password", async () => {
+    await expect(
+      schema.isValid({ username: "furkan", password: "" }),
+    ).resolves.toBe(false);
+  });
+});
+
+describe("changePasswordValidationSchema", () => {
+  const schema = changePasswordValidationSchema(mockT);
+
+  const valid = {
+    current_password: "old-password",
+    new_password: "new-password",
+    confirm_password: "new-password",
+  };
+
+  it("accepts a well-formed change", async () => {
+    await expect(schema.isValid(valid)).resolves.toBe(true);
   });
 
-  it("rejects missing password", async () => {
-    try {
-      await schema.validate({ email: "test@example.com", password: "" });
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeDefined();
-    }
+  it("rejects a mismatched confirmation", async () => {
+    await expect(
+      schema.isValid({ ...valid, confirm_password: "something-else" }),
+    ).resolves.toBe(false);
   });
 
-  it("rejects both missing email and password", async () => {
-    try {
-      await schema.validate({ email: "", password: "" });
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeDefined();
-    }
+  // Mirrors auth.ValidatePassword on the Go side.
+  it("rejects a new password under 8 characters", async () => {
+    await expect(
+      schema.isValid({
+        ...valid,
+        new_password: "short",
+        confirm_password: "short",
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it("rejects a new password over 72 characters", async () => {
+    const tooLong = "a".repeat(73);
+    await expect(
+      schema.isValid({
+        ...valid,
+        new_password: tooLong,
+        confirm_password: tooLong,
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it("accepts a new password of exactly 72 characters", async () => {
+    const atLimit = "a".repeat(72);
+    await expect(
+      schema.isValid({
+        ...valid,
+        new_password: atLimit,
+        confirm_password: atLimit,
+      }),
+    ).resolves.toBe(true);
   });
 });

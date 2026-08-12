@@ -9,7 +9,7 @@ interface AuthGuardProps {
 }
 
 const AuthGuard: FC<AuthGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -25,10 +25,6 @@ const AuthGuard: FC<AuthGuardProps> = ({ children }) => {
     return (
       <Navigate to={`/login?next=${encodeURIComponent(currentPath)}`} replace />
     );
-  }
-
-  if (user?.first_login && location.pathname !== "/reset-password") {
-    return <Navigate to="/reset-password" replace />;
   }
 
   return <>{children}</>;

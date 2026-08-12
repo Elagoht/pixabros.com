@@ -1,53 +1,21 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: menu close event is actually required */
 /** biome-ignore-all lint/a11y/useKeyWithClickEvents: menu close event is actually required */
 import type { FC } from "react";
-import { useMemo } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import AuthGuard from "@/components/guards/AuthGuard";
 import Header from "@/components/layout/Header";
 import { Breadcrumb, Sidebar } from "@/components/ui";
-import { filterSidebarByRoles, sidebarGroups } from "@/data/sidebar";
-import usePageTracking from "@/hooks/usePageTracking";
-import { isRouteBlocked } from "@/lib/route-guards";
-import { useAuthStore } from "@/lib/stores/auth";
+import { sidebarGroups } from "@/data/sidebar";
 import { useBreadcrumbStore } from "@/lib/stores/breadcrumb";
 import { useI18n } from "@/lib/stores/i18n";
 import { useUIStore } from "@/lib/stores/ui";
-
-const UUID_RE =
-  /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-
-function pathToRouteName(pathname: string): string {
-  const cleaned = pathname.replace(UUID_RE, "/:id");
-  return cleaned.replace(/^\//, "").replace(/\//g, ".") || "dashboard";
-}
 
 const PanelLayout: FC = () => {
   const { t } = useI18n();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const breadcrumbItems = useBreadcrumbStore((s) => s.items);
-  const { user } = useAuthStore();
-  const location = useLocation();
-
-  const routeName = useMemo(
-    () => pathToRouteName(location.pathname),
-    [location.pathname],
-  );
-
-  usePageTracking(routeName, !!user);
-
-  const filteredGroups = useMemo(
-    () => filterSidebarByRoles(sidebarGroups, user?.role ?? []),
-    [user?.role],
-  );
 
   const closeSidebar = () => setSidebarOpen(false);
-
-  const blocked = user ? isRouteBlocked(location.pathname, user.role) : false;
-
-  if (blocked) {
-    return <Navigate to="/" replace />;
-  }
 
   return (
     <AuthGuard>
@@ -62,7 +30,7 @@ const PanelLayout: FC = () => {
 
           <Sidebar
             className={`fixed top-14 bottom-0 left-0 z-50 transform transition-transform duration-300 lg:relative lg:top-0 lg:translate-x-0 lg:min-w-64 lg:shrink-0 lg:shadow-none ${sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:w-64"}`}
-            groups={filteredGroups}
+            groups={sidebarGroups}
           />
 
           <main className="flex flex-1 flex-col overflow-hidden">

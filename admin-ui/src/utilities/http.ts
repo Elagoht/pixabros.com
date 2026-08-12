@@ -1,25 +1,26 @@
 import { toast } from "sonner";
 import { ApiError } from "@/utilities/api-error";
 import { Environment } from "@/utilities/environment";
+import { Navigation } from "@/utilities/navigation";
 
-function extractErrorMessage(body: Record<string, unknown>): string | null {
-  if (body.detail && typeof body.detail === "string") {
-    return body.detail;
+// The Go API answers every failure with {"error":{"code","message"}}.
+const extractErrorMessage = (body: Record<string, unknown>): string | null => {
+  const error = body.error;
+  if (error && typeof error === "object") {
+    const { message } = error as { message?: unknown };
+    if (typeof message === "string" && message) {
+      return message;
+    }
   }
-  for (const [, value] of Object.entries(body)) {
-    if (Array.isArray(value) && value.length > 0) {
-      return String(value[0]);
-    }
-    if (typeof value === "string" && value) {
-      return value;
-    }
+  if (typeof body.message === "string" && body.message) {
+    return body.message;
   }
   return null;
-}
+};
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
-  skipAuthRefresh?: boolean;
+  skipAuthRedirect?: boolean;
   silent?: boolean;
 }
 
@@ -40,37 +41,15 @@ const parseResponse = async <T>(response: Response): Promise<T> => {
   return JSON.parse(text) as T;
 };
 
-let refreshPromise: Promise<boolean> | null = null;
-
-const tryRefresh = async (): Promise<boolean> => {
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-
-  refreshPromise = fetch(`${Environment.apiBase}/user/token/refresh/`, {
-    method: "POST",
-    credentials: "include",
-  })
-    .then((res) => res.ok)
-    .catch(() => false)
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
-};
-
 const request = async <T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> => {
-  const { body, headers, skipAuthRefresh, ...rest } = options;
-
-  const url = `${Environment.apiBase}${path}`;
+  const { body, headers, skipAuthRedirect, silent, ...rest } = options;
 
   const isFormData = body instanceof FormData;
 
-  const response = await fetch(url, {
+  const response = await fetch(`${Environment.apiBase}${path}`, {
     credentials: "include",
     headers: isFormData
       ? headers
@@ -79,48 +58,21 @@ const request = async <T>(
     ...rest,
   });
 
-  if (response.status === 401 && !skipAuthRefresh) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
-      const retryResponse = await fetch(url, {
-        credentials: "include",
-        headers: isFormData
-          ? headers
-          : { "Content-Type": "application/json", ...headers },
-        body: isFormData ? body : body ? JSON.stringify(body) : undefined,
-        ...rest,
-      });
-
-      if (retryResponse.ok) {
-        return parseResponse<T>(retryResponse);
-      }
-
-      const retryBody = await retryResponse.json().catch(() => ({}));
-      if (!options.silent) {
-        const retryMsg = extractErrorMessage(retryBody);
-        if (retryMsg) {
-          toast.error(retryMsg);
-        }
-      }
-      throw new ApiError(retryResponse.status, retryBody);
-    }
-
-    if (window.location.pathname !== "/login") {
-      const currentPath =
-        window.location.pathname +
-        window.location.search +
-        window.location.hash;
-      window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
-    }
-    throw new ApiError(401, {});
-  }
-
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    if (!options.silent) {
-      const msg = extractErrorMessage(errorBody);
-      if (msg) {
-        toast.error(msg);
+
+    // The session cookie is HttpOnly, so an expired session is only ever
+    // discovered here. There is no refresh endpoint -- sessions are absolute
+    // and re-authenticating means logging in again.
+    if (response.status === 401 && !skipAuthRedirect) {
+      Navigation.redirectToLogin();
+      throw new ApiError(401, errorBody);
+    }
+
+    if (!silent) {
+      const message = extractErrorMessage(errorBody);
+      if (message) {
+        toast.error(message);
       }
     }
     throw new ApiError(response.status, errorBody);

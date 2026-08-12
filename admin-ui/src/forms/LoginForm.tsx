@@ -1,15 +1,19 @@
-import { Card, Input, SubmitButton } from "@/components/ui";
-import { useI18n } from "@/lib/stores/i18n";
-import { loginValidationSchema } from "@/lib/validation/auth";
-import { sessionService } from "@/services/session";
-import { handleRequest } from "@/utilities/request";
+import { IconLock, IconUser } from "@tabler/icons-react";
 import { Form, Formik } from "formik";
 import type { FC } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { Card, Input, SubmitButton } from "@/components/ui";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
+import { useAuthStore } from "@/lib/stores/auth";
+import { useI18n } from "@/lib/stores/i18n";
+import { loginValidationSchema } from "@/lib/validation/auth";
+import { SessionService } from "@/services/session";
+import { handleRequest } from "@/utilities/request";
 
 const LoginForm: FC = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  const { setSession } = useAuthStore();
+  const redirectAfterLogin = useLoginRedirect();
 
   return (
     <section className="w-full max-w-md">
@@ -18,42 +22,47 @@ const LoginForm: FC = () => {
           <h1 className="text-xl font-semibold text-primary-500 dark:text-primary-300">
             {t("pages.auth.login.title")}
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t("pages.auth.login.subtitle")}
+          </p>
         </Card.Header>
 
         <Card.Body className="space-y-4">
           <Formik
-            initialValues={{ email: "", password: "" }}
+            initialValues={{ username: "", password: "" }}
             validationSchema={loginValidationSchema(t)}
             onSubmit={async (values) => {
               const { data } = await handleRequest(
-                () =>
-                  sessionService.create({
-                    email: values.email,
-                    password: values.password,
-                  }),
+                () => SessionService.create(values),
                 {
-                  errorMessages: { 400: "errors.invalidCredentials" },
+                  errorMessages: {
+                    400: "errors.invalidCredentials",
+                    401: "errors.invalidCredentials",
+                  },
                   method: "POST",
+                  showSuccessMessage: false,
                 },
               );
 
               if (data) {
-                navigate(`/login-otp/${data.otp_challenge_id}`, {
-                  state: { email: values.email },
-                });
+                setSession(data);
+                redirectAfterLogin();
               }
             }}
           >
             <Form noValidate className="space-y-4">
               <Input
-                name="email"
-                placeholder={`${t("auth.email")} *`}
-                autoComplete="email"
+                name="username"
+                leftIcon={IconUser}
+                placeholder={`${t("auth.username")} *`}
+                autoComplete="username"
+                autoFocus
               />
 
               <Input
                 name="password"
                 type="password"
+                leftIcon={IconLock}
                 placeholder={`${t("auth.password")} *`}
                 autoComplete="current-password"
               />

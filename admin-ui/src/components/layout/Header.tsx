@@ -1,12 +1,6 @@
-import {
-  IconLogout,
-  IconMenu2,
-  IconSettings,
-  IconUser,
-} from "@tabler/icons-react";
+import { IconKey, IconLogout, IconMenu2, IconUser } from "@tabler/icons-react";
 import type { FC } from "react";
-import { Link } from "react-router";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button, Dropdown, Image } from "@/components/ui";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useI18n } from "@/lib/stores/i18n";
@@ -20,21 +14,22 @@ interface HeaderProps {
 const Header: FC<HeaderProps> = ({ logo, appName }) => {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { toggleSidebar } = useUIStore();
 
   const userMenuItems = [
     {
-      id: "profile",
-      label: t("menu.profile"),
+      id: "username",
+      label: user?.username ?? "",
       icon: IconUser,
-      onClick: () => navigate("/profile"),
+      disabled: true,
     },
+    { id: "sep-user", label: undefined, separator: true },
     {
-      id: "settings",
-      label: t("menu.settings"),
-      icon: IconSettings,
-      onClick: () => navigate("/settings"),
+      id: "change-password",
+      label: t("pages.changePassword.title"),
+      icon: IconKey,
+      onClick: () => navigate("/change-password"),
     },
     { id: "sep", label: undefined, separator: true },
     {

@@ -508,5 +508,46 @@
       "titleRequired": "A title is required.",
       "dateFormat": "Pick a date from the calendar."
     }
+  },
+  "contact": {
+    "list": {
+      "title": "Contact messages",
+      "unread": "{{count}} unread"
+    },
+    "columns": {
+      "subject": "Subject",
+      "from": "From",
+      "received": "Received",
+      "status": "Status"
+    },
+    "status": {
+      "read": "Read",
+      "unread": "Unread"
+    },
+    "detail": {
+      "title": "Message",
+      "from": "From",
+      "phone": "Phone",
+      "email": "Email",
+      "received": "Received",
+      "ipAddress": "IP address",
+      "message": "Message",
+      "wantsCallback": "Asked to be called back",
+      "noContact": "No contact details given"
+    },
+    "actions": {
+      "view": "Open",
+      "markRead": "Mark as read",
+      "markUnread": "Mark as unread"
+    },
+    "delete": {
+      "title": "Delete message",
+      "description": "\"{{subject}}\" will be deleted. This cannot be undone."
+    },
+    "toast": {
+      "markedRead": "Marked as read",
+      "markedUnread": "Marked as unread",
+      "deleted": "Message deleted"
+    }
   }
 }

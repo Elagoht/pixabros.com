@@ -15,6 +15,8 @@ import (
 	"pixabros/internal/auth"
 	"pixabros/internal/awards"
 	"pixabros/internal/awardsapi"
+	"pixabros/internal/contact"
+	"pixabros/internal/contactapi"
 	"pixabros/internal/devlog"
 	"pixabros/internal/devlogapi"
 	"pixabros/internal/games"
@@ -39,6 +41,7 @@ type Dependencies struct {
 	Members    *members.Repo
 	Awards     *awards.Repo
 	Devlog     *devlog.Repo
+	Contact    *contact.Repo
 	Media      *media.Repo
 	MediaFiles storage.Storage
 	MediaDir   string
@@ -94,6 +97,14 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Get))
 	mux.HandleFunc("PUT /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Delete))
+
+	contactHandlers := contactapi.NewHandlers(deps.Contact)
+	mux.HandleFunc("GET /api/admin/contact", adminapi.RequireSession(deps.Sessions, contactHandlers.List))
+	mux.HandleFunc("GET /api/admin/contact/{id}", adminapi.RequireSession(deps.Sessions, contactHandlers.Get))
+	// Read state is the only thing the admin can change about a submission,
+	// so it gets its own sub-resource rather than a general update.
+	mux.HandleFunc("PUT /api/admin/contact/{id}/read", adminapi.RequireSession(deps.Sessions, contactHandlers.SetRead))
+	mux.HandleFunc("DELETE /api/admin/contact/{id}", adminapi.RequireSession(deps.Sessions, contactHandlers.Delete))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
 	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)

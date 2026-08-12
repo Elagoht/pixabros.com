@@ -54,6 +54,16 @@ export const queryKeys = {
     detail: (postId: string) =>
       [...queryKeys.devlog.all, "detail", postId] as const,
   },
+  contact: {
+    all: ["contact"] as const,
+    lists: () => [...queryKeys.contact.all, "list"] as const,
+    list: (sort?: ContactSort) =>
+      [
+        ...queryKeys.contact.lists(),
+        sort?.field ?? null,
+        sort?.direction ?? null,
+      ] as const,
+  },
   media: {
     all: ["media"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,

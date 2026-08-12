@@ -81,6 +81,7 @@ export const sidebarGroups: SidebarGroupData[] = [
         id: "contact",
         icon: IconMail,
         labelKey: "menu.contact",
+        path: "/contact",
       },
       {
         id: "regen-jobs",

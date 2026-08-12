@@ -271,3 +271,30 @@ interface DevlogFormValues {
   is_published: boolean;
   published_at: string;
 }
+
+interface ResponseContactSubmission {
+  id: string;
+  subject: string;
+  phone: string;
+  email: string;
+  message: string;
+  wants_callback: boolean;
+  is_read: boolean;
+  ip_address: string;
+  created_at: string;
+}
+
+// The unread count travels with the list so the UI never has to derive it
+// from a list it may have re-sorted.
+interface ResponseContactList {
+  submissions: ResponseContactSubmission[];
+  unread: number;
+}
+
+// Mirrors contact.sortableColumns in Go.
+type ContactSortField = "subject" | "email" | "is_read" | "created_at";
+
+interface ContactSort {
+  field?: ContactSortField;
+  direction: "asc" | "desc";
+}

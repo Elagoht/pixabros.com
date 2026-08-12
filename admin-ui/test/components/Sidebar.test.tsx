@@ -72,7 +72,14 @@ describe("sidebarGroups data", () => {
       .filter((item) => item.path)
       .map((item) => item.path);
 
-    expect(navigable).toEqual(["/", "/games", "/devlog", "/awards", "/members"]);
+    expect(navigable).toEqual([
+      "/",
+      "/games",
+      "/devlog",
+      "/awards",
+      "/members",
+      "/contact",
+    ]);
   });
 
   it("lists every module from the architecture spec", () => {

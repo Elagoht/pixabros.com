@@ -27,6 +27,7 @@ const AwardEditPage = lazy(() => import("@/app/(panel)/awards/[id]/page"));
 const DevlogPage = lazy(() => import("@/app/(panel)/devlog/page"));
 const DevlogCreatePage = lazy(() => import("@/app/(panel)/devlog/new/page"));
 const DevlogEditPage = lazy(() => import("@/app/(panel)/devlog/[id]/page"));
+const ContactPage = lazy(() => import("@/app/(panel)/contact/page"));
 const NotFoundPage = lazy(() => import("@/app/not-found"));
 
 // The Go server mounts this SPA under a non-root prefix, so react-router has
@@ -108,6 +109,10 @@ export const router = createBrowserRouter(
         {
           element: <DevlogEditPage />,
           path: "/devlog/:id",
+        },
+        {
+          element: <ContactPage />,
+          path: "/contact",
         },
       ],
     },

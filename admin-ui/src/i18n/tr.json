@@ -508,5 +508,46 @@
       "titleRequired": "Başlık zorunludur.",
       "dateFormat": "Takvimden bir tarih seçin."
     }
+  },
+  "contact": {
+    "list": {
+      "title": "İletişim Mesajları",
+      "unread": "{{count}} okunmamış"
+    },
+    "columns": {
+      "subject": "Konu",
+      "from": "Gönderen",
+      "received": "Geliş",
+      "status": "Durum"
+    },
+    "status": {
+      "read": "Okundu",
+      "unread": "Okunmadı"
+    },
+    "detail": {
+      "title": "Mesaj",
+      "from": "Gönderen",
+      "phone": "Telefon",
+      "email": "E-posta",
+      "received": "Geliş tarihi",
+      "ipAddress": "IP adresi",
+      "message": "Mesaj",
+      "wantsCallback": "Aranmak istiyor",
+      "noContact": "İletişim bilgisi verilmemiş"
+    },
+    "actions": {
+      "view": "Aç",
+      "markRead": "Okundu işaretle",
+      "markUnread": "Okunmadı işaretle"
+    },
+    "delete": {
+      "title": "Mesajı sil",
+      "description": "\"{{subject}}\" silinecek. Bu işlem geri alınamaz."
+    },
+    "toast": {
+      "markedRead": "Okundu olarak işaretlendi",
+      "markedUnread": "Okunmadı olarak işaretlendi",
+      "deleted": "Mesaj silindi"
+    }
   }
 }

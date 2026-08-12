@@ -65,6 +65,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 | `Kbd`            | `children` (for keyboard shortcuts like `⌘K`)                                                                        |
 | `CodeBlock`      | `code`, `language?`, `filename?`, `maxHeight?`                                                                       |
 | `Image`          | `src`, `alt`, `width`, `height`, `loading?: "lazy" \| "eager"`                                                       |
+| `ImagePreview`   | `src`, `alt`, `className?`, `caption?` — thumbnail that opens the full image in a modal |
 | `Separator`      | `className?`                                                                                                         |
 | `Skeleton`       | `className?`, `variant?: "text" \| "rect" \| "circle"`, `width?`, `height?`                                          |
 | `Loading`        | `className?`                                                                                                         |

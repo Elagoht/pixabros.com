@@ -35,6 +35,7 @@ export { default as FilterPanel } from "./FilterPanel";
 export { default as HierarchyTable } from "./HierarchyTable";
 export { default as HoverCard } from "./HoverCard";
 export { default as Image } from "./Image";
+export { default as ImagePreview } from "./ImagePreview";
 export { default as Input } from "./Input";
 export { default as Kbd } from "./Kbd";
 export { default as Keywords } from "./Keywords";

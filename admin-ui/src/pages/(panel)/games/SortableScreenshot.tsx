@@ -3,7 +3,7 @@ import { IconGripVertical, IconTrash } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import classNames from "classnames";
 import { type CSSProperties, type FC, useCallback } from "react";
-import { Button, Skeleton } from "@/components/ui";
+import { Button, ImagePreview, Skeleton } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { MediaService } from "@/services/media";
 
@@ -71,10 +71,11 @@ const SortableScreenshot: FC<SortableScreenshotProps> = ({
       {isLoading ? (
         <Skeleton className="h-20 w-full" variant="rect" />
       ) : data ? (
-        <img
+        <ImagePreview
           src={data.url}
           alt={alt}
-          className="h-20 w-full rounded-md object-cover"
+          caption={alt}
+          className="h-20 object-cover"
         />
       ) : null}
 

@@ -4,7 +4,7 @@ import { Alert, Button, Card, CodeBlock } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
 
 const RESET_COMMAND =
-  "admincli reset-password -username <username> -password '<new-password>'";
+  "./pixabros reset-password -username <username> -password '<new-password>'";
 
 const ForgotPasswordPanel: FC = () => {
   const { t } = useI18n();

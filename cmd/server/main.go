@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"pixabros/internal/admincmd"
 	"pixabros/internal/auth"
 	"pixabros/internal/awards"
 	"pixabros/internal/config"
@@ -28,6 +29,12 @@ import (
 )
 
 func main() {
+	// Operator commands share this binary, so `pixabros reset-password ...`
+	// does what it says instead of ignoring its flags and starting a server.
+	if admincmd.Run(os.Args[1:]) {
+		return
+	}
+
 	cfg := config.Load()
 
 	conn, err := db.Open(cfg.DBPath)

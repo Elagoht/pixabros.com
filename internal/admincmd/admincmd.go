@@ -1,4 +1,10 @@
-package main
+// Package admincmd holds the operator commands that live in the server binary.
+//
+// They used to be a second binary, which meant a deployment was two artefacts
+// and `./pixabros reset-password ...` silently started a server instead of
+// resetting anything -- the flags were simply ignored. One binary, one place
+// to look.
+package admincmd
 
 import (
 	"database/sql"
@@ -13,35 +19,44 @@ import (
 )
 
 const usage = `usage:
-  admincli create-admin   -username <u> -password <p>
-  admincli reset-password -username <u> -password <p>`
+  pixabros                                        start the server
+  pixabros create-admin   -username <u> -password <p>
+  pixabros reset-password -username <u> -password <p>`
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, usage)
-		os.Exit(1)
+// Run executes an operator command.
+//
+// It reports whether the arguments were a command at all: with none, the
+// caller goes on to start the server. An unrecognised argument is an error
+// rather than a silent fall-through, because a mistyped command that quietly
+// boots a server looks like it worked.
+func Run(args []string) (handled bool) {
+	if len(args) == 0 {
+		return false
 	}
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "create-admin":
-		username, password := parseCredentials("create-admin", os.Args[2:])
+		username, password := parseCredentials("create-admin", args[1:])
 		if err := createAdmin(username, password); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
 		fmt.Println("admin created:", username)
 	case "reset-password":
-		username, password := parseCredentials("reset-password", os.Args[2:])
+		username, password := parseCredentials("reset-password", args[1:])
 		if err := resetPassword(username, password); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
 		fmt.Println("password reset:", username)
+	case "help", "-h", "--help":
+		fmt.Println(usage)
 	default:
-		fmt.Fprintln(os.Stderr, "unknown command:", os.Args[1])
+		fmt.Fprintln(os.Stderr, "unknown command:", args[0])
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(1)
 	}
+	return true
 }
 
 func parseCredentials(name string, args []string) (username, password string) {

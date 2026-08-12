@@ -1,4 +1,4 @@
-package main
+package admincmd
 
 import (
 	"database/sql"
@@ -130,5 +130,23 @@ func TestResetPassword_ShortPasswordFails(t *testing.T) {
 	}
 	if err := resetPassword("furkan", "short"); err == nil {
 		t.Error("resetPassword() with a password under 8 characters should return an error")
+	}
+}
+
+// With no arguments the binary is a server, so Run has to say it did nothing.
+func TestRun_NoArgumentsIsNotACommand(t *testing.T) {
+	if Run(nil) {
+		t.Error("Run(nil) claimed to have handled a command")
+	}
+	if Run([]string{}) {
+		t.Error("Run([]) claimed to have handled a command")
+	}
+}
+
+func TestRun_HelpIsHandled(t *testing.T) {
+	for _, arg := range []string{"help", "-h", "--help"} {
+		if !Run([]string{arg}) {
+			t.Errorf("Run(%q) was not handled", arg)
+		}
 	}
 }

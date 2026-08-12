@@ -240,7 +240,8 @@
       "title": "Ekran görüntüleri",
       "add": "Ekran görüntüsü ekle",
       "empty": "Henüz ekran görüntüsü yok",
-      "alt": "Ekran görüntüsü {{index}}"
+      "alt": "Ekran görüntüsü {{index}}",
+      "reorderHint": "Görünme sırasını değiştirmek için küçük resimleri sürükleyin."
     },
     "build": {
       "title": "Oynanabilir sürüm",

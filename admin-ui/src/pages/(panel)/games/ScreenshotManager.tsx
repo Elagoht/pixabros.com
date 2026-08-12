@@ -1,38 +1,21 @@
-import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { IconPhotoPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, type FC, useRef, useState } from "react";
-import { Button, Card, EmptyState, Loading, Skeleton } from "@/components/ui";
+import { type ChangeEvent, type FC, useEffect, useRef, useState } from "react";
+import { Button, Card, EmptyState, Loading } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
 import { GameService } from "@/services/game";
 import { MediaService } from "@/services/media";
 import { handleRequest } from "@/utilities/request";
-
-interface ScreenshotThumbProps {
-  mediaId: string;
-  alt: string;
-}
-
-const ScreenshotThumb: FC<ScreenshotThumbProps> = ({ mediaId, alt }) => {
-  const { data, isLoading } = useQuery({
-    queryKey: queryKeys.media.detail(mediaId),
-    queryFn: () => MediaService.get(mediaId),
-  });
-
-  if (isLoading) {
-    return <Skeleton className="h-20 w-full" variant="rect" />;
-  }
-  if (!data) {
-    return null;
-  }
-  return (
-    <img
-      src={data.url}
-      alt={alt}
-      className="h-20 w-full rounded-md object-cover"
-    />
-  );
-};
+import SortableScreenshot from "./SortableScreenshot";
 
 interface ScreenshotManagerProps {
   gameId: string;
@@ -49,6 +32,14 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
     queryFn: () => GameService.listScreenshots(gameId),
   });
 
+  // Dragging reorders this local copy immediately so the tiles move under the
+  // pointer; the server is told afterwards. Re-syncing from the query means a
+  // rejected reorder snaps back to the real order instead of lying.
+  const [ordered, setOrdered] = useState<ResponseScreenshot[]>(screenshots);
+  useEffect(() => {
+    setOrdered(screenshots);
+  }, [screenshots]);
+
   const invalidate = () =>
     queryClient.invalidateQueries({
       queryKey: queryKeys.games.screenshots(gameId),
@@ -62,6 +53,37 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
       }),
     onSuccess: invalidate,
   });
+
+  const reorderMutation = useMutation({
+    mutationFn: (ids: string[]) =>
+      handleRequest(() => GameService.reorderScreenshots(gameId, ids), {
+        method: "PUT",
+        showSuccessMessage: false,
+      }),
+    onSettled: invalidate,
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
+    const from = ordered.findIndex((shot) => shot.id === active.id);
+    const to = ordered.findIndex((shot) => shot.id === over.id);
+    if (from === -1 || to === -1) {
+      return;
+    }
+
+    const next = [...ordered];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrdered(next);
+    reorderMutation.mutate(next.map((shot) => shot.id));
+  };
 
   // Adding is two calls: upload the bytes, then attach the returned media id
   // to this game at the end of the list.
@@ -88,7 +110,7 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
         () =>
           GameService.addScreenshot(gameId, {
             media_id: uploaded.id,
-            display_order: screenshots.length,
+            display_order: ordered.length,
           }),
         { method: "POST", successMessage: "games.toast.screenshotAdded" },
       );
@@ -100,6 +122,8 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
       inputRef.current.value = "";
     }
   };
+
+  const isBusy = removeMutation.isPending || reorderMutation.isPending;
 
   return (
     <Card>
@@ -118,41 +142,41 @@ const ScreenshotManager: FC<ScreenshotManagerProps> = ({ gameId }) => {
         </Button>
       </Card.Header>
 
-      <Card.Body>
+      <Card.Body className="space-y-3">
         {isLoading ? (
           <Loading />
-        ) : screenshots.length === 0 ? (
+        ) : ordered.length === 0 ? (
           <EmptyState title={t("games.screenshots.empty")} />
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {screenshots.map((screenshot, index) => (
-              <li
-                key={screenshot.id}
-                className="space-y-1.5 rounded-lg border border-gray-200 p-2 dark:border-gray-700"
-              >
-                <ScreenshotThumb
-                  mediaId={screenshot.media_id}
-                  alt={t("games.screenshots.alt", {
-                    index: String(index + 1),
-                  })}
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                    #{screenshot.display_order + 1}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    title={t("common.delete")}
-                    disabled={removeMutation.isPending}
-                    onClick={() => removeMutation.mutate(screenshot.id)}
-                  >
-                    <IconTrash size={14} />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            {ordered.length > 1 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("games.screenshots.reorderHint")}
+              </p>
+            )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {ordered.map((screenshot, index) => (
+                  <SortableScreenshot
+                    key={screenshot.id}
+                    id={screenshot.id}
+                    mediaId={screenshot.media_id}
+                    position={index + 1}
+                    alt={t("games.screenshots.alt", {
+                      index: String(index + 1),
+                    })}
+                    removeLabel={t("common.delete")}
+                    isBusy={isBusy}
+                    onRemove={() => removeMutation.mutate(screenshot.id)}
+                  />
+                ))}
+              </ul>
+            </DndContext>
+          </>
         )}
 
         <input

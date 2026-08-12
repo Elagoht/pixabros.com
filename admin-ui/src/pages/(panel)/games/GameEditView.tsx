@@ -1,4 +1,4 @@
-import { IconArrowLeft, IconTrash } from "@tabler/icons-react";
+import { IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -85,19 +85,9 @@ const GameEditView: FC = () => {
 
   return (
     <Container size="xl" className="space-y-4 py-6">
-      <div className="space-y-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={IconArrowLeft}
-          onClick={() => navigate("/games")}
-        >
-          {t("games.backToList")}
-        </Button>
-        <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-          {game.title}
-        </h1>
-      </div>
+      <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+        {game.title}
+      </h1>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

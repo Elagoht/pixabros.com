@@ -62,3 +62,22 @@ describe("GameService", () => {
     expect(options).toEqual({ silent: true });
   });
 });
+
+describe("GameService screenshot reordering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // The endpoint is scoped to the game, and takes the complete ordered list
+  // rather than a moved-item delta.
+  it("sends the whole ordered screenshot list, scoped to the game", async () => {
+    vi.mocked(Http.put).mockResolvedValueOnce(undefined);
+    await GameService.reorderScreenshots("game-1", ["s3", "s1", "s2"]);
+
+    expect(Http.put).toHaveBeenCalledWith(
+      "/api/admin/games/game-1/screenshots/reorder",
+      { ids: ["s3", "s1", "s2"] },
+      { silent: true },
+    );
+  });
+});

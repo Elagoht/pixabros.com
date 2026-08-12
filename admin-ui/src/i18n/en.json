@@ -240,7 +240,8 @@
       "title": "Screenshots",
       "add": "Add screenshot",
       "empty": "No screenshots yet",
-      "alt": "Screenshot {{index}}"
+      "alt": "Screenshot {{index}}",
+      "reorderHint": "Drag the thumbnails to change the order they appear in."
     },
     "build": {
       "title": "Playable build",

@@ -1534,17 +1534,21 @@ a:hover {
  * its stripes and switches, and the two controller ports along the bottom.
  */
 
+/* A machine standing on its own, not a plinth under the television: far
+   narrower than the screen, and set apart from it. */
 .nes {
   background: linear-gradient(180deg, #d5d2c8 0 62%, #bcb9af 62% 100%);
-  border-radius: 0 0 0.5rem 0.5rem;
+  border-radius: 0.6rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.7),
     inset 0 -3px 8px rgb(0 0 0 / 0.28),
     0 18px 34px rgb(0 0 0 / 0.5);
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: minmax(9rem, 15rem) 1fr;
-  padding: 1.1rem 1.5rem 1.5rem;
+  gap: 1.35rem;
+  grid-template-columns: 11rem 1fr;
+  margin: 2rem auto 0;
+  max-width: 34rem;
+  padding: 1.35rem 1.5rem 1.9rem;
   position: relative;
 }
 
@@ -1555,7 +1559,7 @@ a:hover {
   border: 1px solid #8f8c84;
   border-radius: 0.3rem;
   box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.75);
-  min-height: 5.5rem;
+  min-height: 7rem;
   overflow: hidden;
   position: relative;
 }
@@ -1576,11 +1580,9 @@ a:hover {
    in. The rest is clipped by the bay, which is the inside of the console. */
 .console__cartridge {
   display: block;
-  inset-inline-start: 50%;
+  inset-inline: 0;
   position: absolute;
-  top: 1.1rem;
-  transform: translateX(-50%);
-  width: 74%;
+  top: 1.05rem;
 }
 
 .console__cartridge--loaded {
@@ -1590,10 +1592,10 @@ a:hover {
 /* Pushed down into the machine, the way one goes in. */
 @keyframes cartridge-in {
   from {
-    transform: translate(-50%, -1.75rem);
+    transform: translateY(-1.75rem);
   }
   to {
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
@@ -1723,7 +1725,7 @@ a:hover {
   width: 2.1rem;
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 34rem) {
   .nes {
     grid-template-columns: 1fr;
   }

@@ -7,17 +7,29 @@
     </p>
   </div>
 
-  {{/* The console is a scene, not a control: it is the one place the site
-       leaves its plain modern language for something retro, per the design
-       spec. It sits idle here and actually runs a game on its own page. */}}
-  <div class="console" aria-hidden="true">
+  {{/* The console is the one place the site leaves its plain modern language
+       for something retro, per the design spec. A cartridge loads into it in
+       place; with no JavaScript the cartridges stay plain links to each
+       game's own page. */}}
+  <div class="console" data-console>
     <div class="crt">
       <div class="crt__screen">
-        <span class="crt__message">INSERT CARTRIDGE</span>
+        <span class="crt__message" data-console-idle>INSERT CARTRIDGE</span>
+        <iframe
+          class="crt__frame"
+          title="Game"
+          hidden
+          data-console-screen
+          allow="autoplay; gamepad; fullscreen"
+        ></iframe>
       </div>
     </div>
     <div class="console__deck">
       <span class="console__slot"></span>
+      <span class="console__title" data-console-title></span>
+      <button class="console__reset" type="button" hidden data-console-reset>
+        Reset
+      </button>
       <span class="console__led"></span>
     </div>
   </div>
@@ -28,7 +40,12 @@
       <ul class="cartridges">
         {{range .Data.Cartridges}}
           <li>
-            <a class="cartridge" href="/games/{{.Slug}}">
+            <a
+              class="cartridge"
+              href="/games/{{.Slug}}"
+              data-play-url="{{.PlayURL}}"
+              data-play-title="{{.Title}}"
+            >
               <span class="cartridge__grip" aria-hidden="true"></span>
               <span class="cartridge__label">
                 {{if .Art.URL}}

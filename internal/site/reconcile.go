@@ -79,16 +79,33 @@ func NewReconciler(desired func() ([]string, error), store *render.Store, regist
 	return r
 }
 
-// Reconcile renders every desired page that has no rendered_pages row, and
-// forgets every rendered page that is no longer desired -- a deleted game must
-// stop being served, not linger until someone notices.
+// RefreshAll re-renders every page whether or not it already exists.
+//
+// It runs once at startup because a page's HTML depends on more than its
+// content: the stylesheet URL carries a content hash, and the templates
+// themselves can change with a deploy. Nothing enqueues a tag for either, so
+// without this a stylesheet edit leaves every already-rendered page pointing
+// at a file that Build has just pruned -- the page loads with no CSS at all.
+//
+// It is cheap to be safe here: a page whose output is unchanged hashes to the
+// same ETag, so re-rendering disturbs no cached copy.
+func (r *Reconciler) RefreshAll() (rendered int, removed int, err error) {
+	return r.reconcile(true)
+}
+
+// Reconcile renders what is missing and forgets what is no longer wanted.
+func (r *Reconciler) Reconcile() (rendered int, removed int, err error) {
+	return r.reconcile(false)
+}
+
+// reconcile renders the desired pages and forgets the rest.
 //
 // Removing a page deletes its rendered_pages row; its page_tags go with it by
 // cascade. The file in the rendered store is deliberately left behind: files
 // are keyed by content hash and may be shared between pages, and the store has
 // no reference counting. That is known, bounded garbage; if it ever matters it
 // wants a sweeper like internal/media's, not an inline delete.
-func (r *Reconciler) Reconcile() (rendered int, removed int, err error) {
+func (r *Reconciler) reconcile(force bool) (rendered int, removed int, err error) {
 	desired, err := r.desired()
 	if err != nil {
 		return 0, 0, err
@@ -100,12 +117,14 @@ func (r *Reconciler) Reconcile() (rendered int, removed int, err error) {
 	}
 
 	for _, key := range desired {
-		exists, err := r.store.HasPage(key)
-		if err != nil {
-			return rendered, removed, err
-		}
-		if exists {
-			continue
+		if !force {
+			exists, err := r.store.HasPage(key)
+			if err != nil {
+				return rendered, removed, err
+			}
+			if exists {
+				continue
+			}
 		}
 
 		renderer, ok := r.registry.Resolve(key)

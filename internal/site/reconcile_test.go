@@ -179,3 +179,67 @@ func TestReconcile_ReportsAFailureAndKeepsGoing(t *testing.T) {
 		t.Fatalf("reported %d errors, want 1", len(reported))
 	}
 }
+
+// A page's HTML depends on more than its content: the stylesheet URL carries a
+// content hash and the templates change with a deploy. Nothing enqueues a tag
+// for either, so startup has to rebuild everything -- otherwise an existing
+// page keeps pointing at a stylesheet that Build has already pruned and loads
+// with no CSS at all.
+func TestRefreshAll_RebuildsPagesThatAlreadyExist(t *testing.T) {
+	conn := setupTestDB(t)
+	site := newTestSite(t, conn)
+	store := newTestStore(t, conn)
+	reconciler, _ := newTestReconciler(t, site, store)
+
+	if _, _, err := reconciler.Reconcile(); err != nil {
+		t.Fatalf("Reconcile() error = %v", err)
+	}
+
+	desired, err := site.DesiredPages()
+	if err != nil {
+		t.Fatalf("DesiredPages() error = %v", err)
+	}
+
+	// A second Reconcile does nothing, which is the behaviour RefreshAll has
+	// to override.
+	if rendered, _, err := reconciler.Reconcile(); err != nil || rendered != 0 {
+		t.Fatalf("Reconcile() rendered=%d err=%v, want 0 and nil", rendered, err)
+	}
+
+	rendered, _, err := reconciler.RefreshAll()
+	if err != nil {
+		t.Fatalf("RefreshAll() error = %v", err)
+	}
+	if rendered != len(desired) {
+		t.Errorf("RefreshAll() rendered = %d, want all %d pages", rendered, len(desired))
+	}
+}
+
+// Re-rendering identical content must not churn the ETag, or every restart
+// would invalidate every cached copy of every page.
+func TestRefreshAll_KeepsTheETagWhenNothingChanged(t *testing.T) {
+	conn := setupTestDB(t)
+	site := newTestSite(t, conn)
+	store := newTestStore(t, conn)
+	reconciler, _ := newTestReconciler(t, site, store)
+
+	if _, _, err := reconciler.Reconcile(); err != nil {
+		t.Fatalf("Reconcile() error = %v", err)
+	}
+	before, _, err := store.ETag(PageAwards)
+	if err != nil {
+		t.Fatalf("ETag() error = %v", err)
+	}
+
+	if _, _, err := reconciler.RefreshAll(); err != nil {
+		t.Fatalf("RefreshAll() error = %v", err)
+	}
+	after, _, err := store.ETag(PageAwards)
+	if err != nil {
+		t.Fatalf("ETag() error = %v", err)
+	}
+
+	if before != after {
+		t.Error("a refresh changed the ETag of a page whose content did not change")
+	}
+}

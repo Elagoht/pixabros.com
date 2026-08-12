@@ -1,0 +1,5 @@
+# The panel's build output is produced by `make build` and embedded at compile
+# time; only the placeholder is tracked, so a clone stays small and a stale
+# build can never be committed by accident.
+dist/*
+!dist/index.html

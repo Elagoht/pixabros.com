@@ -41,7 +41,6 @@ func main() {
 	}
 
 	for _, dir := range []string{
-		cfg.DataDir + "/admin-dist",
 		cfg.DataDir + "/games",
 		cfg.DataDir + "/assets",
 		cfg.DataDir + "/media",
@@ -94,7 +93,7 @@ func main() {
 			log.Printf("site reconcile: %v", err)
 		}),
 	)
-	if rendered, removed, err := reconciler.Reconcile(); err != nil {
+	if rendered, removed, err := reconciler.RefreshAll(); err != nil {
 		log.Printf("site reconcile: %v", err)
 	} else if rendered > 0 || removed > 0 {
 		log.Printf("site reconcile: rendered %d page(s), removed %d", rendered, removed)
@@ -168,7 +167,6 @@ func main() {
 		Media:        mediaRepo,
 		MediaFiles:   mediaFiles,
 		MediaDir:     cfg.DataDir + "/media",
-		AdminUIDir:   cfg.DataDir + "/admin-dist",
 		PlayDir:      cfg.DataDir + "/games",
 		AssetsDir:    cfg.DataDir + "/assets",
 	})

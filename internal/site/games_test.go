@@ -84,8 +84,31 @@ func TestRenderArcade_CasesOpenWithoutJavaScript(t *testing.T) {
 	if !strings.Contains(html, "#case-shelf-game") {
 		t.Error("nothing links to the case, so it can never be opened")
 	}
-	if strings.Contains(html, "<script") {
-		t.Error("the arcade page should need no JavaScript")
+}
+
+// The console loads a build in place, which needs a script -- but the shelf
+// has to keep working without one, so every cartridge stays a real link to the
+// game's own page.
+func TestRenderArcade_CartridgesRemainLinksWithoutJavaScript(t *testing.T) {
+	conn := setupTestDB(t)
+	playable := seedGame(t, conn, "Playable", "playable", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET is_browser_playable = 1 WHERE id = ?;`, playable,
+	); err != nil {
+		t.Fatalf("mark playable: %v", err)
+	}
+
+	html, _ := renderArcadePage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "href=/games/playable") {
+		t.Error("a cartridge is not a link, so the shelf breaks without scripting")
+	}
+	// The script needs both the address to load and a name to show.
+	if !strings.Contains(html, `data-play-url=/play/playable/`) {
+		t.Error("a cartridge carries no build address for the console to load")
+	}
+	if !strings.Contains(html, "data-play-title") {
+		t.Error("a cartridge carries no title for the console to show")
 	}
 }
 

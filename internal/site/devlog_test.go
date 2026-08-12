@@ -208,3 +208,42 @@ func TestExcerpt(t *testing.T) {
 		t.Errorf("excerpt = %q, want markdown punctuation stripped", got)
 	}
 }
+
+// Text pasted from a word processor carries no-break spaces. CommonMark needs
+// a real space after "##", so "## Heading" renders as literal text -- and
+// this is not hypothetical: the studio's first real post hit it twice.
+func TestRenderDevlogPost_TreatsANoBreakSpaceAfterAMarkerAsASpace(t *testing.T) {
+	conn := setupTestDB(t)
+	seedPost(t, conn, "Pasted", "pasted",
+		"Intro paragraph.\n\n## About the Game\n\nBody.\n\n- First item\n", "2026-04-20", true, nil)
+
+	html, _, err := newTestSite(t, conn).renderDevlogPost(DevlogPagePrefix + "pasted")
+	if err != nil {
+		t.Fatalf("renderDevlogPost() error = %v", err)
+	}
+	body := string(html)
+
+	if !strings.Contains(body, "<h2") {
+		t.Error("a heading written with a no-break space stayed literal text")
+	}
+	if strings.Contains(body, "##") {
+		t.Error("the raw ## marker is still visible on the page")
+	}
+	if !strings.Contains(body, "<li>First item") {
+		t.Error("a list item written with a no-break space did not become a list")
+	}
+}
+
+// A no-break space inside a sentence is usually deliberate, so only the one
+// straight after a block marker is touched.
+func TestNormaliseBlockMarkers_LeavesProseAlone(t *testing.T) {
+	source := "A distance of 10 km, and a heading:\n\n## Title\n"
+	got := normaliseBlockMarkers(source)
+
+	if !strings.Contains(got, "10 km") {
+		t.Error("a no-break space inside a sentence was rewritten")
+	}
+	if !strings.Contains(got, "## Title") {
+		t.Error("the no-break space after the heading marker was not normalised")
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -200,10 +201,29 @@ func (s *Site) gameNames() (map[string]gameRef, error) {
 // renderer did not produce itself.
 func renderMarkdown(source string) (template.HTML, error) {
 	var out bytes.Buffer
-	if err := markdown.Convert([]byte(source), &out); err != nil {
+	if err := markdown.Convert([]byte(normaliseBlockMarkers(source)), &out); err != nil {
 		return "", fmt.Errorf("render markdown: %w", err)
 	}
 	return template.HTML(out.String()), nil
+}
+
+// blockMarkerNBSP matches a no-break space directly after a line's block
+// marker -- a heading's #, a list's bullet, a blockquote's >.
+var blockMarkerNBSP = regexp.MustCompile(`(?m)^([ \t]*(?:#{1,6}|[-*+]|[0-9]+[.)]|>))\x{00a0}`)
+
+// normaliseBlockMarkers turns a no-break space after a block marker into an
+// ordinary one.
+//
+// CommonMark requires a space or tab after "##" for it to be a heading, and a
+// no-break space is neither -- so "## Key Features" renders as literal
+// text rather than a heading. Text pasted from a word processor is full of
+// them, and nobody types one on purpose right after a "#".
+//
+// The replacement is deliberately confined to that position. A no-break space
+// inside a sentence is usually there for a reason ("10 km", "Fig. 4"), so the
+// prose is left exactly as written.
+func normaliseBlockMarkers(source string) string {
+	return blockMarkerNBSP.ReplaceAllString(source, "$1 ")
 }
 
 // excerpt makes a plain-text meta description out of a markdown body.

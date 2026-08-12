@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"pixabros/internal/adminapi"
+	"pixabros/internal/adminui"
 	"pixabros/internal/auth"
 	"pixabros/internal/awards"
 	"pixabros/internal/awardsapi"
@@ -54,7 +56,6 @@ type Dependencies struct {
 	// NotFoundBody is the styled public 404 page. Empty falls back to plain
 	// text, which is what non-public deployments and tests get.
 	NotFoundBody []byte
-	AdminUIDir   string
 	PlayDir      string
 	AssetsDir    string
 }
@@ -174,7 +175,13 @@ func New(deps Dependencies) http.Handler {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")
 	}))
 
-	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(deps.AdminUIDir)))
+	adminFS, err := adminui.FS()
+	if err != nil {
+		// The panel is embedded at compile time, so this can only fail if the
+		// binary was built wrong -- not something a request can cause.
+		panic("admin panel is not embedded: " + err.Error())
+	}
+	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(adminFS)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
 	// Uploaded media is public site content (cartridge art, screenshots, OG
 	// images all appear on the public MPA), so it is served without a session.
@@ -228,27 +235,45 @@ func noDirListing(dir string) http.Handler {
 // a 200 so react-router can take over, with Cache-Control: no-store so a
 // redeploy is never masked by a stale cached shell. Non-GET/HEAD requests
 // get no SPA fallback at all and keep the plain file-server behaviour.
-func serveAdminSPA(dir string) http.Handler {
-	fileServer := noDirListing(dir)
+// serveAdminSPA serves the embedded admin panel. Anything that is not a real
+// file falls back to index.html, because the SPA owns its own routing.
+func serveAdminSPA(fsys fs.FS) http.Handler {
+	fileServer := http.FileServer(http.FS(fsys))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// http.StripPrefix leaves a relative path here (e.g. "login" or
 		// "assets/index-abc123.js"), so normalise to a rooted, cleaned
 		// slash path before deciding anything from it.
 		urlPath := path.Clean("/" + strings.TrimPrefix(r.URL.Path, "/"))
-		if info, err := os.Stat(filepath.Join(dir, filepath.FromSlash(urlPath))); err == nil && !info.IsDir() {
-			fileServer.ServeHTTP(w, r)
-			return
+
+		if file, err := fsys.Open(strings.TrimPrefix(urlPath, "/")); err == nil {
+			info, statErr := file.Stat()
+			file.Close()
+			if statErr == nil && !info.IsDir() {
+				fileServer.ServeHTTP(w, r)
+				return
+			}
 		}
+
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
+		// A missing asset must 404 rather than fall through to index.html:
+		// answering a stale script request with HTML breaks the panel in a way
+		// that is very hard to read from the console.
 		if urlPath == "/assets" || strings.HasPrefix(urlPath, "/assets/") {
 			http.NotFound(w, r)
 			return
 		}
+
+		index, err := fs.ReadFile(fsys, "index.html")
+		if err != nil {
+			http.Error(w, "admin panel not built", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Cache-Control", "no-store")
-		http.ServeFile(w, r, filepath.Join(dir, "index.html"))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(index)
 	})
 }
 

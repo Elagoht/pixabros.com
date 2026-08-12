@@ -20,6 +20,9 @@ type cartridgeView struct {
 	Slug  string
 	Art   imageView
 	Tags  []string
+	// PlayURL is the extracted build, served straight from disk. The arcade
+	// loads it into the console in place rather than navigating away.
+	PlayURL string
 }
 
 type caseView struct {
@@ -62,10 +65,11 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 	for _, game := range published {
 		if game.IsBrowserPlayable {
 			page.Cartridges = append(page.Cartridges, cartridgeView{
-				Title: game.Title,
-				Slug:  game.Slug,
-				Art:   lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
-				Tags:  splitTags(game.Tags),
+				Title:   game.Title,
+				Slug:    game.Slug,
+				Art:     lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
+				Tags:    splitTags(game.Tags),
+				PlayURL: "/play/" + game.Slug + "/",
 			})
 			continue
 		}
@@ -84,6 +88,7 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 		Title:       "Games — " + chrome.Name,
 		Description: "Play our browser games and browse the rest of the catalogue.",
 		Path:        "/" + PageGames,
+		Scripts:     []string{s.renderer.bundle.URL("arcade.js")},
 		Site:        chrome,
 		Data:        page,
 	})

@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"pixabros/internal/auth"
 	"pixabros/internal/db"
@@ -59,15 +60,14 @@ func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 	}
 
 	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      store,
-		Files:      files,
-		DB:         conn,
-		Games:      games.NewRepo(conn),
-		AdminUIDir: adminDir,
-		PlayDir:    playDir,
-		AssetsDir:  t.TempDir(),
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     store,
+		Files:     files,
+		DB:        conn,
+		Games:     games.NewRepo(conn),
+		PlayDir:   playDir,
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -149,15 +149,14 @@ func TestRouter_GameArchiveUpload(t *testing.T) {
 	store := render.NewStore(conn, renderedFiles)
 
 	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      store,
-		Files:      renderedFiles,
-		DB:         conn,
-		Games:      gamesRepo,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    playDir,
-		AssetsDir:  t.TempDir(),
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     store,
+		Files:     renderedFiles,
+		DB:        conn,
+		Games:     gamesRepo,
+		PlayDir:   playDir,
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -235,15 +234,14 @@ func TestRouter_GameArchiveUploadUnknownSlug(t *testing.T) {
 	renderedFiles := storage.NewLocalDisk(t.TempDir(), "/rendered")
 
 	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      render.NewStore(conn, renderedFiles),
-		Files:      renderedFiles,
-		DB:         conn,
-		Games:      games.NewRepo(conn),
-		AdminUIDir: t.TempDir(),
-		PlayDir:    playDir,
-		AssetsDir:  t.TempDir(),
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     render.NewStore(conn, renderedFiles),
+		Files:     renderedFiles,
+		DB:        conn,
+		Games:     games.NewRepo(conn),
+		PlayDir:   playDir,
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -301,40 +299,20 @@ func TestRouter_GameArchiveUploadUnknownSlug(t *testing.T) {
 // client-side route must load the shell instead of 404ing, while a stale
 // content-hashed asset URL must still 404 honestly.
 func TestRouter_AdminSPAServing(t *testing.T) {
-	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
-	if err != nil {
-		t.Fatalf("db.Open() error = %v", err)
-	}
-	defer conn.Close()
-	if err := db.Migrate(conn); err != nil {
-		t.Fatalf("db.Migrate() error = %v", err)
-	}
 
 	const indexHTML = `<!doctype html><title>pixabros admin</title><div id="root"></div>`
-	adminDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(adminDir, "index.html"), []byte(indexHTML), 0o644); err != nil {
-		t.Fatalf("write admin index.html: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Join(adminDir, "assets"), 0o755); err != nil {
-		t.Fatalf("mkdir assets: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(adminDir, "assets", "index-abc123.js"), []byte("console.log(1)"), 0o644); err != nil {
-		t.Fatalf("write asset: %v", err)
-	}
+	const assetJS = "console.log(1)"
 
-	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
-	store := render.NewStore(conn, files)
-
-	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      store,
-		Files:      files,
-		AdminUIDir: adminDir,
-		PlayDir:    t.TempDir(),
-		AssetsDir:  t.TempDir(),
-	})
-	srv := httptest.NewServer(handler)
+	// The panel is embedded in the binary, so the fallback behaviour is tested
+	// against the handler directly with a stand-in filesystem rather than
+	// through a directory the router no longer reads.
+	panelFS := fstest.MapFS{
+		"index.html":             &fstest.MapFile{Data: []byte(indexHTML)},
+		"assets/index-abc123.js": &fstest.MapFile{Data: []byte(assetJS)},
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(panelFS)))
+	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
 	get := func(t *testing.T, path string) (*http.Response, string) {
@@ -389,7 +367,7 @@ func TestRouter_AdminSPAServing(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
 		}
-		if body != "console.log(1)" {
+		if body != assetJS {
 			t.Errorf("body = %q, want the real asset's contents", body)
 		}
 	})
@@ -425,12 +403,41 @@ func TestRouter_AdminSPAServing(t *testing.T) {
 		}
 	})
 
-	t.Run("the API is never answered with the SPA shell", func(t *testing.T) {
-		resp, _ := get(t, "/api/admin/whoami")
-		if resp.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
-		}
+}
+
+// The SPA fallback must never swallow an API route: answering /api with the
+// panel's HTML would turn an auth failure into a blank screen.
+func TestRouter_APIIsNeverAnsweredWithTheSPAShell(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	handler := New(Dependencies{
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     render.NewStore(conn, files),
+		Files:     files,
+		PlayDir:   t.TempDir(),
+		AssetsDir: t.TempDir(),
 	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/api/admin/whoami")
+	if err != nil {
+		t.Fatalf("GET error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
 }
 
 func TestRouter_UnmatchedAPIRouteReturnsJSONNotFound(t *testing.T) {
@@ -447,11 +454,10 @@ func TestRouter_UnmatchedAPIRouteReturnsJSONNotFound(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    t.TempDir(),
-		AssetsDir:  t.TempDir(),
+		Store:     store,
+		Files:     files,
+		PlayDir:   t.TempDir(),
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -503,13 +509,12 @@ func TestRouter_WrongMethodOnRegisteredRouteReturnsJSONNotFound(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    t.TempDir(),
-		AssetsDir:  t.TempDir(),
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     store,
+		Files:     files,
+		PlayDir:   t.TempDir(),
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -549,13 +554,12 @@ func TestRouter_CorrectMethodOnRegisteredRouteStillWorks(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Admins:     auth.NewAdminRepo(conn),
-		Sessions:   auth.NewSessionStore(conn),
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    t.TempDir(),
-		AssetsDir:  t.TempDir(),
+		Admins:    auth.NewAdminRepo(conn),
+		Sessions:  auth.NewSessionStore(conn),
+		Store:     store,
+		Files:     files,
+		PlayDir:   t.TempDir(),
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -596,11 +600,10 @@ func TestRouter_PlayDirWithoutIndexHTMLDoesNotListDirectory(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    playDir,
-		AssetsDir:  t.TempDir(),
+		Store:     store,
+		Files:     files,
+		PlayDir:   playDir,
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -638,11 +641,10 @@ func TestRouter_PlayDirWithIndexHTMLServesIt(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    playDir,
-		AssetsDir:  t.TempDir(),
+		Store:     store,
+		Files:     files,
+		PlayDir:   playDir,
+		AssetsDir: t.TempDir(),
 	})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -732,11 +734,10 @@ func TestRouter_MediaRouteNotMountedWithoutMediaDir(t *testing.T) {
 	store := render.NewStore(conn, files)
 
 	handler := New(Dependencies{
-		Store:      store,
-		Files:      files,
-		AdminUIDir: t.TempDir(),
-		PlayDir:    t.TempDir(),
-		AssetsDir:  t.TempDir(),
+		Store:     store,
+		Files:     files,
+		PlayDir:   t.TempDir(),
+		AssetsDir: t.TempDir(),
 		// MediaDir intentionally left as the zero value "".
 	})
 	srv := httptest.NewServer(handler)
@@ -819,7 +820,6 @@ func TestRouter_MediaUploadAndServing(t *testing.T) {
 		Media:      media.NewRepo(conn),
 		MediaFiles: storage.NewLocalDisk(dataDir, ""),
 		MediaDir:   mediaDir,
-		AdminUIDir: t.TempDir(),
 		PlayDir:    t.TempDir(),
 		AssetsDir:  t.TempDir(),
 	})

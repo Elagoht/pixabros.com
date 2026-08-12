@@ -10,7 +10,10 @@
   }
 
   var status = form.querySelector("[data-contact-status]");
-  var button = form.querySelector('button[type="submit"]');
+  // Selected by data attribute, not by type: the HTML minifier drops
+  // type="submit" because it is the default inside a form, which left this
+  // lookup returning null and the whole script throwing.
+  var button = form.querySelector("[data-contact-submit]");
 
   function show(message, kind) {
     if (!status) {
@@ -34,7 +37,9 @@
       website: data.get("website") || "",
     };
 
-    button.disabled = true;
+    if (button) {
+      button.disabled = true;
+    }
     show("Sending…", "ok");
 
     fetch(form.action, {
@@ -60,7 +65,9 @@
         show("Could not reach the server. Please try again.", "error");
       })
       .finally(function () {
-        button.disabled = false;
+        if (button) {
+          button.disabled = false;
+        }
       });
   });
 })();

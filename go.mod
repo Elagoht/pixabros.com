@@ -4,6 +4,7 @@ go 1.26.4
 
 require (
 	github.com/mayahiro/go-webp v0.3.0
+	github.com/nrednav/cuid2 v1.1.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/image v0.44.0
 	modernc.org/sqlite v1.56.0

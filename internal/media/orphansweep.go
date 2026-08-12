@@ -8,7 +8,7 @@ import (
 	"pixabros/internal/storage"
 )
 
-type ReferenceLookup func() (map[int64]bool, error)
+type ReferenceLookup func() (map[string]bool, error)
 
 // SweepOrphans deletes media rows (and their backing files) that are not
 // referenced by any module table and were created more than olderThan ago.
@@ -35,11 +35,11 @@ func SweepOrphans(repo *Repo, files storage.Storage, referenced ReferenceLookup,
 			continue
 		}
 		if err := files.Delete(m.Path); err != nil {
-			errs = append(errs, fmt.Errorf("delete file for media %d: %w", m.ID, err))
+			errs = append(errs, fmt.Errorf("delete file for media %s: %w", m.ID, err))
 			continue
 		}
 		if err := repo.Delete(m.ID); err != nil {
-			errs = append(errs, fmt.Errorf("delete media row %d: %w", m.ID, err))
+			errs = append(errs, fmt.Errorf("delete media row %s: %w", m.ID, err))
 			continue
 		}
 		deleted++

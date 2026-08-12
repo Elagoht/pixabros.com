@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"pixabros/internal/games"
 	"pixabros/internal/httpapi"
@@ -13,30 +12,26 @@ import (
 )
 
 type screenshotResponse struct {
-	ID           int64 `json:"id"`
-	GameID       int64 `json:"game_id"`
-	MediaID      int64 `json:"media_id"`
-	DisplayOrder int   `json:"display_order"`
+	ID           string `json:"id"`
+	GameID       string `json:"game_id"`
+	MediaID      string `json:"media_id"`
+	DisplayOrder int    `json:"display_order"`
 }
 
 type addScreenshotRequest struct {
-	MediaID      int64 `json:"media_id"`
-	DisplayOrder int   `json:"display_order"`
+	MediaID      string `json:"media_id"`
+	DisplayOrder int    `json:"display_order"`
 }
 
 func (h *Handlers) AddScreenshot(w http.ResponseWriter, r *http.Request) {
-	gameID, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
-	}
+	gameID := parseIDPathValue(r)
 
 	var req addScreenshotRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_body", "request body must be valid JSON")
 		return
 	}
-	if req.MediaID == 0 {
+	if req.MediaID == "" {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "media_id is required")
 		return
 	}
@@ -51,7 +46,7 @@ func (h *Handlers) AddScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%s", gameID)); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
@@ -65,16 +60,8 @@ func (h *Handlers) AddScreenshot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
-	gameID, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
-	}
-	screenshotID, err := strconv.ParseInt(r.PathValue("screenshotID"), 10, 64)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "screenshotID must be a number")
-		return
-	}
+	gameID := parseIDPathValue(r)
+	screenshotID := r.PathValue("screenshotID")
 
 	if err := h.repo.RemoveScreenshot(gameID, screenshotID); err != nil {
 		if errors.Is(err, games.ErrScreenshotNotFound) {
@@ -85,7 +72,7 @@ func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%s", gameID)); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
@@ -97,11 +84,7 @@ func (h *Handlers) RemoveScreenshot(w http.ResponseWriter, r *http.Request) {
 // screenshot ids and sets each one's display_order to its index, in one
 // transaction, scoped to gameID.
 func (h *Handlers) ReorderScreenshots(w http.ResponseWriter, r *http.Request) {
-	gameID, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
-	}
+	gameID := parseIDPathValue(r)
 
 	var req reorderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -122,7 +105,7 @@ func (h *Handlers) ReorderScreenshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", gameID)); err != nil {
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%s", gameID)); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
@@ -134,11 +117,7 @@ func (h *Handlers) ReorderScreenshots(w http.ResponseWriter, r *http.Request) {
 // unknown game is a 404 rather than an empty array that looks like "this game
 // simply has no screenshots".
 func (h *Handlers) ListScreenshots(w http.ResponseWriter, r *http.Request) {
-	gameID, err := parseIDPathValue(r)
-	if err != nil {
-		httpapi.WriteError(w, http.StatusBadRequest, "invalid_id", "id must be a number")
-		return
-	}
+	gameID := parseIDPathValue(r)
 
 	if _, err := h.repo.FindByID(gameID); err != nil {
 		if errors.Is(err, games.ErrGameNotFound) {

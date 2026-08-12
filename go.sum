@@ -12,6 +12,8 @@ github.com/mayahiro/go-webp v0.3.0 h1:grXwlPkMZMcmEn3YnOS1hQZusw+qDToKnpf4geCZcJ
 github.com/mayahiro/go-webp v0.3.0/go.mod h1:6zvjJiJb31kol2F4pyjcdoFWvUXz6xip1avcWAZ4pfs=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
+github.com/nrednav/cuid2 v1.1.0 h1:Y2P9Fo1Iz7lKuwcn+fS0mbxkNvEqoNLUtm0+moHCnYc=
+github.com/nrednav/cuid2 v1.1.0/go.mod h1:jBjkJAI+QLM4EUGvtwGDHC1cP1QQrRNfLo/A7qJFDhA=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 golang.org/x/crypto v0.54.0 h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=

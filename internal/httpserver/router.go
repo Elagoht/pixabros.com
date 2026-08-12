@@ -75,7 +75,7 @@ func New(deps Dependencies) http.Handler {
 		if err := deps.Games.SetWebExportPath(game.ID, filepath.Join(deps.PlayDir, slug)); err != nil {
 			return err
 		}
-		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%d", game.ID))
+		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%s", game.ID))
 	}
 	gameUploadHandler := gameupload.NewHandler(deps.PlayDir, onGameArchiveExtracted, gameupload.WithErrorLogger(func(err error) {
 		log.Printf("game upload: %v", err)

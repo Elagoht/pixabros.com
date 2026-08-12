@@ -30,7 +30,7 @@ func TestRepo_CreateFindDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if m.ID == 0 {
+	if m.ID == "" {
 		t.Fatal("Create() returned a zero ID")
 	}
 	if m.Format != "webp" {
@@ -67,8 +67,8 @@ func TestRepo_AllIDs(t *testing.T) {
 	if len(ids) != 2 {
 		t.Fatalf("AllIDs() returned %d ids, want 2", len(ids))
 	}
-	seen := map[int64]bool{ids[0]: true, ids[1]: true}
+	seen := map[string]bool{ids[0]: true, ids[1]: true}
 	if !seen[first.ID] || !seen[second.ID] {
-		t.Errorf("AllIDs() = %v, want to contain %d and %d", ids, first.ID, second.ID)
+		t.Errorf("AllIDs() = %v, want to contain %s and %s", ids, first.ID, second.ID)
 	}
 }

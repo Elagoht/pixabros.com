@@ -15,19 +15,19 @@ func TestRepo_AddListRemoveScreenshot(t *testing.T) {
 	}
 
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100), (102, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100), ('media-102', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
 
-	first, err := repo.AddScreenshot(game.ID, 101, 0)
+	first, err := repo.AddScreenshot(game.ID, "media-101", 0)
 	if err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
-	if first.ID == 0 {
+	if first.ID == "" {
 		t.Fatal("AddScreenshot() returned a zero ID")
 	}
-	if _, err := repo.AddScreenshot(game.ID, 102, 1); err != nil {
+	if _, err := repo.AddScreenshot(game.ID, "media-102", 1); err != nil {
 		t.Fatalf("second AddScreenshot() error = %v", err)
 	}
 
@@ -38,8 +38,8 @@ func TestRepo_AddListRemoveScreenshot(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("ListScreenshots() returned %d, want 2", len(list))
 	}
-	if list[0].MediaID != 101 || list[1].MediaID != 102 {
-		t.Errorf("ListScreenshots() = %+v, want media IDs [101, 102] in order", list)
+	if list[0].MediaID != "media-101" || list[1].MediaID != "media-102" {
+		t.Errorf("ListScreenshots() = %+v, want media IDs [media-101, media-102] in order", list)
 	}
 
 	if err := repo.RemoveScreenshot(game.ID, first.ID); err != nil {
@@ -49,8 +49,8 @@ func TestRepo_AddListRemoveScreenshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListScreenshots() after remove error = %v", err)
 	}
-	if len(remaining) != 1 || remaining[0].MediaID != 102 {
-		t.Errorf("ListScreenshots() after remove = %+v, want just media ID 102", remaining)
+	if len(remaining) != 1 || remaining[0].MediaID != "media-102" {
+		t.Errorf("ListScreenshots() after remove = %+v, want just media ID media-102", remaining)
 	}
 }
 
@@ -68,12 +68,12 @@ func TestRepo_RemoveScreenshotIsScopedToItsGame(t *testing.T) {
 	}
 
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 
-	shot, err := repo.AddScreenshot(gameA.ID, 101, 0)
+	shot, err := repo.AddScreenshot(gameA.ID, "media-101", 0)
 	if err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
@@ -88,7 +88,7 @@ func TestRepo_RemoveScreenshotIsScopedToItsGame(t *testing.T) {
 		t.Fatalf("ListScreenshots() error = %v", err)
 	}
 	if len(list) != 1 || list[0].ID != shot.ID {
-		t.Errorf("ListScreenshots(gameA) = %+v, want game A to still own screenshot %d", list, shot.ID)
+		t.Errorf("ListScreenshots(gameA) = %+v, want game A to still own screenshot %s", list, shot.ID)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestRepo_RemoveScreenshotUnknownIDNotFound(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if err := repo.RemoveScreenshot(game.ID, 4242); !errors.Is(err, ErrScreenshotNotFound) {
+	if err := repo.RemoveScreenshot(game.ID, "bbbbbbbbbbbbbbbbbbbbbbbb"); !errors.Is(err, ErrScreenshotNotFound) {
 		t.Errorf("RemoveScreenshot() error = %v, want ErrScreenshotNotFound", err)
 	}
 }
@@ -111,12 +111,12 @@ func TestRepo_AddScreenshotUnknownGameNotFound(t *testing.T) {
 	repo := NewRepo(conn)
 
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 
-	if _, err := repo.AddScreenshot(999, 101, 0); !errors.Is(err, ErrGameNotFound) {
+	if _, err := repo.AddScreenshot("aaaaaaaaaaaaaaaaaaaaaaaa", "media-101", 0); !errors.Is(err, ErrGameNotFound) {
 		t.Errorf("AddScreenshot() error = %v, want ErrGameNotFound", err)
 	}
 }
@@ -131,12 +131,12 @@ func TestRepo_DeleteGameCascadesScreenshots(t *testing.T) {
 	}
 
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 
-	if _, err := repo.AddScreenshot(game.ID, 101, 0); err != nil {
+	if _, err := repo.AddScreenshot(game.ID, "media-101", 0); err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
 
@@ -162,14 +162,14 @@ func TestRepo_ReorderScreenshotsSetsDisplayOrderToIndex(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100), (102, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100), ('media-102', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
-	first, _ := repo.AddScreenshot(game.ID, 101, 0)
-	second, _ := repo.AddScreenshot(game.ID, 102, 1)
+	first, _ := repo.AddScreenshot(game.ID, "media-101", 0)
+	second, _ := repo.AddScreenshot(game.ID, "media-102", 1)
 
-	if err := repo.ReorderScreenshots(game.ID, []int64{second.ID, first.ID}); err != nil {
+	if err := repo.ReorderScreenshots(game.ID, []string{second.ID, first.ID}); err != nil {
 		t.Fatalf("ReorderScreenshots() error = %v", err)
 	}
 
@@ -192,14 +192,14 @@ func TestRepo_ReorderScreenshotsRejectsIDFromAnotherGame(t *testing.T) {
 	gameA, _ := repo.Create(CreateInput{Title: "Game A"})
 	gameB, _ := repo.Create(CreateInput{Title: "Game B"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (101, 'shot1.webp', 100, 100), (102, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-101', 'shot1.webp', 100, 100), ('media-102', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
-	ownScreenshot, _ := repo.AddScreenshot(gameA.ID, 101, 0)
-	otherScreenshot, _ := repo.AddScreenshot(gameB.ID, 102, 0)
+	ownScreenshot, _ := repo.AddScreenshot(gameA.ID, "media-101", 0)
+	otherScreenshot, _ := repo.AddScreenshot(gameB.ID, "media-102", 0)
 
-	err := repo.ReorderScreenshots(gameA.ID, []int64{ownScreenshot.ID, otherScreenshot.ID})
+	err := repo.ReorderScreenshots(gameA.ID, []string{ownScreenshot.ID, otherScreenshot.ID})
 	if !errors.Is(err, ErrScreenshotNotFound) {
 		t.Fatalf("ReorderScreenshots() error = %v, want ErrScreenshotNotFound", err)
 	}

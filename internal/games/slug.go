@@ -39,9 +39,9 @@ func Slugify(title string) string {
 // uniqueSlug finds a slug not used by any other game, appending -2, -3, ...
 // as needed. excludeID excludes a game from that collision check -- pass the
 // game's own id on an update so keeping its title also keeps its slug
-// instead of colliding with itself and getting suffixed; pass 0 (no real
+// instead of colliding with itself and getting suffixed; pass "" (no real
 // game has this id) on create, where there is no "own row" yet.
-func uniqueSlug(db *sql.DB, base string, excludeID int64) (string, error) {
+func uniqueSlug(db *sql.DB, base string, excludeID string) (string, error) {
 	candidate := base
 	for suffix := 2; ; suffix++ {
 		var count int

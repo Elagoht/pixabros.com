@@ -205,9 +205,9 @@ func TestRouter_GameArchiveUpload(t *testing.T) {
 	}
 
 	var jobCount int
-	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%s", game.ID)).Scan(&jobCount)
 	if jobCount != 1 {
-		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
+		t.Errorf("regen_jobs count for game:%s = %d, want 1", game.ID, jobCount)
 	}
 }
 
@@ -861,7 +861,7 @@ func TestRouter_MediaUploadAndServing(t *testing.T) {
 	}
 
 	var uploaded struct {
-		ID     int64  `json:"id"`
+		ID     string `json:"id"`
 		URL    string `json:"url"`
 		Width  int    `json:"width"`
 		Height int    `json:"height"`
@@ -876,7 +876,7 @@ func TestRouter_MediaUploadAndServing(t *testing.T) {
 		t.Fatalf("uploaded url = %q, want it to start with /media/cartridge_art/", uploaded.URL)
 	}
 
-	lookupReq, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/admin/media/%d", srv.URL, uploaded.ID), nil)
+	lookupReq, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/admin/media/%s", srv.URL, uploaded.ID), nil)
 	for _, c := range cookies {
 		lookupReq.AddCookie(c)
 	}
@@ -936,7 +936,7 @@ func TestRouter_MediaUploadAndServing(t *testing.T) {
 		t.Fatalf("media directory status = %d, want %d (no directory listings)", listResp.StatusCode, http.StatusNotFound)
 	}
 
-	anonResp, err := srv.Client().Get(srv.URL + fmt.Sprintf("/api/admin/media/%d", uploaded.ID))
+	anonResp, err := srv.Client().Get(srv.URL + fmt.Sprintf("/api/admin/media/%s", uploaded.ID))
 	if err != nil {
 		t.Fatalf("anonymous lookup request error = %v", err)
 	}

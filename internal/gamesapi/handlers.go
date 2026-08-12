@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"pixabros/internal/games"
 	"pixabros/internal/httpapi"
+	"pixabros/internal/id"
 	"pixabros/internal/render"
 )
 
@@ -31,25 +31,25 @@ func NewHandlers(repo *games.Repo, db *sql.DB, playDir string) *Handlers {
 }
 
 type gameResponse struct {
-	ID                int64  `json:"id"`
-	Slug              string `json:"slug"`
-	Title             string `json:"title"`
-	ShortDescription  string `json:"short_description"`
-	FullDescription   string `json:"full_description"`
-	Tags              string `json:"tags"`
-	IsBrowserPlayable bool   `json:"is_browser_playable"`
-	IsDownloadable    bool   `json:"is_downloadable"`
-	IsForSale         bool   `json:"is_for_sale"`
-	PriceDisplay      string `json:"price_display"`
-	ExternalLinksJSON string `json:"external_links_json"`
-	CartridgeArtID    *int64 `json:"cartridge_art_id"`
-	CDCoverArtID      *int64 `json:"cd_cover_art_id"`
-	OGImageID         *int64 `json:"og_image_id"`
-	WebExportPath     string `json:"web_export_path"`
-	DisplayOrder      int    `json:"display_order"`
-	IsPublished       bool   `json:"is_published"`
-	CreatedAt         string `json:"created_at"`
-	UpdatedAt         string `json:"updated_at"`
+	ID                string  `json:"id"`
+	Slug              string  `json:"slug"`
+	Title             string  `json:"title"`
+	ShortDescription  string  `json:"short_description"`
+	FullDescription   string  `json:"full_description"`
+	Tags              string  `json:"tags"`
+	IsBrowserPlayable bool    `json:"is_browser_playable"`
+	IsDownloadable    bool    `json:"is_downloadable"`
+	IsForSale         bool    `json:"is_for_sale"`
+	PriceDisplay      string  `json:"price_display"`
+	ExternalLinksJSON string  `json:"external_links_json"`
+	CartridgeArtID    *string `json:"cartridge_art_id"`
+	CDCoverArtID      *string `json:"cd_cover_art_id"`
+	OGImageID         *string `json:"og_image_id"`
+	WebExportPath     string  `json:"web_export_path"`
+	DisplayOrder      int     `json:"display_order"`
+	IsPublished       bool    `json:"is_published"`
+	CreatedAt         string  `json:"created_at"`
+	UpdatedAt         string  `json:"updated_at"`
 }
 
 func toGameResponse(g games.Game) gameResponse {
@@ -140,18 +140,19 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusCreated, toGameResponse(game))
 }
 
-func parseIDPathValue(r *http.Request) (int64, error) {
-	return strconv.ParseInt(r.PathValue("id"), 10, 64)
+func parseIDPathValue(r *http.Request) string {
+	return r.PathValue("id")
 }
 
-// resolveGame reads the {id} path segment, which the admin UI's edit URL
-// now sends as the game's slug (slugs change with the title, so they are
-// what the URL is built from), but accepts a numeric id too so any other
-// direct API caller keeps working unchanged.
+// resolveGame reads the {id} path segment. The admin UI addresses a game by
+// its immutable id, but a slug is still accepted so links built from a
+// public /play/{slug}/ URL keep resolving. The two can never be confused:
+// an id is exactly 24 lowercase alphanumeric characters, while a slug is
+// derived from a title and is either shorter, longer, or hyphenated.
 func (h *Handlers) resolveGame(r *http.Request) (games.Game, error) {
 	raw := r.PathValue("id")
-	if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
-		return h.repo.FindByID(id)
+	if id.IsValid(raw) {
+		return h.repo.FindByID(raw)
 	}
 	return h.repo.FindBySlug(raw)
 }
@@ -170,20 +171,20 @@ func (h *Handlers) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateRequest struct {
-	Title             string `json:"title"`
-	ShortDescription  string `json:"short_description"`
-	FullDescription   string `json:"full_description"`
-	Tags              string `json:"tags"`
-	IsBrowserPlayable bool   `json:"is_browser_playable"`
-	IsDownloadable    bool   `json:"is_downloadable"`
-	IsForSale         bool   `json:"is_for_sale"`
-	PriceDisplay      string `json:"price_display"`
-	ExternalLinksJSON string `json:"external_links_json"`
-	CartridgeArtID    *int64 `json:"cartridge_art_id"`
-	CDCoverArtID      *int64 `json:"cd_cover_art_id"`
-	OGImageID         *int64 `json:"og_image_id"`
-	DisplayOrder      int    `json:"display_order"`
-	IsPublished       bool   `json:"is_published"`
+	Title             string  `json:"title"`
+	ShortDescription  string  `json:"short_description"`
+	FullDescription   string  `json:"full_description"`
+	Tags              string  `json:"tags"`
+	IsBrowserPlayable bool    `json:"is_browser_playable"`
+	IsDownloadable    bool    `json:"is_downloadable"`
+	IsForSale         bool    `json:"is_for_sale"`
+	PriceDisplay      string  `json:"price_display"`
+	ExternalLinksJSON string  `json:"external_links_json"`
+	CartridgeArtID    *string `json:"cartridge_art_id"`
+	CDCoverArtID      *string `json:"cd_cover_art_id"`
+	OGImageID         *string `json:"og_image_id"`
+	DisplayOrder      int     `json:"display_order"`
+	IsPublished       bool    `json:"is_published"`
 }
 
 func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
@@ -248,7 +249,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%d", oldGame.ID)); err != nil {
+	if err := render.EnqueueRegen(h.db, fmt.Sprintf("game:%s", oldGame.ID)); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
@@ -261,7 +262,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 type reorderRequest struct {
-	IDs []int64 `json:"ids"`
+	IDs []string `json:"ids"`
 }
 
 // Reorder takes the complete ordered list of game ids -- the admin UI always

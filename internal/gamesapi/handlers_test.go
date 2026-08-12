@@ -109,7 +109,7 @@ func TestGet_Success(t *testing.T) {
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/1", nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.Get(rec, req)
 
@@ -123,8 +123,8 @@ func TestGet_NotFound(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/999", nil)
-	req.SetPathValue("id", "999")
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa", nil)
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.Get(rec, req)
 
@@ -143,8 +143,8 @@ func TestUpdate_Success(t *testing.T) {
 		"title":        "Pixel Quest: Remastered",
 		"is_published": true,
 	})
-	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), bytes.NewReader(body))
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/"+game.ID, bytes.NewReader(body))
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.Update(rec, req)
 
@@ -158,9 +158,9 @@ func TestUpdate_Success(t *testing.T) {
 	}
 
 	var jobCount int
-	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%s", game.ID)).Scan(&jobCount)
 	if jobCount != 1 {
-		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
+		t.Errorf("regen_jobs count for game:%s = %d, want 1", game.ID, jobCount)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestGet_SuccessBySlug(t *testing.T) {
 	var got gameResponse
 	json.Unmarshal(rec.Body.Bytes(), &got)
 	if got.ID != game.ID {
-		t.Errorf("ID = %d, want %d", got.ID, game.ID)
+		t.Errorf("ID = %s, want %s", got.ID, game.ID)
 	}
 }
 
@@ -236,8 +236,8 @@ func TestUpdate_NotFound(t *testing.T) {
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]string{"title": "x"})
-	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/999", bytes.NewReader(body))
-	req.SetPathValue("id", "999")
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa", bytes.NewReader(body))
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.Update(rec, req)
 
@@ -252,8 +252,8 @@ func TestDelete_Success(t *testing.T) {
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+game.ID, nil)
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.Delete(rec, req)
 
@@ -283,8 +283,8 @@ func TestDelete_RemovesExtractedBuildDirectory(t *testing.T) {
 	}
 	handlers := NewHandlers(repo, conn, playDir)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+fmt.Sprintf("%d", game.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/"+game.ID, nil)
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.Delete(rec, req)
 
@@ -301,8 +301,8 @@ func TestDelete_NotFound(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/999", nil)
-	req.SetPathValue("id", "999")
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa", nil)
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.Delete(rec, req)
 
@@ -318,7 +318,7 @@ func TestReorder_Success(t *testing.T) {
 	second, _ := repo.Create(games.CreateInput{Title: "Second", DisplayOrder: 1})
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(reorderRequest{IDs: []int64{second.ID, first.ID}})
+	body, _ := json.Marshal(reorderRequest{IDs: []string{second.ID, first.ID}})
 	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	handlers.Reorder(rec, req)
@@ -340,7 +340,7 @@ func TestReorder_MissingIDs(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(reorderRequest{IDs: []int64{}})
+	body, _ := json.Marshal(reorderRequest{IDs: []string{}})
 	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	handlers.Reorder(rec, req)
@@ -355,7 +355,7 @@ func TestReorder_UnknownIDNotFound(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(reorderRequest{IDs: []int64{999}})
+	body, _ := json.Marshal(reorderRequest{IDs: []string{"aaaaaaaaaaaaaaaaaaaaaaaa"}})
 	req := httptest.NewRequest(http.MethodPut, "/api/admin/games/reorder", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	handlers.Reorder(rec, req)

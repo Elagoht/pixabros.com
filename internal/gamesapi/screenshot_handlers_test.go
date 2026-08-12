@@ -17,15 +17,15 @@ func TestAddScreenshot_Success(t *testing.T) {
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(map[string]int{"media_id": 55, "display_order": 0})
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), bytes.NewReader(body))
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	body, _ := json.Marshal(map[string]any{"media_id": "media-55", "display_order": 0})
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/admin/games/%s/screenshots", game.ID), bytes.NewReader(body))
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.AddScreenshot(rec, req)
 
@@ -36,14 +36,14 @@ func TestAddScreenshot_Success(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if got.MediaID != 55 || got.GameID != game.ID {
-		t.Errorf("AddScreenshot() = %+v, want MediaID=55 GameID=%d", got, game.ID)
+	if got.MediaID != "media-55" || got.GameID != game.ID {
+		t.Errorf("AddScreenshot() = %+v, want MediaID=media-55 GameID=%s", got, game.ID)
 	}
 
 	var jobCount int
-	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", game.ID)).Scan(&jobCount)
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%s", game.ID)).Scan(&jobCount)
 	if jobCount != 1 {
-		t.Errorf("regen_jobs count for game:%d = %d, want 1", game.ID, jobCount)
+		t.Errorf("regen_jobs count for game:%s = %d, want 1", game.ID, jobCount)
 	}
 }
 
@@ -54,8 +54,8 @@ func TestAddScreenshot_MissingMediaID(t *testing.T) {
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
 	body, _ := json.Marshal(map[string]int{"display_order": 0})
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), bytes.NewReader(body))
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/admin/games/%s/screenshots", game.ID), bytes.NewReader(body))
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.AddScreenshot(rec, req)
 
@@ -69,16 +69,16 @@ func TestRemoveScreenshot_Success(t *testing.T) {
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
-	screenshot, _ := repo.AddScreenshot(game.ID, 55, 0)
+	screenshot, _ := repo.AddScreenshot(game.ID, "media-55", 0)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/admin/games/%d/screenshots/%d", game.ID, screenshot.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
-	req.SetPathValue("screenshotID", fmt.Sprintf("%d", screenshot.ID))
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/admin/games/%s/screenshots/%s", game.ID, screenshot.ID), nil)
+	req.SetPathValue("id", game.ID)
+	req.SetPathValue("screenshotID", screenshot.ID)
 	rec := httptest.NewRecorder()
 	handlers.RemoveScreenshot(rec, req)
 
@@ -101,19 +101,19 @@ func TestRemoveScreenshot_OtherGamesScreenshotNotFound(t *testing.T) {
 	gameA, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	gameB, _ := repo.Create(games.CreateInput{Title: "Neon Drift"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
-	screenshot, err := repo.AddScreenshot(gameB.ID, 55, 0)
+	screenshot, err := repo.AddScreenshot(gameB.ID, "media-55", 0)
 	if err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/admin/games/%d/screenshots/%d", gameA.ID, screenshot.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", gameA.ID))
-	req.SetPathValue("screenshotID", fmt.Sprintf("%d", screenshot.ID))
+	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/admin/games/%s/screenshots/%s", gameA.ID, screenshot.ID), nil)
+	req.SetPathValue("id", gameA.ID)
+	req.SetPathValue("screenshotID", screenshot.ID)
 	rec := httptest.NewRecorder()
 	handlers.RemoveScreenshot(rec, req)
 
@@ -127,9 +127,9 @@ func TestRemoveScreenshot_OtherGamesScreenshotNotFound(t *testing.T) {
 	}
 
 	var jobCount int
-	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%d", gameA.ID)).Scan(&jobCount)
+	conn.QueryRow(`SELECT COUNT(*) FROM regen_jobs WHERE tag = ?;`, fmt.Sprintf("game:%s", gameA.ID)).Scan(&jobCount)
 	if jobCount != 0 {
-		t.Errorf("regen_jobs count for game:%d = %d, want 0 (nothing changed)", gameA.ID, jobCount)
+		t.Errorf("regen_jobs count for game:%s = %d, want 0 (nothing changed)", gameA.ID, jobCount)
 	}
 }
 
@@ -137,15 +137,15 @@ func TestAddScreenshot_UnknownGameNotFound(t *testing.T) {
 	conn := setupTestDB(t)
 	repo := games.NewRepo(conn)
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(map[string]int{"media_id": 55, "display_order": 0})
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/games/999/screenshots", bytes.NewReader(body))
-	req.SetPathValue("id", "999")
+	body, _ := json.Marshal(map[string]any{"media_id": "media-55", "display_order": 0})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa/screenshots", bytes.NewReader(body))
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.AddScreenshot(rec, req)
 
@@ -159,20 +159,20 @@ func TestListScreenshots_ReturnsScreenshotsInDisplayOrder(t *testing.T) {
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100), ('media-56', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
-	if _, err := repo.AddScreenshot(game.ID, 56, 1); err != nil {
+	if _, err := repo.AddScreenshot(game.ID, "media-56", 1); err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
-	if _, err := repo.AddScreenshot(game.ID, 55, 0); err != nil {
+	if _, err := repo.AddScreenshot(game.ID, "media-55", 0); err != nil {
 		t.Fatalf("AddScreenshot() error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%s/screenshots", game.ID), nil)
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.ListScreenshots(rec, req)
 
@@ -186,14 +186,14 @@ func TestListScreenshots_ReturnsScreenshotsInDisplayOrder(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("len(ListScreenshots()) = %d, want 2", len(got))
 	}
-	if got[0].MediaID != 55 || got[0].DisplayOrder != 0 {
+	if got[0].MediaID != "media-55" || got[0].DisplayOrder != 0 {
 		t.Errorf("first screenshot = %+v, want MediaID=55 DisplayOrder=0", got[0])
 	}
-	if got[1].MediaID != 56 || got[1].DisplayOrder != 1 {
+	if got[1].MediaID != "media-56" || got[1].DisplayOrder != 1 {
 		t.Errorf("second screenshot = %+v, want MediaID=56 DisplayOrder=1", got[1])
 	}
 	if got[0].GameID != game.ID {
-		t.Errorf("GameID = %d, want %d", got[0].GameID, game.ID)
+		t.Errorf("GameID = %s, want %s", got[0].GameID, game.ID)
 	}
 }
 
@@ -206,8 +206,8 @@ func TestListScreenshots_EmptyListIsAnArrayNotNull(t *testing.T) {
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%d/screenshots", game.ID), nil)
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/admin/games/%s/screenshots", game.ID), nil)
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.ListScreenshots(rec, req)
 
@@ -224,8 +224,8 @@ func TestListScreenshots_UnknownGameNotFound(t *testing.T) {
 	repo := games.NewRepo(conn)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/999/screenshots", nil)
-	req.SetPathValue("id", "999")
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/games/aaaaaaaaaaaaaaaaaaaaaaaa/screenshots", nil)
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.ListScreenshots(rec, req)
 
@@ -245,7 +245,9 @@ func TestListScreenshots_UnknownGameNotFound(t *testing.T) {
 	}
 }
 
-func TestListScreenshots_NonNumericIDRejected(t *testing.T) {
+// Game ids are opaque strings now, so there is no "must be a number" shape
+// to reject up front: anything that is not a real id is simply not found.
+func TestListScreenshots_MalformedIDIsNotFound(t *testing.T) {
 	conn := setupTestDB(t)
 	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
 
@@ -254,8 +256,8 @@ func TestListScreenshots_NonNumericIDRejected(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handlers.ListScreenshots(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
 }
 
@@ -264,17 +266,17 @@ func TestReorderScreenshots_Success(t *testing.T) {
 	repo := games.NewRepo(conn)
 	game, _ := repo.Create(games.CreateInput{Title: "Pixel Quest"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100), ('media-56', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
-	first, _ := repo.AddScreenshot(game.ID, 55, 0)
-	second, _ := repo.AddScreenshot(game.ID, 56, 1)
+	first, _ := repo.AddScreenshot(game.ID, "media-55", 0)
+	second, _ := repo.AddScreenshot(game.ID, "media-56", 1)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(reorderRequest{IDs: []int64{second.ID, first.ID}})
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%d/screenshots/reorder", game.ID), bytes.NewReader(body))
-	req.SetPathValue("id", fmt.Sprintf("%d", game.ID))
+	body, _ := json.Marshal(reorderRequest{IDs: []string{second.ID, first.ID}})
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%s/screenshots/reorder", game.ID), bytes.NewReader(body))
+	req.SetPathValue("id", game.ID)
 	rec := httptest.NewRecorder()
 	handlers.ReorderScreenshots(rec, req)
 
@@ -296,17 +298,17 @@ func TestReorderScreenshots_IDFromAnotherGameNotFound(t *testing.T) {
 	gameA, _ := repo.Create(games.CreateInput{Title: "Game A"})
 	gameB, _ := repo.Create(games.CreateInput{Title: "Game B"})
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (55, 'shot1.webp', 100, 100), (56, 'shot2.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('media-55', 'shot1.webp', 100, 100), ('media-56', 'shot2.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media rows error = %v", err)
 	}
-	ownScreenshot, _ := repo.AddScreenshot(gameA.ID, 55, 0)
-	otherScreenshot, _ := repo.AddScreenshot(gameB.ID, 56, 0)
+	ownScreenshot, _ := repo.AddScreenshot(gameA.ID, "media-55", 0)
+	otherScreenshot, _ := repo.AddScreenshot(gameB.ID, "media-56", 0)
 	handlers := NewHandlers(repo, conn, t.TempDir())
 
-	body, _ := json.Marshal(reorderRequest{IDs: []int64{ownScreenshot.ID, otherScreenshot.ID}})
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%d/screenshots/reorder", gameA.ID), bytes.NewReader(body))
-	req.SetPathValue("id", fmt.Sprintf("%d", gameA.ID))
+	body, _ := json.Marshal(reorderRequest{IDs: []string{ownScreenshot.ID, otherScreenshot.ID}})
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/admin/games/%s/screenshots/reorder", gameA.ID), bytes.NewReader(body))
+	req.SetPathValue("id", gameA.ID)
 	rec := httptest.NewRecorder()
 	handlers.ReorderScreenshots(rec, req)
 

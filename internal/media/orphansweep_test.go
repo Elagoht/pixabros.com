@@ -47,8 +47,8 @@ func TestSweepOrphans_DeletesOnlyUnreferencedAndOld(t *testing.T) {
 		t.Fatalf("backdate orphan media: %v", err)
 	}
 
-	lookup := func() (map[int64]bool, error) {
-		return map[int64]bool{referenced.ID: true}, nil
+	lookup := func() (map[string]bool, error) {
+		return map[string]bool{referenced.ID: true}, nil
 	}
 
 	deleted, err := SweepOrphans(repo, files, lookup, 24*time.Hour, time.Now())
@@ -142,8 +142,8 @@ func TestSweepOrphans_ContinuesOnSingleCandidateFailure(t *testing.T) {
 	// Configure storage to fail only for the failing orphan's file
 	files.failPath = failingOrphan.Path
 
-	lookup := func() (map[int64]bool, error) {
-		return map[int64]bool{}, nil // Nothing is referenced
+	lookup := func() (map[string]bool, error) {
+		return map[string]bool{}, nil // Nothing is referenced
 	}
 
 	deleted, err := SweepOrphans(repo, files, lookup, 24*time.Hour, time.Now())

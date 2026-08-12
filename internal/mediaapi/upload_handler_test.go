@@ -83,7 +83,7 @@ func TestUpload_Success(t *testing.T) {
 	if resp.Width != 400 || resp.Height != 400 {
 		t.Errorf("dimensions = %dx%d, want 400x400", resp.Width, resp.Height)
 	}
-	if resp.ID == 0 {
+	if resp.ID == "" {
 		t.Error("expected a non-zero media ID")
 	}
 

@@ -5,12 +5,14 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"pixabros/internal/id"
 )
 
 var ErrMediaNotFound = errors.New("media not found")
 
 type Media struct {
-	ID      int64
+	ID      string
 	Path    string
 	Width   int
 	Height  int
@@ -27,24 +29,20 @@ func NewRepo(db *sql.DB) *Repo {
 }
 
 func (r *Repo) Create(path string, width, height int) (Media, error) {
-	res, err := r.db.Exec(
-		`INSERT INTO media (path, width, height, format, alt_text) VALUES (?, ?, ?, 'webp', '');`,
-		path, width, height,
-	)
-	if err != nil {
+	newID := id.New()
+	if _, err := r.db.Exec(
+		`INSERT INTO media (id, path, width, height, format, alt_text) VALUES (?, ?, ?, ?, 'webp', '');`,
+		newID, path, width, height,
+	); err != nil {
 		return Media{}, err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return Media{}, err
-	}
-	return r.FindByID(id)
+	return r.FindByID(newID)
 }
 
-func (r *Repo) FindByID(id int64) (Media, error) {
+func (r *Repo) FindByID(mediaID string) (Media, error) {
 	var m Media
 	err := r.db.QueryRow(
-		`SELECT id, path, width, height, format, alt_text FROM media WHERE id = ?;`, id,
+		`SELECT id, path, width, height, format, alt_text FROM media WHERE id = ?;`, mediaID,
 	).Scan(&m.ID, &m.Path, &m.Width, &m.Height, &m.Format, &m.AltText)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Media{}, ErrMediaNotFound
@@ -55,25 +53,25 @@ func (r *Repo) FindByID(id int64) (Media, error) {
 	return m, nil
 }
 
-func (r *Repo) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM media WHERE id = ?;`, id)
+func (r *Repo) Delete(mediaID string) error {
+	_, err := r.db.Exec(`DELETE FROM media WHERE id = ?;`, mediaID)
 	return err
 }
 
-func (r *Repo) AllIDs() ([]int64, error) {
+func (r *Repo) AllIDs() ([]string, error) {
 	rows, err := r.db.Query(`SELECT id FROM media;`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var ids []int64
+	var ids []string
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var mediaID string
+		if err := rows.Scan(&mediaID); err != nil {
 			return nil, err
 		}
-		ids = append(ids, id)
+		ids = append(ids, mediaID)
 	}
 	return ids, rows.Err()
 }

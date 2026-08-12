@@ -25,7 +25,7 @@ func NewUploadHandler(repo *media.Repo, files storage.Storage) *UploadHandler {
 }
 
 type uploadResponse struct {
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 	URL    string `json:"url"`
 	Width  int    `json:"width"`
 	Height int    `json:"height"`

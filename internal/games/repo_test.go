@@ -1,9 +1,13 @@
 package games
 
 import (
+	"fmt"
+	"strconv"
+
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"pixabros/internal/id"
 	"testing"
 
 	"pixabros/internal/db"
@@ -51,7 +55,7 @@ func TestRepo_CreateDefaultsAndFindByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if game.ID == 0 {
+	if game.ID == "" {
 		t.Fatal("Create() returned a zero ID")
 	}
 	if game.ExternalLinksJSON != "[]" {
@@ -72,7 +76,7 @@ func TestRepo_CreateDefaultsAndFindByID(t *testing.T) {
 		t.Errorf("FindByID() = %+v, want Title=Pixel Quest DisplayOrder=3 IsPublished=true", found)
 	}
 
-	if _, err := repo.FindByID(999999); !errors.Is(err, ErrGameNotFound) {
+	if _, err := repo.FindByID("no-such-game-id-000000000"); !errors.Is(err, ErrGameNotFound) {
 		t.Errorf("FindByID() error = %v, want ErrGameNotFound", err)
 	}
 }
@@ -91,7 +95,7 @@ func TestRepo_FindBySlug(t *testing.T) {
 		t.Fatalf("FindBySlug() error = %v", err)
 	}
 	if found.ID != game.ID {
-		t.Errorf("FindBySlug() ID = %d, want %d", found.ID, game.ID)
+		t.Errorf("FindBySlug() ID = %s, want %s", found.ID, game.ID)
 	}
 
 	if _, err := repo.FindBySlug("does-not-exist"); !errors.Is(err, ErrGameNotFound) {
@@ -109,12 +113,12 @@ func TestRepo_UpdateRegeneratesSlugFromTitle(t *testing.T) {
 	}
 
 	if _, err := conn.Exec(
-		`INSERT INTO media (id, path, width, height) VALUES (42, 'cartridge.webp', 100, 100);`,
+		`INSERT INTO media (id, path, width, height) VALUES ('0123456789abcdef01234567', 'cartridge.webp', 100, 100);`,
 	); err != nil {
 		t.Fatalf("seed media row error = %v", err)
 	}
 
-	cartridgeID := int64(42)
+	cartridgeID := "0123456789abcdef01234567"
 	updated, err := repo.Update(game.ID, UpdateInput{
 		Title:          "Pixel Quest: Remastered",
 		IsPublished:    true,
@@ -129,11 +133,11 @@ func TestRepo_UpdateRegeneratesSlugFromTitle(t *testing.T) {
 	if updated.Title != "Pixel Quest: Remastered" {
 		t.Errorf("Title = %q, want %q", updated.Title, "Pixel Quest: Remastered")
 	}
-	if updated.CartridgeArtID == nil || *updated.CartridgeArtID != 42 {
-		t.Errorf("CartridgeArtID = %v, want pointer to 42", updated.CartridgeArtID)
+	if updated.CartridgeArtID == nil || *updated.CartridgeArtID != cartridgeID {
+		t.Errorf("CartridgeArtID = %v, want pointer to %s", updated.CartridgeArtID, cartridgeID)
 	}
 
-	if _, err := repo.Update(999999, UpdateInput{Title: "x"}); !errors.Is(err, ErrGameNotFound) {
+	if _, err := repo.Update("no-such-game-id-000000000", UpdateInput{Title: "x"}); !errors.Is(err, ErrGameNotFound) {
 		t.Errorf("Update() error = %v, want ErrGameNotFound", err)
 	}
 }
@@ -252,7 +256,7 @@ func TestRepo_ReorderSetsDisplayOrderToIndex(t *testing.T) {
 	second, _ := repo.Create(CreateInput{Title: "Second", DisplayOrder: 1})
 	third, _ := repo.Create(CreateInput{Title: "Third", DisplayOrder: 2})
 
-	if err := repo.Reorder([]int64{third.ID, first.ID, second.ID}); err != nil {
+	if err := repo.Reorder([]string{third.ID, first.ID, second.ID}); err != nil {
 		t.Fatalf("Reorder() error = %v", err)
 	}
 
@@ -279,7 +283,7 @@ func TestRepo_ReorderRollsBackOnUnknownID(t *testing.T) {
 	first, _ := repo.Create(CreateInput{Title: "First", DisplayOrder: 0})
 	second, _ := repo.Create(CreateInput{Title: "Second", DisplayOrder: 1})
 
-	err := repo.Reorder([]int64{second.ID, 999})
+	err := repo.Reorder([]string{second.ID, "no-such-game-id-000000000"})
 	if !errors.Is(err, ErrGameNotFound) {
 		t.Fatalf("Reorder() error = %v, want ErrGameNotFound", err)
 	}
@@ -290,5 +294,52 @@ func TestRepo_ReorderRollsBackOnUnknownID(t *testing.T) {
 	}
 	if reloadedFirst.DisplayOrder != 0 {
 		t.Errorf("first.DisplayOrder = %d, want 0 (unchanged -- the reorder should have rolled back)", reloadedFirst.DisplayOrder)
+	}
+}
+
+// Ids are handed to the admin UI and appear in URLs, so they must be opaque
+// and unguessable rather than a sequence anyone can count through.
+func TestRepo_CreateAssignsOpaqueUnguessableIDs(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+
+	seen := map[string]bool{}
+	for i := range 5 {
+		game, err := repo.Create(CreateInput{Title: fmt.Sprintf("Game %d", i)})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		if !id.IsValid(game.ID) {
+			t.Errorf("Create() id = %q, which is not a well-formed id", game.ID)
+		}
+		if _, err := strconv.Atoi(game.ID); err == nil {
+			t.Errorf("Create() id = %q is a plain number; ids must not be enumerable", game.ID)
+		}
+		if seen[game.ID] {
+			t.Errorf("Create() reused id %q", game.ID)
+		}
+		seen[game.ID] = true
+	}
+}
+
+func TestRepo_AddScreenshotAssignsOpaqueIDs(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+	game, err := repo.Create(CreateInput{Title: "Pixel Quest"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := conn.Exec(
+		`INSERT INTO media (id, path, width, height) VALUES ('media-1', 'shot.webp', 100, 100);`,
+	); err != nil {
+		t.Fatalf("seed media: %v", err)
+	}
+
+	shot, err := repo.AddScreenshot(game.ID, "media-1", 0)
+	if err != nil {
+		t.Fatalf("AddScreenshot() error = %v", err)
+	}
+	if !id.IsValid(shot.ID) {
+		t.Errorf("AddScreenshot() id = %q, which is not a well-formed id", shot.ID)
 	}
 }

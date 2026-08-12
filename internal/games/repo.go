@@ -5,12 +5,14 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"pixabros/internal/id"
 )
 
 var ErrGameNotFound = errors.New("game not found")
 
 type Game struct {
-	ID                int64
+	ID                string
 	Slug              string
 	Title             string
 	ShortDescription  string
@@ -21,9 +23,9 @@ type Game struct {
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
-	CartridgeArtID    *int64
-	CDCoverArtID      *int64
-	OGImageID         *int64
+	CartridgeArtID    *string
+	CDCoverArtID      *string
+	OGImageID         *string
 	WebExportPath     string
 	DisplayOrder      int
 	IsPublished       bool
@@ -55,9 +57,9 @@ type UpdateInput struct {
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
-	CartridgeArtID    *int64
-	CDCoverArtID      *int64
-	OGImageID         *int64
+	CartridgeArtID    *string
+	CDCoverArtID      *string
+	OGImageID         *string
 	DisplayOrder      int
 	IsPublished       bool
 }
@@ -83,7 +85,7 @@ type rowScanner interface {
 func scanGame(row rowScanner) (Game, error) {
 	var g Game
 	var priceDisplay, webExportPath sql.NullString
-	var cartridgeArtID, cdCoverArtID, ogImageID sql.NullInt64
+	var cartridgeArtID, cdCoverArtID, ogImageID sql.NullString
 	var createdAtStr, updatedAtStr string
 
 	err := row.Scan(
@@ -108,15 +110,15 @@ func scanGame(row rowScanner) (Game, error) {
 		g.WebExportPath = webExportPath.String
 	}
 	if cartridgeArtID.Valid {
-		id := cartridgeArtID.Int64
+		id := cartridgeArtID.String
 		g.CartridgeArtID = &id
 	}
 	if cdCoverArtID.Valid {
-		id := cdCoverArtID.Int64
+		id := cdCoverArtID.String
 		g.CDCoverArtID = &id
 	}
 	if ogImageID.Valid {
-		id := ogImageID.Int64
+		id := ogImageID.String
 		g.OGImageID = &id
 	}
 
@@ -149,7 +151,7 @@ func nullableString(s string) interface{} {
 	return s
 }
 
-func nullableInt64(v *int64) interface{} {
+func nullableID(v *string) interface{} {
 	if v == nil {
 		return nil
 	}
@@ -157,7 +159,7 @@ func nullableInt64(v *int64) interface{} {
 }
 
 func (r *Repo) Create(input CreateInput) (Game, error) {
-	slug, err := uniqueSlug(r.db, Slugify(input.Title), 0)
+	slug, err := uniqueSlug(r.db, Slugify(input.Title), "")
 	if err != nil {
 		return Game{}, err
 	}
@@ -166,27 +168,23 @@ func (r *Repo) Create(input CreateInput) (Game, error) {
 		externalLinks = "[]"
 	}
 
-	res, err := r.db.Exec(
+	newID := id.New()
+	if _, err := r.db.Exec(
 		`INSERT INTO games (
-			slug, title, short_description, full_description, tags,
+			id, slug, title, short_description, full_description, tags,
 			is_browser_playable, is_downloadable, is_for_sale,
 			price_display, external_links_json, display_order, is_published
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-		slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		newID, slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
 		input.IsBrowserPlayable, input.IsDownloadable, input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks, input.DisplayOrder, input.IsPublished,
-	)
-	if err != nil {
+	); err != nil {
 		return Game{}, err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return Game{}, err
-	}
-	return r.FindByID(id)
+	return r.FindByID(newID)
 }
 
-func (r *Repo) FindByID(id int64) (Game, error) {
+func (r *Repo) FindByID(id string) (Game, error) {
 	row := r.db.QueryRow(`SELECT `+gameColumns+` FROM games WHERE id = ?;`, id)
 	return scanGame(row)
 }
@@ -200,7 +198,7 @@ func (r *Repo) FindBySlug(slug string) (Game, error) {
 // call. excludeID=id in the uniqueSlug lookup means an unchanged title
 // resolves back to the same slug rather than colliding with itself and
 // picking up a spurious -2 suffix.
-func (r *Repo) Update(id int64, input UpdateInput) (Game, error) {
+func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 	externalLinks := input.ExternalLinksJSON
 	if externalLinks == "" {
 		externalLinks = "[]"
@@ -222,7 +220,7 @@ func (r *Repo) Update(id int64, input UpdateInput) (Game, error) {
 		slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
 		input.IsBrowserPlayable, input.IsDownloadable, input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks,
-		nullableInt64(input.CartridgeArtID), nullableInt64(input.CDCoverArtID), nullableInt64(input.OGImageID),
+		nullableID(input.CartridgeArtID), nullableID(input.CDCoverArtID), nullableID(input.OGImageID),
 		input.DisplayOrder, input.IsPublished, id,
 	)
 	if err != nil {
@@ -234,7 +232,7 @@ func (r *Repo) Update(id int64, input UpdateInput) (Game, error) {
 	return r.FindByID(id)
 }
 
-func (r *Repo) Delete(id int64) error {
+func (r *Repo) Delete(id string) error {
 	res, err := r.db.Exec(`DELETE FROM games WHERE id = ?;`, id)
 	if err != nil {
 		return err
@@ -242,7 +240,7 @@ func (r *Repo) Delete(id int64) error {
 	return requireRowsAffected(res)
 }
 
-func (r *Repo) SetWebExportPath(id int64, path string) error {
+func (r *Repo) SetWebExportPath(id string, path string) error {
 	res, err := r.db.Exec(
 		`UPDATE games SET web_export_path = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
 		path, id,
@@ -258,7 +256,7 @@ func (r *Repo) SetWebExportPath(id int64, path string) error {
 // (it already has every game loaded), so a partial or unknown id is a bug in
 // the caller, not a normal case -- the whole reorder is rolled back rather
 // than silently applying half of it.
-func (r *Repo) Reorder(ids []int64) error {
+func (r *Repo) Reorder(ids []string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err

@@ -36,8 +36,8 @@ func TestGet_ReturnsMediaWithPublicURL(t *testing.T) {
 		t.Fatalf("repo.Create() error = %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/media/1", nil)
-	req.SetPathValue("id", "1")
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/media/"+saved.ID, nil)
+	req.SetPathValue("id", saved.ID)
 	rec := httptest.NewRecorder()
 	handlers.Get(rec, req)
 
@@ -57,8 +57,8 @@ func TestGet_ReturnsMediaWithPublicURL(t *testing.T) {
 func TestGet_UnknownIDNotFound(t *testing.T) {
 	handlers, _ := setupMediaHandlers(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/media/999", nil)
-	req.SetPathValue("id", "999")
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/media/aaaaaaaaaaaaaaaaaaaaaaaa", nil)
+	req.SetPathValue("id", "aaaaaaaaaaaaaaaaaaaaaaaa")
 	rec := httptest.NewRecorder()
 	handlers.Get(rec, req)
 
@@ -75,18 +75,5 @@ func TestGet_UnknownIDNotFound(t *testing.T) {
 	}
 	if body.Error.Code != "not_found" {
 		t.Errorf("error.code = %q, want %q", body.Error.Code, "not_found")
-	}
-}
-
-func TestGet_NonNumericIDRejected(t *testing.T) {
-	handlers, _ := setupMediaHandlers(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/media/not-a-number", nil)
-	req.SetPathValue("id", "not-a-number")
-	rec := httptest.NewRecorder()
-	handlers.Get(rec, req)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }

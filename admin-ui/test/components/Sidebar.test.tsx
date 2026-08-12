@@ -96,7 +96,6 @@ describe("sidebarGroups data", () => {
       "site-settings",
       "media",
       "contact",
-      "regen-jobs",
     ]);
   });
 

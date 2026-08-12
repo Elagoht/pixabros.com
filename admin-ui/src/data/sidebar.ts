@@ -6,7 +6,6 @@ import {
   IconHome,
   IconMail,
   IconPhoto,
-  IconRefresh,
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
@@ -85,11 +84,6 @@ export const sidebarGroups: SidebarGroupData[] = [
         icon: IconMail,
         labelKey: "menu.contact",
         path: "/contact",
-      },
-      {
-        id: "regen-jobs",
-        icon: IconRefresh,
-        labelKey: "menu.regenJobs",
       },
     ],
   },

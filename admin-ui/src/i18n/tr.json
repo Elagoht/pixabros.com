@@ -167,5 +167,123 @@
     "invalidCredentials": "Kullanıcı adı veya şifre hatalı",
     "currentPasswordIncorrect": "Mevcut şifreniz hatalı",
     "weakPassword": "Şifre 8 ile 72 karakter arasında olmalıdır"
+  },
+  "games": {
+    "backToList": "Oyunlara dön",
+    "list": {
+      "title": "Oyunlar",
+      "new": "Yeni oyun",
+      "reorder": "Sırala"
+    },
+    "columns": {
+      "title": "Başlık",
+      "slug": "Adres",
+      "status": "Durum",
+      "distribution": "Dağıtım",
+      "order": "Sıra"
+    },
+    "status": {
+      "published": "Yayında",
+      "draft": "Taslak"
+    },
+    "distribution": {
+      "browser": "Tarayıcı",
+      "download": "İndirilebilir",
+      "forSale": "Satışta"
+    },
+    "form": {
+      "basics": "Temel bilgiler",
+      "title": "Başlık",
+      "titlePlaceholder": "Pixel Quest",
+      "shortDescription": "Kısa açıklama",
+      "fullDescription": "Tam açıklama",
+      "tags": "Etiketler",
+      "tagsPlaceholder": "platform, retro",
+      "availability": "Yayın ve satış",
+      "browserPlayable": "Tarayıcıda oynanabilir",
+      "downloadable": "İndirilebilir",
+      "forSale": "Satışta",
+      "priceDisplay": "Fiyat etiketi",
+      "priceDisplayPlaceholder": "₺49,99 veya Ücretsiz",
+      "externalLinks": "Dış bağlantılar",
+      "externalLinksHelp": "Oyunun genel sayfasında gösterilecek bağlantılar — örneğin itch.io veya Steam sayfası.",
+      "publishing": "Yayınlama",
+      "published": "Yayında",
+      "orderHint": "Oyunların görünme sırası, oyun listesindeki sürükleme ile ayarlanır.",
+      "linkLabelPlaceholder": "itch.io",
+      "linkUrlPlaceholder": "https://ornek.itch.io/oyun",
+      "addLink": "Bağlantı ekle",
+      "noLinks": "Henüz bağlantı yok."
+    },
+    "create": {
+      "title": "Yeni oyun",
+      "submit": "Oyunu oluştur",
+      "hint": "Adres, kaydederken başlıktan üretilir. Görseller, ekran görüntüleri ve oynanabilir sürüm oyun oluşturulduktan sonra eklenir."
+    },
+    "edit": {
+      "title": "Oyunu düzenle",
+      "submit": "Oyunu kaydet",
+      "notFound": "Bu oyun artık mevcut değil.",
+      "slugHint": "Başlığı değiştirmek genel adresi de değiştirir. Şu anki adres:"
+    },
+    "artwork": {
+      "title": "Görseller",
+      "hint": "Yüklenen görsel, formu kaydettiğinizde oyuna bağlanır.",
+      "cartridge": "Kartuş görseli",
+      "cdCover": "CD kapağı",
+      "ogImage": "Paylaşım görseli",
+      "empty": "Henüz görsel yok",
+      "upload": "Yükle",
+      "replace": "Değiştir"
+    },
+    "screenshots": {
+      "title": "Ekran görüntüleri",
+      "add": "Ekran görüntüsü ekle",
+      "empty": "Henüz ekran görüntüsü yok",
+      "alt": "Ekran görüntüsü {{index}}"
+    },
+    "build": {
+      "title": "Oynanabilir sürüm",
+      "current": "Mevcut sürüm:",
+      "play": "Oyunu aç",
+      "empty": "Henüz bir sürüm yüklenmedi.",
+      "upload": "Sürüm yükle",
+      "uploading": "Sürüm yükleniyor...",
+      "help": "Kök dizininde index.html bulunan .zip, .tar, .tar.gz veya .tgz arşivi. Mevcut sürümün yerine geçer."
+    },
+    "reorder": {
+      "title": "Oyunları sırala",
+      "help": "Oyunları görünmelerini istediğiniz sıraya sürükleyin."
+    },
+    "delete": {
+      "title": "Oyunu sil",
+      "description": "\"{{title}}\" ekran görüntüleri ve yüklenmiş sürümüyle birlikte silinecek. Bu işlem geri alınamaz."
+    },
+    "danger": {
+      "title": "Tehlikeli bölge",
+      "description": "Bu oyunu silmek ekran görüntülerini ve yüklenmiş sürümünü de diskten kaldırır.",
+      "delete": "Oyunu sil"
+    },
+    "toast": {
+      "created": "Oyun oluşturuldu",
+      "saved": "Oyun kaydedildi",
+      "deleted": "Oyun silindi",
+      "reordered": "Sıralama kaydedildi",
+      "screenshotAdded": "Ekran görüntüsü eklendi",
+      "screenshotRemoved": "Ekran görüntüsü kaldırıldı",
+      "buildUploaded": "Sürüm yüklendi"
+    },
+    "errors": {
+      "titleRequired": "Başlık zorunludur",
+      "invalidImage": "Bu görsel işlenemedi",
+      "fileTooLarge": "Bu dosya çok büyük",
+      "invalidArchive": "Bu arşiv açılamadı"
+    },
+    "validation": {
+      "titleRequired": "Başlık zorunludur.",
+      "externalLinksJson": "Dış bağlantılar geçerli bir JSON dizisi olmalı, örneğin [].",
+      "linkLabel": "Etiket zorunludur.",
+      "linkUrl": "https:// dahil tam bir adres girin"
+    }
   }
 }

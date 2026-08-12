@@ -15,6 +15,9 @@ const MainPage = lazy(() => import("@/app/(panel)/page"));
 const ChangePasswordPage = lazy(
   () => import("@/app/(panel)/change-password/page"),
 );
+const GamesPage = lazy(() => import("@/app/(panel)/games/page"));
+const GameCreatePage = lazy(() => import("@/app/(panel)/games/new/page"));
+const GameEditPage = lazy(() => import("@/app/(panel)/games/[id]/page"));
 const NotFoundPage = lazy(() => import("@/app/not-found"));
 
 // The Go server mounts this SPA under a non-root prefix, so react-router has
@@ -44,6 +47,19 @@ export const router = createBrowserRouter(
         {
           element: <ChangePasswordPage />,
           path: "/change-password",
+        },
+        {
+          element: <GamesPage />,
+          path: "/games",
+        },
+        // Registered above /games/:id so the static segment is matched first.
+        {
+          element: <GameCreatePage />,
+          path: "/games/new",
+        },
+        {
+          element: <GameEditPage />,
+          path: "/games/:id",
         },
       ],
     },

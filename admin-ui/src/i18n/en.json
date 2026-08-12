@@ -167,5 +167,123 @@
     "invalidCredentials": "Username or password is incorrect",
     "currentPasswordIncorrect": "Your current password is incorrect",
     "weakPassword": "Password must be between 8 and 72 characters"
+  },
+  "games": {
+    "backToList": "Back to games",
+    "list": {
+      "title": "Games",
+      "new": "New game",
+      "reorder": "Reorder"
+    },
+    "columns": {
+      "title": "Title",
+      "slug": "Slug",
+      "status": "Status",
+      "distribution": "Distribution",
+      "order": "Order"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft"
+    },
+    "distribution": {
+      "browser": "Browser",
+      "download": "Download",
+      "forSale": "For sale"
+    },
+    "form": {
+      "basics": "Basics",
+      "title": "Title",
+      "titlePlaceholder": "Pixel Quest",
+      "shortDescription": "Short description",
+      "fullDescription": "Full description",
+      "tags": "Tags",
+      "tagsPlaceholder": "platformer, retro",
+      "availability": "Availability",
+      "browserPlayable": "Playable in browser",
+      "downloadable": "Downloadable",
+      "forSale": "For sale",
+      "priceDisplay": "Price label",
+      "priceDisplayPlaceholder": "$4.99 or Free",
+      "externalLinks": "External links",
+      "externalLinksHelp": "Links shown on the game's public page — for example its itch.io or Steam listing.",
+      "publishing": "Publishing",
+      "published": "Published",
+      "orderHint": "The order games appear in is set by dragging them on the games list.",
+      "linkLabelPlaceholder": "itch.io",
+      "linkUrlPlaceholder": "https://example.itch.io/game",
+      "addLink": "Add link",
+      "noLinks": "No links yet."
+    },
+    "create": {
+      "title": "New game",
+      "submit": "Create game",
+      "hint": "The address is generated from the title on save. Artwork, screenshots and the playable build are attached after the game exists."
+    },
+    "edit": {
+      "title": "Edit game",
+      "submit": "Save game",
+      "notFound": "This game no longer exists.",
+      "slugHint": "Changing the title also changes the public address. Current address:"
+    },
+    "artwork": {
+      "title": "Artwork",
+      "hint": "An uploaded image is attached to this game when you save the form.",
+      "cartridge": "Cartridge art",
+      "cdCover": "CD cover art",
+      "ogImage": "Share image",
+      "empty": "No image yet",
+      "upload": "Upload",
+      "replace": "Replace"
+    },
+    "screenshots": {
+      "title": "Screenshots",
+      "add": "Add screenshot",
+      "empty": "No screenshots yet",
+      "alt": "Screenshot {{index}}"
+    },
+    "build": {
+      "title": "Playable build",
+      "current": "Current build:",
+      "play": "Open the game",
+      "empty": "No build uploaded yet.",
+      "upload": "Upload build",
+      "uploading": "Uploading build...",
+      "help": "A .zip, .tar, .tar.gz or .tgz archive with index.html at its root. Replaces the current build."
+    },
+    "reorder": {
+      "title": "Reorder games",
+      "help": "Drag the games into the order they should appear in."
+    },
+    "delete": {
+      "title": "Delete game",
+      "description": "\"{{title}}\" will be deleted along with its screenshots and its uploaded build. This cannot be undone."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting this game also removes its screenshots and its uploaded build from disk.",
+      "delete": "Delete game"
+    },
+    "toast": {
+      "created": "Game created",
+      "saved": "Game saved",
+      "deleted": "Game deleted",
+      "reordered": "Order saved",
+      "screenshotAdded": "Screenshot added",
+      "screenshotRemoved": "Screenshot removed",
+      "buildUploaded": "Build uploaded"
+    },
+    "errors": {
+      "titleRequired": "A title is required",
+      "invalidImage": "That image could not be processed",
+      "fileTooLarge": "That file is too large",
+      "invalidArchive": "That archive could not be extracted"
+    },
+    "validation": {
+      "titleRequired": "Title is required.",
+      "externalLinksJson": "External links must be a valid JSON array, for example [].",
+      "linkLabel": "A label is required.",
+      "linkUrl": "Enter a full URL, including https://"
+    }
   }
 }

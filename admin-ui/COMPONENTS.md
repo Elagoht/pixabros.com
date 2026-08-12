@@ -41,6 +41,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 | `Slider`         | `value`, `onChange`, `min?`, `max?`, `step?`, `showValue?`                   |
 | `Rating`         | `value`, `onChange`, `size?`, `allowHalf?`, `disabled?`                      |
 | `Keywords`       | `name`, `label?`, `placeholder?`, `output: "string" \| "array"`              |
+| `LinkListField`  | `name`, `labelPlaceholder`, `urlPlaceholder`, `addLabel`, `emptyLabel`, `removeLabel` — repeatable `{label, url}` rows |
 | `Label`          | `children`, `htmlFor?`, `className?`                                         |
 | `FieldSet`       | `legend`, `icon?`, `description?`, `error?`, `children`, `className?`        |
 | `Chip`           | `children`, `onRemove`                                                       |

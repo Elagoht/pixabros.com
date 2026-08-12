@@ -1,6 +1,5 @@
 import { IconArrowLeft } from "@tabler/icons-react";
 import type { FC } from "react";
-import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, CodeBlock } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
 
@@ -9,7 +8,6 @@ const RESET_COMMAND =
 
 const ForgotPasswordPanel: FC = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
 
   return (
     <section className="w-full max-w-md">
@@ -40,7 +38,7 @@ const ForgotPasswordPanel: FC = () => {
           </div>
 
           <Button
-            onClick={() => navigate("/login")}
+            to="/login"
             variant="outline"
             leftIcon={IconArrowLeft}
             className="w-full"

@@ -1,7 +1,7 @@
 import { IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Button, Container, Dialog } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
@@ -12,7 +12,6 @@ import AwardsTable from "./AwardsTable";
 
 const AwardsListView: FC = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [deleteTarget, setDeleteTarget] = useState<ResponseAward | null>(null);
@@ -82,7 +81,7 @@ const AwardsListView: FC = () => {
             variant="default"
             size="sm"
             leftIcon={IconPlus}
-            onClick={() => navigate("/awards/new")}
+            to="/awards/new"
           >
             {t("awards.list.new")}
           </Button>

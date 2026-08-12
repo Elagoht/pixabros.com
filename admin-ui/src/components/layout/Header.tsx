@@ -5,6 +5,7 @@ import { Button, Dropdown, Image } from "@/components/ui";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useI18n } from "@/lib/stores/i18n";
 import { useUIStore } from "@/lib/stores/ui";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface HeaderProps {
   logo: string;
@@ -18,13 +19,6 @@ const Header: FC<HeaderProps> = ({ logo, appName }) => {
   const { toggleSidebar } = useUIStore();
 
   const userMenuItems = [
-    {
-      id: "username",
-      label: user?.username ?? "",
-      icon: IconUser,
-      disabled: true,
-    },
-    { id: "sep-user", label: undefined, separator: true },
     {
       id: "change-password",
       label: t("pages.changePassword.title"),
@@ -75,17 +69,24 @@ const Header: FC<HeaderProps> = ({ logo, appName }) => {
 
       <div className="flex flex-1 items-center justify-center px-4"></div>
 
-      <div className="flex items-center justify-end px-4">
+      <div className="flex items-center justify-end gap-1 px-4">
+        <LanguageSwitcher />
+
         <Dropdown
           align="right"
           trigger={
             <Button
               variant="ghost"
-              className="!rounded-xl !p-1.5 hover:!bg-gray-100 dark:hover:!bg-white/10 hover:shadow-md hover:shadow-primary-500/15"
+              className="!gap-2 !rounded-xl !p-1.5 hover:!bg-gray-100 dark:hover:!bg-white/10 hover:shadow-md hover:shadow-primary-500/15"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-500 text-white shadow-md shadow-primary-500/30">
                 <IconUser size={16} />
               </div>
+              {user?.username && (
+                <span className="hidden max-w-36 truncate text-sm font-medium text-gray-700 dark:text-gray-200 sm:inline">
+                  {user.username}
+                </span>
+              )}
             </Button>
           }
           items={userMenuItems}

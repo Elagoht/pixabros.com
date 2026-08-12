@@ -1,7 +1,7 @@
 import { IconArrowsSort, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Button, Container, Dialog, ReorderModal } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
@@ -11,7 +11,6 @@ import MembersTable from "./MembersTable";
 
 const MembersListView: FC = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [deleteTarget, setDeleteTarget] = useState<ResponseMember | null>(null);
@@ -108,7 +107,7 @@ const MembersListView: FC = () => {
               variant="default"
               size="sm"
               leftIcon={IconPlus}
-              onClick={() => navigate("/members/new")}
+              to="/members/new"
             >
               {t("members.list.new")}
             </Button>

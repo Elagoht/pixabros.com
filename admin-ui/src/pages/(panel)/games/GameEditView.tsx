@@ -74,7 +74,7 @@ const GameEditView: FC = () => {
         <EmptyState
           title={t("games.edit.notFound")}
           action={
-            <Button variant="outline" onClick={() => navigate("/games")}>
+            <Button variant="outline" to="/games">
               {t("games.backToList")}
             </Button>
           }

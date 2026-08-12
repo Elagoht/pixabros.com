@@ -69,6 +69,9 @@ export const queryKeys = {
     group: (group: SettingsGroupName) =>
       [...queryKeys.settings.all, group] as const,
   },
+  stats: {
+    all: ["stats"] as const,
+  },
   media: {
     all: ["media"] as const,
     library: () => [...queryKeys.media.all, "library"] as const,

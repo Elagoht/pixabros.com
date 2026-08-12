@@ -352,3 +352,25 @@ interface ResponseMediaLibrary {
   items: ResponseMediaItem[];
   orphaned: number;
 }
+
+// Dashboard counters. The shape mirrors internal/stats.Stats; the Go tests pin
+// these JSON keys so a rename cannot silently zero the dashboard.
+interface ResponseStats {
+  games: {
+    total: number;
+    published: number;
+    playable: number;
+    for_sale: number;
+  };
+  devlog: {
+    total: number;
+    published: number;
+  };
+  awards: number;
+  members: number;
+  contact: {
+    total: number;
+    unread: number;
+  };
+  media: number;
+}

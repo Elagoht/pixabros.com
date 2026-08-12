@@ -1,5 +1,6 @@
 import classNames from "classnames";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
+import { Link } from "react-router-dom";
 
 type ButtonVariant =
   | "default"
@@ -21,6 +22,15 @@ interface ButtonProps extends Omit<ComponentPropsWithoutRef<"button">, "type"> {
   leftIcon?: IconElement;
   rightIcon?: IconElement;
   type?: "button" | "submit" | "reset";
+  /**
+   * Renders the button as a router link. A navigating control should be a real
+   * anchor: middle-click, ctrl-click and "copy link address" all work, and
+   * assistive tech announces it as a link rather than a button.
+   *
+   * Ignored when `disabled` is set -- an anchor has no disabled state, so a
+   * disabled link would still navigate.
+   */
+  to?: string;
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -70,6 +80,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       rightIcon: RightIcon,
       className,
       type = "button",
+      to,
       children,
       ...props
     },
@@ -92,18 +103,35 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const iconSize = iconSizes[size];
 
+    const content = (
+      <span
+        className={classNames(
+          "relative inline-flex items-center",
+          gapClasses[size],
+        )}
+      >
+        {LeftIcon && <LeftIcon size={iconSize} className="shrink-0" />}
+        {children}
+        {RightIcon && <RightIcon size={iconSize} className="shrink-0" />}
+      </span>
+    );
+
+    if (to && !props.disabled) {
+      // The remaining props are typed for <button>, so their event handlers
+      // name HTMLButtonElement while an anchor's name HTMLAnchorElement. The
+      // handlers are the same functions either way -- only the element type in
+      // the signature differs -- so this is re-typing, not a change of shape.
+      const anchorProps = props as unknown as ComponentPropsWithoutRef<"a">;
+      return (
+        <Link {...anchorProps} to={to} className={classes}>
+          {content}
+        </Link>
+      );
+    }
+
     return (
       <button {...props} ref={ref} type={type} className={classes}>
-        <span
-          className={classNames(
-            "relative inline-flex items-center",
-            gapClasses[size],
-          )}
-        >
-          {LeftIcon && <LeftIcon size={iconSize} className="shrink-0" />}
-          {children}
-          {RightIcon && <RightIcon size={iconSize} className="shrink-0" />}
-        </span>
+        {content}
       </button>
     );
   },

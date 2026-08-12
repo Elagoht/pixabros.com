@@ -30,6 +30,8 @@ import (
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
 	"pixabros/internal/settingsapi"
+	"pixabros/internal/stats"
+	"pixabros/internal/statsapi"
 	"pixabros/internal/storage"
 )
 
@@ -44,6 +46,7 @@ type Dependencies struct {
 	Awards     *awards.Repo
 	Devlog     *devlog.Repo
 	Contact    *contact.Repo
+	Stats      *stats.Repo
 	Settings   *settings.Repo
 	Media      *media.Repo
 	MediaFiles storage.Storage
@@ -102,6 +105,9 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("DELETE /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Delete))
 
 	contactHandlers := contactapi.NewHandlers(deps.Contact)
+	statsHandlers := statsapi.NewHandlers(deps.Stats)
+	mux.HandleFunc("GET /api/admin/stats", adminapi.RequireSession(deps.Sessions, statsHandlers.Get))
+
 	mux.HandleFunc("GET /api/admin/contact", adminapi.RequireSession(deps.Sessions, contactHandlers.List))
 	mux.HandleFunc("GET /api/admin/contact/{id}", adminapi.RequireSession(deps.Sessions, contactHandlers.Get))
 	// Read state is the only thing the admin can change about a submission,

@@ -126,6 +126,27 @@
     }
   },
   "pages": {
+    "dashboard": {
+      "unreadMessages": "Okunmamış mesaj",
+      "totalMessages": "Toplam {{count}} mesaj",
+      "games": "Oyunlar",
+      "gamesHint": "{{published}} yayında · {{playable}} oynanabilir",
+      "devlog": "Devlog yazıları",
+      "publishedCount": "{{count}} yayında",
+      "awards": "Ödüller",
+      "members": "Ekip üyeleri",
+      "media": "Görseller",
+      "loadError": "İstatistikler yüklenemedi",
+      "loadErrorDescription": "Aşağıdaki sayılar güncel olmayabilir. Tekrar denemek için sayfayı yenileyin.",
+      "actions": {
+        "title": "Hızlı işlemler",
+        "newGame": "Yeni oyun",
+        "newDevlog": "Yeni devlog yazısı",
+        "newAward": "Yeni ödül",
+        "newMember": "Yeni üye",
+        "mediaLibrary": "Medya kütüphanesi"
+      }
+    },
     "auth": {
       "login": {
         "title": "Giriş Yap",

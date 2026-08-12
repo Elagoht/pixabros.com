@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui";
 
@@ -73,5 +74,46 @@ describe("Button", () => {
   it("renders as a button element", () => {
     render(<Button>Test</Button>);
     expect(screen.getByRole("button").tagName).toBe("BUTTON");
+  });
+
+  // `to` was documented in COMPONENTS.md but never implemented: the prop fell
+  // through to the DOM as <button to="/x">, so the control rendered fine and
+  // simply did not navigate.
+  describe("as a link", () => {
+    const renderLink = (props: Record<string, unknown> = {}) =>
+      render(
+        <MemoryRouter>
+          <Button to="/games/new" {...props}>
+            New game
+          </Button>
+        </MemoryRouter>,
+      );
+
+    it("renders an anchor when `to` is given", () => {
+      renderLink();
+      expect(screen.getByRole("link")).toHaveAttribute("href", "/games/new");
+    });
+
+    it("does not leak `to` onto the element as an attribute", () => {
+      renderLink();
+      expect(screen.getByRole("link")).not.toHaveAttribute("to");
+    });
+
+    it("keeps its variant styling as a link", () => {
+      renderLink({ variant: "destructive" });
+      expect(screen.getByRole("link")).toHaveClass("bg-red-600");
+    });
+
+    // An anchor has no disabled state, so a disabled link would still navigate.
+    it("falls back to a real button when disabled", () => {
+      renderLink({ disabled: true });
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
+    });
+
+    it("still renders a button when `to` is absent", () => {
+      render(<Button>Save</Button>);
+      expect(screen.getByRole("button")).toBeInTheDocument();
+    });
   });
 });

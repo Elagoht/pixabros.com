@@ -126,6 +126,27 @@
     }
   },
   "pages": {
+    "dashboard": {
+      "unreadMessages": "Unread messages",
+      "totalMessages": "{{count}} in total",
+      "games": "Games",
+      "gamesHint": "{{published}} published · {{playable}} playable",
+      "devlog": "Devlog posts",
+      "publishedCount": "{{count}} published",
+      "awards": "Awards",
+      "members": "Team members",
+      "media": "Images",
+      "loadError": "Statistics could not be loaded",
+      "loadErrorDescription": "The numbers below may be out of date. Refresh the page to try again.",
+      "actions": {
+        "title": "Quick actions",
+        "newGame": "New game",
+        "newDevlog": "New devlog post",
+        "newAward": "New award",
+        "newMember": "New member",
+        "mediaLibrary": "Media library"
+      }
+    },
     "auth": {
       "login": {
         "title": "Login",

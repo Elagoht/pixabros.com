@@ -1,7 +1,7 @@
 import { IconArrowsSort, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Button, Container, Dialog, ReorderModal } from "@/components/ui";
 import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/lib/stores/i18n";
@@ -11,7 +11,6 @@ import GamesTable from "./GamesTable";
 
 const GamesListView: FC = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [deleteTarget, setDeleteTarget] = useState<ResponseGame | null>(null);
@@ -111,7 +110,7 @@ const GamesListView: FC = () => {
               variant="default"
               size="sm"
               leftIcon={IconPlus}
-              onClick={() => navigate("/games/new")}
+              to="/games/new"
             >
               {t("games.list.new")}
             </Button>

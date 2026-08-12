@@ -22,6 +22,7 @@ import (
 	"pixabros/internal/members"
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
+	"pixabros/internal/stats"
 	"pixabros/internal/storage"
 )
 
@@ -112,6 +113,7 @@ func main() {
 		Awards:     awardsRepo,
 		Devlog:     devlogRepo,
 		Contact:    contactRepo,
+		Stats:      stats.NewRepo(conn),
 		Settings:   settingsRepo,
 		Media:      mediaRepo,
 		MediaFiles: mediaFiles,

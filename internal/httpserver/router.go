@@ -51,9 +51,12 @@ type Dependencies struct {
 	Media      *media.Repo
 	MediaFiles storage.Storage
 	MediaDir   string
-	AdminUIDir string
-	PlayDir    string
-	AssetsDir  string
+	// NotFoundBody is the styled public 404 page. Empty falls back to plain
+	// text, which is what non-public deployments and tests get.
+	NotFoundBody []byte
+	AdminUIDir   string
+	PlayDir      string
+	AssetsDir    string
 }
 
 func New(deps Dependencies) http.Handler {
@@ -185,7 +188,11 @@ func New(deps Dependencies) http.Handler {
 		mux.Handle("/media/", http.StripPrefix("/media/", noDirListing(deps.MediaDir)))
 	}
 	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
-	mux.Handle("/", render.ServePages(deps.Store, deps.Files))
+	publicPages := render.ServePages(deps.Store, deps.Files)
+	if len(deps.NotFoundBody) > 0 {
+		publicPages = render.ServePages(deps.Store, deps.Files, render.WithNotFoundPage(deps.NotFoundBody))
+	}
+	mux.Handle("/", publicPages)
 
 	return mux
 }

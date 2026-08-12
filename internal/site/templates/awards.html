@@ -1,0 +1,55 @@
+{{define "main"}}
+  <div class="page-header">
+    <h1>Awards</h1>
+    <p class="page-header__lead">
+      Recognition our games have picked up along the way, newest first.
+    </p>
+  </div>
+
+  {{with .Data}}
+    {{if .Awards}}
+      <ol class="timeline">
+        {{range .Awards}}
+          <li class="timeline__item">
+            {{if .PictureURL}}
+              <div class="timeline__badge">
+                <img
+                  src="{{.PictureURL}}"
+                  alt="{{.PictureAlt}}"
+                  width="320"
+                  height="320"
+                  loading="lazy"
+                />
+              </div>
+            {{else}}
+              <div
+                class="timeline__badge timeline__badge--empty"
+                aria-hidden="true"
+              >
+                ★
+              </div>
+            {{end}}
+
+            <div class="timeline__body">
+              <h2 class="timeline__title">{{.Title}}</h2>
+              <p class="timeline__meta">
+                <span>{{.Issuer}}</span>
+                {{if .Date}}
+                  <span class="timeline__meta-sep" aria-hidden="true">/</span>
+                  <span>{{formatDate .Date}}</span>
+                {{end}}
+              </p>
+              {{if .Link}}
+                <a class="timeline__link" href="{{.Link}}" rel="noopener"
+                  >Read more</a
+                >
+              {{end}}
+            </div>
+          </li>
+        {{end}}
+      </ol>
+    {{else}}
+      <p class="empty-note">No awards to show just yet.</p>
+    {{end}}
+  {{end}}
+{{end}}

@@ -139,7 +139,7 @@ cmd/server/
 
 ### Task 1: Design tokens and the base stylesheet
 
-- [ ] Create `internal/site/assets/site.css` opening with the palette from the stack spec as custom properties, verbatim — these are the same raw values the admin's Tailwind config uses:
+- [x] Create `internal/site/assets/site.css` opening with the palette from the stack spec as custom properties, verbatim — these are the same raw values the admin's Tailwind config uses:
 
 ```css
 :root {
@@ -156,16 +156,16 @@ cmd/server/
 }
 ```
 
-- [ ] Add a modern reset, base typography (Inter), the shared page frame (header, nav, footer, content container), and link/focus styles using `--color-accent` for the focus ring.
-- [ ] The site is dark-only. Do **not** add a `prefers-color-scheme` light branch — the design language is a dark studio site, and a half-built light theme is worse than none.
-- [ ] Self-host fonts under `assets/fonts/` and declare `@font-face` with `font-display: swap`. Do not link Google Fonts: it is a third-party request on every page load and the site already controls its own asset caching. `Press Start 2P` is loaded but referenced by nothing yet — the Play page is the only place it is ever allowed.
-- [ ] **Verify:** every custom property referenced anywhere in the file is also defined in `:root`. A typo'd `var(--color-acccent)` silently renders as nothing.
+- [x] Add a modern reset, base typography (Inter), the shared page frame (header, nav, footer, content container), and link/focus styles using `--color-accent` for the focus ring.
+- [x] The site is dark-only. Do **not** add a `prefers-color-scheme` light branch — the design language is a dark studio site, and a half-built light theme is worse than none.
+- [x] Self-host fonts under `assets/fonts/` and declare `@font-face` with `font-display: swap`. Do not link Google Fonts: it is a third-party request on every page load and the site already controls its own asset caching. `Press Start 2P` is loaded but referenced by nothing yet — the Play page is the only place it is ever allowed.
+- [x] **Verify:** every custom property referenced anywhere in the file is also defined in `:root`. A typo'd `var(--color-acccent)` silently renders as nothing.
 
 ### Task 2: The asset bundle — content hashing and publishing
 
 The router already serves `<DataDir>/assets/` with `Cache-Control: immutable` and that directory also holds hand-placed files (the admin logo). Generated files therefore go in their own subdirectory so pruning can never touch anything a human put there.
 
-- [ ] Create `internal/site/assets.go`:
+- [x] Create `internal/site/assets.go`:
 
 ```go
 //go:embed assets
@@ -188,15 +188,15 @@ func Build(dir string) (*Bundle, error)
 func (b *Bundle) URL(name string) string
 ```
 
-- [ ] Minify CSS with `minify.New()` + `css.Minify` **before** hashing, so the hash identifies the bytes that are actually served.
-- [ ] Hash with `sha256`, take the first 8 hex characters. Collisions at this length are irrelevant for a handful of files, and short names keep the HTML readable.
-- [ ] Fonts are published the same way, and `site.css` must reference them **through the bundle**, not by a literal path — which means the CSS needs its font URLs rewritten at publish time, or the fonts must keep stable unhashed names. **Choose the second:** publish fonts under their plain names in `build/fonts/`, and give only `site.css` a content hash. A font file's contents never change without its name changing, so it does not need the hash to bust caches; the stylesheet does.
-- [ ] **Tests:** `Build` produces a hashed name; the same input twice produces the same name; changed input produces a different one; a stale file from a previous build is removed; a file in the parent `assets/` directory is left alone; the published CSS is smaller than the source and still contains `--color-accent` and its `url()` values intact.
+- [x] Minify CSS with `minify.New()` + `css.Minify` **before** hashing, so the hash identifies the bytes that are actually served.
+- [x] Hash with `sha256`, take the first 8 hex characters. Collisions at this length are irrelevant for a handful of files, and short names keep the HTML readable.
+- [x] Fonts are published the same way, and `site.css` must reference them **through the bundle**, not by a literal path — which means the CSS needs its font URLs rewritten at publish time, or the fonts must keep stable unhashed names. **Choose the second:** publish fonts under their plain names in `build/fonts/`, and give only `site.css` a content hash. A font file's contents never change without its name changing, so it does not need the hash to bust caches; the stylesheet does.
+- [x] **Tests:** `Build` produces a hashed name; the same input twice produces the same name; changed input produces a different one; a stale file from a previous build is removed; a file in the parent `assets/` directory is left alone; the published CSS is smaller than the source and still contains `--color-accent` and its `url()` values intact.
 
 ### Task 3: The template layer
 
-- [ ] Create `internal/site/templates.go` with `//go:embed templates` and parse once at startup into a `*template.Template`. Parsing per render would turn a template typo into a runtime 500 on a page that used to work.
-- [ ] `layout.html` defines the frame and a `{{block "main" .}}` the page templates fill. It receives a struct carrying, for every page:
+- [x] Create `internal/site/templates.go` with `//go:embed templates` and parse once at startup into a `*template.Template`. Parsing per render would turn a template typo into a runtime 500 on a page that used to work.
+- [x] `layout.html` defines the frame and a `{{block "main" .}}` the page templates fill. It receives a struct carrying, for every page:
 
 ```go
 // pageData is what every template can rely on: the site chrome plus whatever
@@ -211,16 +211,16 @@ type pageData struct {
 }
 ```
 
-- [ ] Nav links are a package-level slice so `/awards` and every later page mark themselves current from one place.
-- [ ] Shared `FuncMap`: `formatDate` (English, e.g. `2 June 2026`), `mediaURL` (media id → `/media/...`), `hasImage`. Keep it small — logic belongs in the renderer, not the template.
-- [ ] Add a single `renderPage` helper that executes the layout into a buffer, runs the HTML minifier over it, and returns the bytes. Every renderer goes through it, so no page can accidentally ship unminified and no page computes its ETag over different bytes than it serves.
-- [ ] **Verify:** rendering the layout with an empty `Data` must not panic. A `nil` map access inside a template is a runtime error, not a compile error.
+- [x] Nav links are a package-level slice so `/awards` and every later page mark themselves current from one place.
+- [x] Shared `FuncMap`: `formatDate` (English, e.g. `2 June 2026`), `mediaURL` (media id → `/media/...`), `hasImage`. Keep it small — logic belongs in the renderer, not the template.
+- [x] Add a single `renderPage` helper that executes the layout into a buffer, runs the HTML minifier over it, and returns the bytes. Every renderer goes through it, so no page can accidentally ship unminified and no page computes its ETag over different bytes than it serves.
+- [x] **Verify:** rendering the layout with an empty `Data` must not panic. A `nil` map access inside a template is a runtime error, not a compile error.
 
 ### Task 4: Page-key reconciliation — the missing first render
 
 This is the gap that makes the whole site 404. `render.Worker` resolves a tag to the pages that already declared it in `page_tags`; a page key that has never been rendered has no rows, so no job can ever produce it. Something has to render a page for the first time, and delete it when its content is gone.
 
-- [ ] `internal/site/pages.go`:
+- [x] `internal/site/pages.go`:
 
 ```go
 // DesiredPages is every page key the site should currently have, static pages
@@ -232,7 +232,7 @@ func DesiredPages(db *sql.DB) ([]string, error)
 
 Static keys: `index.html`, `games`, `devlog`, `awards`, `contact`. Dynamic: `games/{slug}` per game, `devlog/{slug}` per published post.
 
-- [ ] `internal/site/reconcile.go`:
+- [x] `internal/site/reconcile.go`:
 
 ```go
 // Reconcile renders every desired page that has no rendered_pages row, and
@@ -241,32 +241,32 @@ Static keys: `index.html`, `games`, `devlog`, `awards`, `contact`. Dynamic: `gam
 func (r *Reconciler) Reconcile() (rendered int, removed int, err error)
 ```
 
-- [ ] Removal deletes the `rendered_pages` row (its `page_tags` go with it by cascade). It does **not** delete the file from the rendered store: files are keyed by content hash and may be shared, and the store has no reference counting. Note this as known, bounded garbage; if it ever matters, it is a sweeper like `internal/media`'s, not an inline delete.
-- [ ] Call `Reconcile` at startup **and** after the worker processes a batch, because content changes always enqueue a tag: a new game enqueues `game:list`, which is the signal that a new `games/{slug}` may be needed. Wire it through a callback on the worker rather than a second polling loop.
-- [ ] A page that fails to render must not abort the run — log it and keep going, or one broken page takes the whole site down.
-- [ ] **Tests:** a missing page gets rendered; an already-rendered page is not re-rendered; deleting a game removes its page; a renderer error is reported without stopping the others.
+- [x] Removal deletes the `rendered_pages` row (its `page_tags` go with it by cascade). It does **not** delete the file from the rendered store: files are keyed by content hash and may be shared, and the store has no reference counting. Note this as known, bounded garbage; if it ever matters, it is a sweeper like `internal/media`'s, not an inline delete.
+- [x] Call `Reconcile` at startup **and** after the worker processes a batch, because content changes always enqueue a tag: a new game enqueues `game:list`, which is the signal that a new `games/{slug}` may be needed. Wire it through a callback on the worker rather than a second polling loop.
+- [x] A page that fails to render must not abort the run — log it and keep going, or one broken page takes the whole site down.
+- [x] **Tests:** a missing page gets rendered; an already-rendered page is not re-rendered; deleting a game removes its page; a renderer error is reported without stopping the others.
 
 ### Task 5: The 404 page
 
-- [ ] `render.ServePages` currently calls `http.NotFound`, which returns bare text with no styling. Give the handler an optional not-found body (`[]byte`) and status-404 it with `Content-Type: text/html`.
-- [ ] Render `404.html` once at startup through the same layout, so it carries the real header, footer and stylesheet. Per the architecture spec it stays outside the regen pipeline — it has no content dependencies beyond the chrome.
-- [ ] Keep the fallback: if no body was supplied, behave exactly as today. That keeps `ServePages`' existing tests meaningful.
-- [ ] **Test:** an unknown path returns 404 with `text/html` and the site header in the body.
+- [x] `render.ServePages` currently calls `http.NotFound`, which returns bare text with no styling. Give the handler an optional not-found body (`[]byte`) and status-404 it with `Content-Type: text/html`.
+- [x] Render `404.html` once at startup through the same layout, so it carries the real header, footer and stylesheet. Per the architecture spec it stays outside the regen pipeline — it has no content dependencies beyond the chrome.
+- [x] Keep the fallback: if no body was supplied, behave exactly as today. That keeps `ServePages`' existing tests meaningful.
+- [x] **Test:** an unknown path returns 404 with `text/html` and the site header in the body.
 
 ### Task 6: The `/awards` page
 
-- [ ] `internal/site/awards.go` registers `awards` and returns tags `award:list` and `site_settings`.
-- [ ] View model per the visual spec: newest first (`date DESC`), each entry a badge image (`picture_id`, 320×320), title, issuer, date, and an optional outbound link. The vertical timeline line is CSS, not markup — no spacer elements.
-- [ ] An award with no picture must render without a hole in the layout; an award with a `game_id` may link to that game, but the game detail page does not exist yet, so **do not** emit that link in this plan.
-- [ ] Empty state: with no awards, the page still renders with its heading and a short line of English copy. A page that renders an empty timeline is fine; a page that fails to render is not.
-- [ ] **Golden-file test** per the spec's test strategy: seed a fixed set of awards, render, compare against `testdata/awards.golden.html`. Include one award without a picture and one without a link so the branches are covered. The golden file holds the **minified** output, since that is what is stored and served.
+- [x] `internal/site/awards.go` registers `awards` and returns tags `award:list` and `site_settings`.
+- [x] View model per the visual spec: newest first (`date DESC`), each entry a badge image (`picture_id`, 320×320), title, issuer, date, and an optional outbound link. The vertical timeline line is CSS, not markup — no spacer elements.
+- [x] An award with no picture must render without a hole in the layout; an award with a `game_id` may link to that game, but the game detail page does not exist yet, so **do not** emit that link in this plan.
+- [x] Empty state: with no awards, the page still renders with its heading and a short line of English copy. A page that renders an empty timeline is fine; a page that fails to render is not.
+- [x] **Golden-file test** per the spec's test strategy: seed a fixed set of awards, render, compare against `testdata/awards.golden.html`. Include one award without a picture and one without a link so the branches are covered. The golden file holds the **minified** output, since that is what is stored and served.
 
 ### Task 7: Wiring
 
-- [ ] `cmd/server/main.go`: build the bundle from `cfg.DataDir + "/assets"`, construct `site.New(db, bundle)`, call `Register(registry)` **before** the worker starts (the registry is populated only at startup, by convention), run the reconciler once, then pass the 404 body to the router.
-- [ ] Fail fast on bundle or template errors — those are startup misconfigurations, not runtime conditions, and a server that boots without CSS is worse than one that refuses to boot.
-- [ ] `internal/httpserver/router.go`: no new mount is needed — `/assets/` already covers `build/`. Confirm `serveImmutableAssets` sets `immutable` for the nested path and that directory listing stays disabled.
-- [ ] **Verify by hand, against a copy of the real database:**
+- [x] `cmd/server/main.go`: build the bundle from `cfg.DataDir + "/assets"`, construct `site.New(db, bundle)`, call `Register(registry)` **before** the worker starts (the registry is populated only at startup, by convention), run the reconciler once, then pass the 404 body to the router.
+- [x] Fail fast on bundle or template errors — those are startup misconfigurations, not runtime conditions, and a server that boots without CSS is worse than one that refuses to boot.
+- [x] `internal/httpserver/router.go`: no new mount is needed — `/assets/` already covers `build/`. Confirm `serveImmutableAssets` sets `immutable` for the nested path and that directory listing stays disabled.
+- [x] **Verify by hand, against a copy of the real database:**
   - `/awards` returns 200 with the real awards.
   - A second request with `If-None-Match` returns 304.
   - The CSS URL returns 200 with `Cache-Control: immutable`.
@@ -276,10 +276,10 @@ func (r *Reconciler) Reconcile() (rendered int, removed int, err error)
 
 ### Task 8: End-to-end verification
 
-- [ ] `gofmt -l .` clean, `go vet ./...` clean, `go test ./...` green.
-- [ ] Run against a **copy** of `data/pixabros.db`, never the original, and confirm row counts are unchanged afterwards.
+- [x] `gofmt -l .` clean, `go vet ./...` clean, `go test ./...` green.
+- [x] Run against a **copy** of `data/pixabros.db`, never the original, and confirm row counts are unchanged afterwards.
 - [ ] Check the rendered HTML in a browser at both a narrow and a wide viewport. The site is dark-only, so also confirm it looks right in a browser set to light mode — the page must not inherit a white background.
-- [ ] Confirm no request leaves the origin: no Google Fonts, no CDN, no analytics.
+- [x] Confirm no request leaves the origin: no Google Fonts, no CDN, no analytics.
 
 ---
 

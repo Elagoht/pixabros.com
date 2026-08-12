@@ -1,0 +1,47 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Title}}</title>
+    {{if .Description}}<meta name="description" content="{{.Description}}" />{{end}}
+    <meta property="og:title" content="{{.Title}}" />
+    <meta property="og:type" content="website" />
+    {{if .Description}}<meta property="og:description" content="{{.Description}}" />{{end}}
+    {{if .Site.Twitter}}<meta name="twitter:site" content="@{{.Site.Twitter}}" />{{end}}
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="{{.CSS}}" />
+  </head>
+  <body class="site-body">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-brand" href="/">{{.Site.Name}}</a>
+        <nav class="site-nav" aria-label="Main">
+          {{$path := .Path}}
+          {{range .Nav}}
+            <a
+              class="site-nav__link"
+              href="{{.Path}}"
+              {{if eq .Path $path}}aria-current="page"{{end}}
+              >{{.Label}}</a
+            >
+          {{end}}
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main">{{block "main" .}}{{end}}</main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>&copy; {{.Year}} {{.Site.Name}}</p>
+        {{if .Site.Links}}
+          <div class="site-footer__links">
+            {{range .Site.Links}}<a href="{{.}}" rel="me noopener">{{linkLabel .}}</a>{{end}}
+          </div>
+        {{end}}
+      </div>
+    </footer>
+  </body>
+</html>
+{{end}}

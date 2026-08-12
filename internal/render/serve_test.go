@@ -11,6 +11,22 @@ import (
 	"pixabros/internal/storage"
 )
 
+// setupServeTest builds an empty store, for the cases that only care about
+// what happens when a page is absent.
+func setupServeTest(t *testing.T) (*Store, storage.Storage) {
+	t.Helper()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	return NewStore(conn, files), files
+}
+
 func TestServePages_ServesRenderedHTMLWithETag(t *testing.T) {
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -167,5 +183,44 @@ func TestServePages_PrefixedPageKeysDoNotCollide(t *testing.T) {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Errorf("GET %s body = %q, want it to contain %q", path, rec.Body.String(), want)
 		}
+	}
+}
+
+// Without a supplied body the handler must behave exactly as it always has,
+// so the fallback stays meaningful for anything not serving a public site.
+func TestServePages_FallsBackToPlainNotFound(t *testing.T) {
+	store, files := setupServeTest(t)
+
+	handler := ServePages(store, files)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/nope", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); strings.HasPrefix(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want the plain-text fallback", ct)
+	}
+}
+
+// A styled 404 is what a visitor should see: the site's own header and footer,
+// not a bare line of text that looks like the server is broken.
+func TestServePages_ServesTheSuppliedNotFoundPage(t *testing.T) {
+	store, files := setupServeTest(t)
+
+	body := []byte("<!doctype html><title>Not found</title><body>missing</body>")
+	handler := ServePages(store, files, WithNotFoundPage(body))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/nope", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want text/html", ct)
+	}
+	if !strings.Contains(rec.Body.String(), "missing") {
+		t.Error("the supplied 404 body was not served")
 	}
 }

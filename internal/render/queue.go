@@ -55,6 +55,7 @@ type Worker struct {
 	store        *Store
 	pollInterval time.Duration
 	onError      func(error)
+	afterBatch   func(processed int)
 }
 
 type WorkerOption func(*Worker)
@@ -65,8 +66,24 @@ func WithErrorLogger(onError func(error)) WorkerOption {
 	return func(w *Worker) { w.onError = onError }
 }
 
+// WithAfterBatch runs once after each polling round that processed anything.
+// It exists so the public site can reconcile its page set: a content change
+// always enqueues a tag, which is the signal that a page may need creating or
+// retiring, and the worker itself only ever re-renders pages that already
+// exist.
+func WithAfterBatch(afterBatch func(processed int)) WorkerOption {
+	return func(w *Worker) { w.afterBatch = afterBatch }
+}
+
 func NewWorker(db *sql.DB, registry *Registry, store *Store, pollInterval time.Duration, opts ...WorkerOption) *Worker {
-	w := &Worker{db: db, registry: registry, store: store, pollInterval: pollInterval, onError: func(error) {}}
+	w := &Worker{
+		db:           db,
+		registry:     registry,
+		store:        store,
+		pollInterval: pollInterval,
+		onError:      func(error) {},
+		afterBatch:   func(int) {},
+	}
 	for _, opt := range opts {
 		opt(w)
 	}
@@ -254,9 +271,11 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if _, err := w.ProcessOnce(ctx); err != nil {
+			processed, err := w.ProcessOnce(ctx)
+			if err != nil {
 				w.onError(fmt.Errorf("ProcessOnce: %w", err))
 			}
+			w.afterBatch(processed)
 		case <-pruner.C:
 			if _, err := w.PruneJobs(DoneRetention, FailedRetention, time.Now()); err != nil {
 				w.onError(fmt.Errorf("PruneJobs: %w", err))

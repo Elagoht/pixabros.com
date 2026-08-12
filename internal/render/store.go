@@ -102,3 +102,47 @@ func computeETag(html []byte) string {
 	sum := sha256.Sum256(html)
 	return hex.EncodeToString(sum[:])
 }
+
+// HasPage reports whether a page has ever been rendered. The reconciler uses
+// it to decide what is missing.
+func (s *Store) HasPage(pageKey string) (bool, error) {
+	var one int
+	err := s.db.QueryRow(`SELECT 1 FROM rendered_pages WHERE page_key = ?;`, pageKey).Scan(&one)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// PageKeys lists every page currently rendered, so the reconciler can spot the
+// ones that should no longer exist.
+func (s *Store) PageKeys() ([]string, error) {
+	rows, err := s.db.Query(`SELECT page_key FROM rendered_pages ORDER BY page_key;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, rows.Err()
+}
+
+// Forget stops a page being served. Its page_tags rows go with it by cascade.
+//
+// The stored file is left alone on purpose: files are keyed by content hash
+// and two pages with identical content share one, so deleting here could pull
+// a file out from under a page that still needs it.
+func (s *Store) Forget(pageKey string) error {
+	_, err := s.db.Exec(`DELETE FROM rendered_pages WHERE page_key = ?;`, pageKey)
+	return err
+}

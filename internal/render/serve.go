@@ -8,11 +8,44 @@ import (
 	"pixabros/internal/storage"
 )
 
+// ServeOption configures ServePages.
+type ServeOption func(*serveConfig)
+
+type serveConfig struct {
+	notFoundBody []byte
+}
+
+// WithNotFoundPage supplies the body to send for an unknown path. Without it
+// the handler falls back to net/http's plain-text 404, which is correct but
+// looks like the site is broken rather than like a page is missing.
+//
+// The body is passed in rather than looked up, because the 404 page is
+// rendered once at startup and deliberately sits outside the regen pipeline --
+// it has no content dependencies that could invalidate it.
+func WithNotFoundPage(body []byte) ServeOption {
+	return func(c *serveConfig) { c.notFoundBody = body }
+}
+
 // ServePages serves pre-rendered HTML pages tracked in rendered_pages,
 // honoring If-None-Match for 304 responses. The request path (minus the
 // leading slash) is used as the page_key; a request for "/" maps to
 // "index.html".
-func ServePages(store *Store, files storage.Storage) http.Handler {
+func ServePages(store *Store, files storage.Storage, opts ...ServeOption) http.Handler {
+	cfg := &serveConfig{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	notFound := func(w http.ResponseWriter, r *http.Request) {
+		if cfg.notFoundBody == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write(cfg.notFoundBody)
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -30,7 +63,7 @@ func ServePages(store *Store, files storage.Storage) http.Handler {
 			return
 		}
 		if !found {
-			http.NotFound(w, r)
+			notFound(w, r)
 			return
 		}
 
@@ -47,7 +80,7 @@ func ServePages(store *Store, files storage.Storage) http.Handler {
 
 		body, err := files.Get(renderedFileKey(etag))
 		if err != nil {
-			http.NotFound(w, r)
+			notFound(w, r)
 			return
 		}
 		defer body.Close()

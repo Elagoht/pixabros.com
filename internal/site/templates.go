@@ -70,7 +70,7 @@ type renderer struct {
 
 // pageTemplates lists every page template file. Adding a page means adding it
 // here; a missing entry fails at startup rather than when someone visits.
-var pageTemplates = []string{"awards.html", "404.html"}
+var pageTemplates = []string{"landing.html", "awards.html", "404.html"}
 
 func newRenderer(bundle *Bundle) (*renderer, error) {
 	// Parsed once at startup: parsing per render would turn a template typo

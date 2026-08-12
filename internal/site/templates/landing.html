@@ -1,0 +1,166 @@
+{{define "main"}}
+  <section class="hero">
+    <div class="hero__text">
+      {{if .Data.Hero.Logo.URL}}
+        <img
+          class="hero__logo"
+          src="{{.Data.Hero.Logo.URL}}"
+          alt="{{.Data.Hero.Logo.Alt}}"
+          width="96"
+          height="96"
+        />
+      {{end}}
+      <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>
+      {{if .Data.Hero.Description}}
+        <p class="hero__description">{{.Data.Hero.Description}}</p>
+      {{end}}
+      {{if .Data.Hero.CTAText}}
+        <a class="button" href="{{.Data.Hero.CTALink}}">{{.Data.Hero.CTAText}}</a>
+      {{end}}
+    </div>
+
+    {{if .Data.Hero.Feature.URL}}
+      <div class="hero__feature">
+        <img
+          src="{{.Data.Hero.Feature.URL}}"
+          alt="{{.Data.Hero.Feature.Alt}}"
+          loading="eager"
+        />
+      </div>
+    {{end}}
+  </section>
+
+  {{if .Data.HasPortfolio}}
+    <section class="section" aria-labelledby="portfolio-heading">
+      <h2 class="section__title" id="portfolio-heading">{{.Data.PortfolioTitle}}</h2>
+
+      {{/* The carousel is deliberately JavaScript-free: the track is a
+           scroll-snap container, the arrows are anchors to the neighbouring
+           slide, and the thumbnail hover-swap is a :has() rule. It therefore
+           works before, during and without script execution. */}}
+      <div class="carousel">
+        <div class="carousel__track">
+          {{range .Data.Slides}}
+            <article class="slide" id="{{.ID}}">
+              <div class="slide__media">
+                {{if .Cover.URL}}
+                  <img
+                    class="slide__image slide__image--cover"
+                    src="{{.Cover.URL}}"
+                    alt="{{.Cover.Alt}}"
+                    loading="lazy"
+                  />
+                {{else}}
+                  <div class="slide__image slide__image--empty" aria-hidden="true">
+                    {{.Title}}
+                  </div>
+                {{end}}
+
+                {{range $index, $shot := .Shots}}
+                  <img
+                    class="slide__image slide__image--shot slide__image--shot-{{$index}}"
+                    src="{{$shot.URL}}"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                  />
+                {{end}}
+
+                <a class="carousel__arrow carousel__arrow--prev" href="#{{.PrevID}}"
+                  aria-label="Previous game">&lsaquo;</a>
+                <a class="carousel__arrow carousel__arrow--next" href="#{{.NextID}}"
+                  aria-label="Next game">&rsaquo;</a>
+              </div>
+
+              <div class="slide__info">
+                <h3 class="slide__title">{{.Title}}</h3>
+                {{if .Tags}}
+                  <ul class="tags">
+                    {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
+                  </ul>
+                {{end}}
+
+                {{if .Shots}}
+                  <div class="thumbs">
+                    {{range $index, $shot := .Shots}}
+                      <span class="thumb thumb--{{$index}}">
+                        <img src="{{$shot.URL}}" alt="{{$shot.Alt}}" loading="lazy" />
+                      </span>
+                    {{end}}
+                  </div>
+                {{end}}
+              </div>
+            </article>
+          {{end}}
+        </div>
+
+        {{if gt (len .Data.Slides) 1}}
+          <nav class="carousel__dots" aria-label="Choose a game">
+            {{range .Data.Slides}}
+              <a class="carousel__dot" href="#{{.ID}}" aria-label="Game {{.Index}}"></a>
+            {{end}}
+          </nav>
+        {{end}}
+      </div>
+    </section>
+  {{end}}
+
+  {{if .Data.HasSales}}
+    <section class="section" aria-labelledby="sales-heading">
+      <h2 class="section__title" id="sales-heading">{{.Data.SalesTitle}}</h2>
+      <ul class="sales-grid">
+        {{range .Data.Sales}}
+          <li class="sale-card">
+            {{if .Cover.URL}}
+              <img class="sale-card__art" src="{{.Cover.URL}}" alt="{{.Cover.Alt}}" loading="lazy" />
+            {{else}}
+              <div class="sale-card__art sale-card__art--empty" aria-hidden="true"></div>
+            {{end}}
+            <div class="sale-card__overlay">
+              <h3 class="sale-card__title">{{.Title}}</h3>
+              {{if .Tags}}
+                <ul class="tags tags--compact">
+                  {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
+                </ul>
+              {{end}}
+              <p class="sale-card__foot">
+                {{if .Price}}<span class="sale-card__price">{{.Price}}</span>{{end}}
+                {{if .Link}}
+                  <a class="sale-card__link" href="{{.Link}}" rel="noopener">Get it</a>
+                {{end}}
+              </p>
+            </div>
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+
+  {{if .Data.HasMembers}}
+    <section class="section" aria-labelledby="members-heading">
+      <h2 class="section__title" id="members-heading">{{.Data.MembersTitle}}</h2>
+      {{if .Data.MembersSubtitle}}
+        <p class="section__subtitle">{{.Data.MembersSubtitle}}</p>
+      {{end}}
+
+      <ul class="members">
+        {{range .Data.Members}}
+          <li class="member">
+            {{if .Avatar.URL}}
+              <img class="member__avatar" src="{{.Avatar.URL}}" alt="{{.Avatar.Alt}}" loading="lazy" />
+            {{else}}
+              <div class="member__avatar member__avatar--empty" aria-hidden="true"></div>
+            {{end}}
+            <h3 class="member__name">{{.Name}}</h3>
+            {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
+            {{if .Tags}}
+              <ul class="tags tags--centred">
+                {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
+              </ul>
+            {{end}}
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+{{end}}

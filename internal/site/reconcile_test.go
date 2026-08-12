@@ -32,12 +32,18 @@ func TestReconcile_RendersAPageThatHasNeverExisted(t *testing.T) {
 		t.Fatal("precondition: the page should not exist yet")
 	}
 
+	desired, err := site.DesiredPages()
+	if err != nil {
+		t.Fatalf("DesiredPages() error = %v", err)
+	}
+
 	rendered, removed, err := reconciler.Reconcile()
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
-	if rendered != 1 || removed != 0 {
-		t.Errorf("rendered=%d removed=%d, want 1 and 0", rendered, removed)
+	// Every page the site declares should have been built, not just this one.
+	if rendered != len(desired) || removed != 0 {
+		t.Errorf("rendered=%d removed=%d, want %d and 0", rendered, removed, len(desired))
 	}
 	if len(*reported) != 0 {
 		t.Errorf("unexpected errors: %v", *reported)
@@ -157,12 +163,17 @@ func TestReconcile_ReportsAFailureAndKeepsGoing(t *testing.T) {
 		reported = append(reported, err)
 	}))
 
+	healthy, err := site.DesiredPages()
+	if err != nil {
+		t.Fatalf("DesiredPages() error = %v", err)
+	}
+
 	rendered, _, err := reconciler.Reconcile()
 	if err != nil {
 		t.Fatalf("Reconcile() should not fail wholesale: %v", err)
 	}
-	if rendered != 1 {
-		t.Errorf("rendered = %d, want the healthy page to still be built", rendered)
+	if rendered != len(healthy) {
+		t.Errorf("rendered = %d, want the %d healthy pages to still be built", rendered, len(healthy))
 	}
 	if len(reported) != 1 {
 		t.Fatalf("reported %d errors, want 1", len(reported))

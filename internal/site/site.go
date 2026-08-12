@@ -11,7 +11,9 @@ import (
 	"fmt"
 
 	"pixabros/internal/awards"
+	"pixabros/internal/games"
 	"pixabros/internal/media"
+	"pixabros/internal/members"
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
 )
@@ -19,7 +21,8 @@ import (
 // Page keys are both the storage key and the URL path minus its leading
 // slash. "/" maps to index.html -- see render.ServePages.
 const (
-	PageAwards = "awards"
+	PageLanding = "index.html"
+	PageAwards  = "awards"
 )
 
 // siteSettingsTag is on every page, because the header and footer read from
@@ -33,6 +36,8 @@ type Site struct {
 	renderer *renderer
 	settings *settings.Repo
 	awards   *awards.Repo
+	games    *games.Repo
+	members  *members.Repo
 	media    *media.Repo
 }
 
@@ -46,6 +51,8 @@ func New(db *sql.DB, bundle *Bundle) (*Site, error) {
 		renderer: r,
 		settings: settings.NewRepo(db),
 		awards:   awards.NewRepo(db),
+		games:    games.NewRepo(db),
+		members:  members.NewRepo(db),
 		media:    media.NewRepo(db),
 	}, nil
 }
@@ -62,6 +69,7 @@ type pageDef struct {
 // never existing in the first place.
 func (s *Site) pages() []pageDef {
 	return []pageDef{
+		{Key: PageLanding, Render: s.renderLanding},
 		{Key: PageAwards, Render: s.renderAwards},
 	}
 }

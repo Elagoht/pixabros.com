@@ -3,9 +3,13 @@ package site
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// cssHash matches the content hash in the published stylesheet URL.
+var cssHash = regexp.MustCompile(`site\.[a-f0-9]{8}\.css`)
 
 // renderAwardsPage runs the renderer the way the store would.
 func renderAwardsPage(t *testing.T, s *Site) (string, []string) {
@@ -159,6 +163,12 @@ func TestRenderAwards_MatchesGoldenFile(t *testing.T) {
 	seedAward(t, conn, "Honourable Mention", "Some Festival", "2025-02-10", "", nil)
 
 	html, _ := renderAwardsPage(t, newTestSite(t, conn))
+
+	// The stylesheet's content hash changes with every CSS edit, which is an
+	// intended and frequent change. Normalising it keeps the golden file about
+	// the HTML -- what it is actually there to protect -- instead of failing
+	// every time a colour moves.
+	html = cssHash.ReplaceAllString(html, "site.HASH.css")
 
 	goldenPath := filepath.Join("testdata", "awards.golden.html")
 	if os.Getenv("UPDATE_GOLDEN") == "1" {

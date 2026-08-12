@@ -168,12 +168,14 @@
               <div class="member__avatar member__avatar--empty" aria-hidden="true"></div>
             {{end}}
             <h3 class="member__name">{{.Name}}</h3>
-            {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
+            {{/* The tags are what the panel collects roles into, so they read
+                 as the person's title and belong right under their name. */}}
             {{if .Tags}}
               <ul class="tags tags--centred">
                 {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
               </ul>
             {{end}}
+            {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
           </li>
         {{end}}
       </ul>

@@ -266,3 +266,65 @@ func TestFirstExternalLink(t *testing.T) {
 		}
 	}
 }
+
+// The carousel's media area is 16:9 and the OG image is the wide one, so it
+// wins over the portrait cover art rather than being cropped to a strip.
+func TestRenderLanding_CarouselPrefersTheOpenGraphImage(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Wide Game", "wide-game", true, false, "")
+	ogID := seedMedia(t, conn, "media/og/2026-wide.webp", "Wide art")
+	coverID := seedMedia(t, conn, "media/cover/2026-tall.webp", "Tall art")
+	if _, err := conn.Exec(
+		`UPDATE games SET og_image_id = ?, cd_cover_art_id = ? WHERE id = ?;`,
+		ogID, coverID, gameID,
+	); err != nil {
+		t.Fatalf("set art: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	slide := html[strings.Index(html, "slide__media"):strings.Index(html, "slide__info")]
+	if !strings.Contains(slide, "2026-wide.webp") {
+		t.Error("the carousel is not using the OpenGraph image")
+	}
+	if strings.Contains(slide, "2026-tall.webp") {
+		t.Error("the portrait cover art is still filling the 16:9 media area")
+	}
+}
+
+// With no OG image it still falls back, rather than showing a bare title.
+func TestRenderLanding_CarouselFallsBackToCoverArt(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Cover Only", "cover-only", true, false, "")
+	coverID := seedMedia(t, conn, "media/cover/2026-only.webp", "Cover art")
+	if _, err := conn.Exec(
+		`UPDATE games SET cd_cover_art_id = ? WHERE id = ?;`, coverID, gameID,
+	); err != nil {
+		t.Fatalf("set art: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "2026-only.webp") {
+		t.Error("a game with only cover art shows no image at all")
+	}
+}
+
+// The tags are the roles the panel collects, so they read as a title and sit
+// under the name rather than after the biography.
+func TestRenderLanding_MemberTagsSitBetweenNameAndBio(t *testing.T) {
+	conn := setupTestDB(t)
+	seedMember(t, conn, "Someone", "Code, Music", "A short biography line.", true)
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	name := strings.Index(html, "Someone")
+	tag := strings.Index(html, "Music")
+	bio := strings.Index(html, "A short biography line.")
+	if name == -1 || tag == -1 || bio == -1 {
+		t.Fatalf("member did not render fully: name=%d tag=%d bio=%d", name, tag, bio)
+	}
+	if !(name < tag && tag < bio) {
+		t.Error("member order is not name, tags, bio")
+	}
+}

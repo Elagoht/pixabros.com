@@ -26,6 +26,9 @@
     "Helvetica Neue", sans-serif;
 
   --space-page: 1.5rem;
+  /* The header is sticky, so this is both its height and the room every
+     scroll has to leave above its target. */
+  --header-height: 4rem;
   --width-content: 68rem;
   --radius: 0.625rem;
 }
@@ -53,6 +56,11 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* The sticky header sits over the top of the page, so anything scrolled to --
+     an anchor, a :target, scrollIntoView -- would land underneath it. This
+     reserves the header's height plus a little breathing room, for every kind
+     of scrolling at once. */
+  scroll-padding-top: calc(var(--header-height) + 1rem);
 }
 
 body {
@@ -146,7 +154,7 @@ a:hover {
   display: flex;
   gap: 1.5rem;
   justify-content: space-between;
-  min-height: 4rem;
+  min-height: var(--header-height);
 }
 
 .site-brand {
@@ -759,6 +767,12 @@ a:hover {
 .member__bio {
   color: var(--color-text-muted);
   font-size: 0.9375rem;
+  margin-top: 0.75rem;
+}
+
+/* The tags sit between the name and the bio, so they need less space above
+   them than the default pill spacing gives. */
+.member .tags {
   margin-top: 0.5rem;
 }
 

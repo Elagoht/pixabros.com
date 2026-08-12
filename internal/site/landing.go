@@ -206,7 +206,10 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 		slides = append(slides, slideView{
 			Title: game.Title,
 			Tags:  splitTags(game.Tags),
-			Cover: lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
+			// The OG image comes first here: it is the wide 1200x630 one, and
+			// the carousel's media area is 16:9. Cover art is portrait, so it
+			// would be cropped to a strip.
+			Cover: lookupImage(images, firstNonNil(game.OGImageID, game.CDCoverArtID, game.CartridgeArtID), game.Title),
 			Shots: views,
 			ID:    fmt.Sprintf("slide-%d", i+1),
 			Index: i + 1,

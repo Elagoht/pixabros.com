@@ -1,0 +1,69 @@
+{
+  "name": "ic-frontend-template",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "biome lint src/",
+    "preview": "vite preview",
+    "format": "biome format --write src/",
+    "format:check": "biome format src/",
+    "lint:check": "biome check src/",
+    "check": "biome check src/",
+    "test": "vitest run",
+    "test-watch": "vitest",
+    "prepare": "git config core.hooksPath scripts/hooks"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@tabler/icons-react": "^3.42.0",
+    "@tanstack/react-query": "^5.100.9",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.24",
+    "classnames": "^2.5.1",
+    "formik": "^2.4.9",
+    "qs": "^6.15.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.15.0",
+    "recharts": "^3.8.1",
+    "sonner": "^2.0.7",
+    "yup": "^1.7.1",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@biomejs/biome": "^2.4.14",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^24.12.2",
+    "@types/qs": "^6.15.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "babel-plugin-react-compiler": "^19.1.0-rc.3",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  },
+  "overrides": {
+    "@vitejs/plugin-react": {
+      "babel-plugin-react-compiler": "^19.1.0-rc.3"
+    }
+  }
+}

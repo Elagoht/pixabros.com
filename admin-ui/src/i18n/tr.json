@@ -1,0 +1,107 @@
+{
+	"meta": {
+		"locale": "tr-tr",
+		"lang": "tr"
+	},
+	"app": {
+		"name": "Pixabros Yönetici"
+	},
+	"common": {
+		"submit": "Gönder",
+		"cancel": "İptal",
+		"create": "Oluştur",
+		"edit": "Düzenle",
+		"delete": "Sil",
+		"save": "Kaydet",
+		"loading": "Yükleniyor...",
+		"error": "Bir hata oluştu",
+		"retry": "Tekrar dene",
+		"back": "Geri",
+		"next": "İleri",
+		"close": "Kapat",
+		"detail": "Detay",
+		"confirm": "Onayla",
+		"yes": "Evet",
+		"no": "Hayır",
+		"today": "Bugün",
+		"selectDate": "Tarih seçin",
+		"selectDateTime": "Tarih ve saat seçin",
+		"chooseFile": "Dosya seçin",
+		"noFileChosen": "Dosya seçilmedi",
+		"browse": "Gözat",
+		"dragAndDrop": "veya sürükleyip bırakın",
+		"noResults": "Sonuç bulunamadı",
+		"search": "Ara...",
+		"previous": "Önceki",
+		"noData": "Gösterilecek veri yok",
+		"uploading": "Yükleniyor...",
+		"logo": "Logo",
+		"exampleUrl": "www.example.com"
+	},
+	"validation": {
+		"email": {
+			"invalid": "Geçersiz e-posta adresi",
+			"required": "E-posta zorunludur"
+		},
+		"password": {
+			"required": "Şifre zorunludur",
+			"min": "Şifre en az 8 karakter olmalıdır"
+		},
+		"confirmPassword": {
+			"required": "Lütfen şifrenizi onaylayın",
+			"match": "Şifreler eşleşmiyor"
+		},
+		"required": "Bu alan zorunludur",
+		"atLeastOneEmail": "En az bir e-posta adresi girin"
+	},
+	"settings": {
+		"title": "Ayarlar",
+		"language": {
+			"title": "Dil",
+			"subtitle": "Uygulama görüntüleme dili",
+			"saved": "Dil tercihi kaydedildi"
+		}
+	},
+	"pages": {
+		"auth": {
+			"login": {
+				"title": "Giriş Yap"
+			}
+		},
+		"notFound": {
+			"subtitle": "Sayfa bulunamadı",
+			"description": "Aradığınız sayfa mevcut değil veya taşınmış.",
+			"previousPage": "Geri dön",
+			"backHome": "Ana sayfa"
+		}
+	},
+	"filters": {
+		"title": "Filtreler",
+		"clear": "Temizle",
+		"sort": "Sıralama",
+		"direction": "Yön",
+		"ascending": "Artan",
+		"descending": "Azalan"
+	},
+	"months": {
+		"1": "Ocak",
+		"2": "Şubat",
+		"3": "Mart",
+		"4": "Nisan",
+		"5": "Mayıs",
+		"6": "Haziran",
+		"7": "Temmuz",
+		"8": "Ağustos",
+		"9": "Eylül",
+		"10": "Ekim",
+		"11": "Kasım",
+		"12": "Aralık"
+	},
+	"errorBoundary": {
+		"somethingWentWrong": "Bir şeyler yanlış gitti.",
+		"tryAgain": "Tekrar dene"
+	},
+	"errors": {
+		"invalidCredentials": "Geçersiz bilgiler"
+	}
+}

@@ -1,0 +1,107 @@
+{
+	"meta": {
+		"locale": "en-us",
+		"lang": "en"
+	},
+	"app": {
+		"name": "PixaBros Admin"
+	},
+	"common": {
+		"submit": "Submit",
+		"cancel": "Cancel",
+		"create": "Create",
+		"edit": "Edit",
+		"delete": "Delete",
+		"save": "Save",
+		"loading": "Loading...",
+		"error": "An error occurred",
+		"retry": "Try again",
+		"back": "Back",
+		"next": "Next",
+		"close": "Close",
+		"detail": "Detail",
+		"confirm": "Confirm",
+		"yes": "Yes",
+		"no": "No",
+		"today": "Today",
+		"selectDate": "Select a date",
+		"selectDateTime": "Select date & time",
+		"chooseFile": "Choose a file",
+		"noFileChosen": "No file chosen",
+		"browse": "Browse",
+		"dragAndDrop": "or drag and drop",
+		"noResults": "No results found",
+		"search": "Search...",
+		"previous": "Previous",
+		"noData": "No data to display",
+		"uploading": "Uploading...",
+		"logo": "Logo",
+		"exampleUrl": "www.example.com"
+	},
+	"validation": {
+		"email": {
+			"invalid": "Invalid email address",
+			"required": "Email is required"
+		},
+		"password": {
+			"required": "Password is required",
+			"min": "Password must be at least 8 characters"
+		},
+		"confirmPassword": {
+			"required": "Please confirm your password",
+			"match": "Passwords do not match"
+		},
+		"required": "This field is required",
+		"atLeastOneEmail": "Enter at least one email address"
+	},
+	"settings": {
+		"title": "Settings",
+		"language": {
+			"title": "Language",
+			"subtitle": "App display language",
+			"saved": "Language preference saved"
+		}
+	},
+	"pages": {
+		"auth": {
+			"login": {
+				"title": "Login"
+			}
+		},
+		"notFound": {
+			"subtitle": "Page not found",
+			"description": "The page you are looking for does not exist or has been moved.",
+			"previousPage": "Go back",
+			"backHome": "Home"
+		}
+	},
+	"filters": {
+		"title": "Filters",
+		"clear": "Clear",
+		"sort": "Sort",
+		"direction": "Direction",
+		"ascending": "Ascending",
+		"descending": "Descending"
+	},
+	"months": {
+		"1": "January",
+		"2": "February",
+		"3": "March",
+		"4": "April",
+		"5": "May",
+		"6": "June",
+		"7": "July",
+		"8": "August",
+		"9": "September",
+		"10": "October",
+		"11": "November",
+		"12": "December"
+	},
+	"errorBoundary": {
+		"somethingWentWrong": "Something went wrong.",
+		"tryAgain": "Try again"
+	},
+	"errors": {
+		"invalidCredentials": "Invalid credentials"
+	}
+}

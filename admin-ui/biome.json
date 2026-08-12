@@ -1,0 +1,132 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**/src/**/*.{ts,tsx,json,css}",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/public"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "formatWithErrors": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useConst": "error",
+        "useBlockStatements": "error",
+        "useForOf": "error",
+        "useTemplate": "error",
+        "noNegationElse": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": { "syntax": "shorthand" }
+        },
+        "noNonNullAssertion": "error"
+      },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "warn",
+        "noEmptyPattern": "error",
+        "noConstantCondition": "error",
+        "noUnreachable": "error",
+        "noUnsafeFinally": "error",
+        "noUnsafeOptionalChaining": "error",
+        "noVoidElementsWithChildren": "error",
+        "useIsNan": "error",
+        "noSwitchDeclarations": "error",
+        "useValidTypeof": "error"
+      },
+      "complexity": {
+        "noExtraBooleanCast": "error",
+        "noUselessTernary": "error",
+        "noUselessFragments": "error",
+        "noBannedTypes": "error",
+        "noForEach": "error",
+        "useLiteralKeys": "error",
+        "useOptionalChain": "error",
+        "useSimplifiedLogicExpression": "error",
+        "noThisInStatic": "error",
+        "noArguments": "error",
+        "noAdjacentSpacesInRegex": "error",
+        "noStaticOnlyClass": "off",
+        "noUselessConstructor": "error"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noThenProperty": "off",
+        "noDocumentCookie": "off",
+        "noConsole": {
+          "level": "warn",
+          "options": { "allow": ["warn", "error"] }
+        },
+        "noDebugger": "error",
+        "noDoubleEquals": "error",
+        "noExplicitAny": "error",
+        "noShadowRestrictedNames": "error",
+        "noGlobalIsNan": "error",
+        "noDuplicateObjectKeys": "error",
+        "noVar": "error",
+        "noUnknownAtRules": "off"
+      },
+      "a11y": {
+        "useAltText": "warn",
+        "useAnchorContent": "warn",
+        "noSvgWithoutTitle": "off",
+        "useButtonType": "error",
+        "noLabelWithoutControl": "off",
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off",
+        "useSemanticElements": "off",
+        "useFocusableInteractive": "off",
+        "useAriaPropsForRole": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "quoteProperties": "asNeeded"
+    }
+  },
+  "json": {
+    "formatter": {
+      "indentWidth": 2
+    }
+  },
+  "css": {
+    "formatter": {
+      "indentWidth": 2
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/types/**/*.d.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
+}

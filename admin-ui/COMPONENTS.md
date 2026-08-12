@@ -25,6 +25,7 @@ All imports: `import { ComponentName } from "@/components/ui";`
 | ---------------- | ---------------------------------------------------------------------------- |
 | `Input`          | `name`, `type?`, `label?`, `placeholder?`, `leftIcon?`, `rightIcon?`         |
 | `Textarea`       | `name`, `label?`, `rows?`, `placeholder?`                                    |
+| `MarkdownEditor` | `name`, `label?`, `rows?`, `placeholder?` — markdown field with a sanitised preview tab |
 | `Select`         | `name`, `label?`, `options: { label, value }[]`, `placeholder?`, `multiple?` |
 | `Combobox`       | `name`, `label?`, `options: { label, value }[]`, `placeholder?`, `multiple?` |
 | `Checkbox`       | `name`, `label`                                                              |

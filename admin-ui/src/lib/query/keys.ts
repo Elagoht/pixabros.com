@@ -42,6 +42,18 @@ export const queryKeys = {
     detail: (awardId: string) =>
       [...queryKeys.awards.all, "detail", awardId] as const,
   },
+  devlog: {
+    all: ["devlog"] as const,
+    lists: () => [...queryKeys.devlog.all, "list"] as const,
+    list: (sort?: DevlogSort) =>
+      [
+        ...queryKeys.devlog.lists(),
+        sort?.field ?? null,
+        sort?.direction ?? null,
+      ] as const,
+    detail: (postId: string) =>
+      [...queryKeys.devlog.all, "detail", postId] as const,
+  },
   media: {
     all: ["media"] as const,
     detail: (mediaId: string) => [...queryKeys.media.all, mediaId] as const,

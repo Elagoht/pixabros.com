@@ -13,6 +13,7 @@ import (
 	"pixabros/internal/awards"
 	"pixabros/internal/config"
 	"pixabros/internal/db"
+	"pixabros/internal/devlog"
 	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
 	"pixabros/internal/media"
@@ -55,6 +56,7 @@ func main() {
 	mediaRepo := media.NewRepo(conn)
 	membersRepo := members.NewRepo(conn)
 	awardsRepo := awards.NewRepo(conn)
+	devlogRepo := devlog.NewRepo(conn)
 	store := render.NewStore(conn, renderedFiles)
 	registry := render.NewRegistry()
 
@@ -82,6 +84,7 @@ func main() {
 		Games:      games.NewRepo(conn),
 		Members:    membersRepo,
 		Awards:     awardsRepo,
+		Devlog:     devlogRepo,
 		Media:      mediaRepo,
 		MediaFiles: mediaFiles,
 		MediaDir:   cfg.DataDir + "/media",

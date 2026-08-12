@@ -433,5 +433,80 @@
       "dateFormat": "Pick a date from the calendar.",
       "linkUrl": "Enter a full URL, including https://"
     }
+  },
+  "markdown": {
+    "write": "Write",
+    "preview": "Preview",
+    "nothingToPreview": "Nothing to preview yet."
+  },
+  "devlog": {
+    "list": {
+      "title": "Devlog",
+      "new": "New post"
+    },
+    "columns": {
+      "title": "Title",
+      "game": "Game",
+      "status": "Status",
+      "publishedAt": "Published"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft"
+    },
+    "form": {
+      "basics": "Post",
+      "title": "Title",
+      "titlePlaceholder": "The cartridge system is in",
+      "content": "Content",
+      "contentPlaceholder": "## What changed\n\nWrite the post in markdown.",
+      "game": "Related game",
+      "gameNone": "No game",
+      "gameHelp": "Optional. Links the post to one of your games.",
+      "publishing": "Publishing",
+      "published": "Published",
+      "publishedAt": "Publication date",
+      "publishedAtHelp": "Filled in automatically the first time you publish. Change it to back-date a post.",
+      "slug": "Address:",
+      "slugFollowsTitle": "The address follows the title until the post is published, then stays fixed.",
+      "slugFrozen": "Fixed on publication, so existing links keep working."
+    },
+    "create": {
+      "title": "New post",
+      "submit": "Create post",
+      "hint": "The share image and the related game are set after the post exists."
+    },
+    "edit": {
+      "title": "Edit post",
+      "submit": "Save post",
+      "notFound": "This post no longer exists."
+    },
+    "image": {
+      "title": "Share image",
+      "hint": "Used when the post is shared as a link.",
+      "label": "Share image"
+    },
+    "delete": {
+      "title": "Delete post",
+      "description": "\"{{title}}\" will be deleted. This cannot be undone."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting a post removes it from the site.",
+      "delete": "Delete post"
+    },
+    "toast": {
+      "created": "Post created",
+      "saved": "Post saved",
+      "deleted": "Post deleted"
+    },
+    "errors": {
+      "invalidFields": "Check the post details",
+      "unknownReference": "The selected game no longer exists"
+    },
+    "validation": {
+      "titleRequired": "A title is required.",
+      "dateFormat": "Pick a date from the calendar."
+    }
   }
 }

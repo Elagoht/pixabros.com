@@ -221,3 +221,53 @@ interface AwardFormValues {
   link: string;
   game_id: string;
 }
+
+interface ResponseDevlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  content_markdown: string;
+  game_id: string | null;
+  og_image_id: string | null;
+  is_published: boolean;
+  // Empty until the post is first published. Stored as YYYY-MM-DD.
+  published_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Create takes no game or image: both are attached once the post exists.
+interface RequestCreateDevlogPost {
+  title: string;
+  content_markdown: string;
+  is_published: boolean;
+  published_at: string;
+}
+
+interface RequestUpdateDevlogPost extends RequestCreateDevlogPost {
+  game_id: string | null;
+  og_image_id: string | null;
+}
+
+// Mirrors devlog.sortableColumns in Go.
+type DevlogSortField =
+  | "title"
+  | "is_published"
+  | "published_at"
+  | "created_at"
+  | "updated_at";
+
+interface DevlogSort {
+  field?: DevlogSortField;
+  direction: "asc" | "desc";
+}
+
+// og_image_id is edit-page state, so it is not a form field. game_id is,
+// because it is chosen from a picker rather than uploaded.
+interface DevlogFormValues {
+  title: string;
+  content_markdown: string;
+  game_id: string;
+  is_published: boolean;
+  published_at: string;
+}

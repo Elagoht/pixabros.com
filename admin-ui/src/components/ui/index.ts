@@ -41,6 +41,7 @@ export { default as Kbd } from "./Kbd";
 export { default as Keywords } from "./Keywords";
 export { default as LinkListField } from "./LinkListField";
 export { default as Loading } from "./Loading";
+export { default as MarkdownEditor } from "./MarkdownEditor";
 export { default as MenuBar } from "./MenuBar";
 export { default as Modal } from "./Modal";
 export { default as Navbar } from "./Navbar";

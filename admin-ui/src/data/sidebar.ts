@@ -38,6 +38,7 @@ export const sidebarGroups: SidebarGroupData[] = [
         id: "devlog",
         icon: IconArticle,
         labelKey: "menu.devlog",
+        path: "/devlog",
       },
       {
         id: "awards",

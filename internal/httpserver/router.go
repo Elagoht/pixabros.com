@@ -15,6 +15,8 @@ import (
 	"pixabros/internal/auth"
 	"pixabros/internal/awards"
 	"pixabros/internal/awardsapi"
+	"pixabros/internal/devlog"
+	"pixabros/internal/devlogapi"
 	"pixabros/internal/games"
 	"pixabros/internal/gamesapi"
 	"pixabros/internal/gameupload"
@@ -36,6 +38,7 @@ type Dependencies struct {
 	Games      *games.Repo
 	Members    *members.Repo
 	Awards     *awards.Repo
+	Devlog     *devlog.Repo
 	Media      *media.Repo
 	MediaFiles storage.Storage
 	MediaDir   string
@@ -84,6 +87,13 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Get))
 	mux.HandleFunc("PUT /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Delete))
+
+	devlogHandlers := devlogapi.NewHandlers(deps.Devlog, deps.DB)
+	mux.HandleFunc("GET /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.List))
+	mux.HandleFunc("POST /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.Create))
+	mux.HandleFunc("GET /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Get))
+	mux.HandleFunc("PUT /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Update))
+	mux.HandleFunc("DELETE /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Delete))
 
 	mediaUploadHandler := mediaapi.NewUploadHandler(deps.Media, deps.MediaFiles)
 	mediaHandlers := mediaapi.NewHandlers(deps.Media, deps.MediaFiles)

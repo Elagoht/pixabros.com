@@ -433,5 +433,80 @@
       "dateFormat": "Takvimden bir tarih seçin.",
       "linkUrl": "https:// dahil tam bir adres girin"
     }
+  },
+  "markdown": {
+    "write": "Yaz",
+    "preview": "Önizleme",
+    "nothingToPreview": "Önizlenecek bir şey yok."
+  },
+  "devlog": {
+    "list": {
+      "title": "Devlog",
+      "new": "Yeni yazı"
+    },
+    "columns": {
+      "title": "Başlık",
+      "game": "Oyun",
+      "status": "Durum",
+      "publishedAt": "Yayın"
+    },
+    "status": {
+      "published": "Yayında",
+      "draft": "Taslak"
+    },
+    "form": {
+      "basics": "Yazı",
+      "title": "Başlık",
+      "titlePlaceholder": "Kartuş sistemi geldi",
+      "content": "İçerik",
+      "contentPlaceholder": "## Neler değişti\n\nYazıyı markdown ile yazın.",
+      "game": "İlgili oyun",
+      "gameNone": "Oyun yok",
+      "gameHelp": "İsteğe bağlı. Yazıyı oyunlarınızdan birine bağlar.",
+      "publishing": "Yayınlama",
+      "published": "Yayında",
+      "publishedAt": "Yayın tarihi",
+      "publishedAtHelp": "İlk yayınlamada otomatik dolar. Geçmişe tarihlemek için değiştirebilirsiniz.",
+      "slug": "Adres:",
+      "slugFollowsTitle": "Adres, yazı yayınlanana kadar başlığı izler; sonra sabitlenir.",
+      "slugFrozen": "Yayınlandığında sabitlendi, mevcut bağlantılar çalışmaya devam ediyor."
+    },
+    "create": {
+      "title": "Yeni yazı",
+      "submit": "Yazıyı oluştur",
+      "hint": "Paylaşım görseli ve ilgili oyun, yazı oluşturulduktan sonra ayarlanır."
+    },
+    "edit": {
+      "title": "Yazıyı düzenle",
+      "submit": "Yazıyı kaydet",
+      "notFound": "Bu yazı artık mevcut değil."
+    },
+    "image": {
+      "title": "Paylaşım görseli",
+      "hint": "Yazı bağlantı olarak paylaşıldığında kullanılır.",
+      "label": "Paylaşım görseli"
+    },
+    "delete": {
+      "title": "Yazıyı sil",
+      "description": "\"{{title}}\" silinecek. Bu işlem geri alınamaz."
+    },
+    "danger": {
+      "title": "Tehlikeli bölge",
+      "description": "Yazıyı silmek onu siteden kaldırır.",
+      "delete": "Yazıyı sil"
+    },
+    "toast": {
+      "created": "Yazı oluşturuldu",
+      "saved": "Yazı kaydedildi",
+      "deleted": "Yazı silindi"
+    },
+    "errors": {
+      "invalidFields": "Yazı bilgilerini kontrol edin",
+      "unknownReference": "Seçilen oyun artık mevcut değil"
+    },
+    "validation": {
+      "titleRequired": "Başlık zorunludur.",
+      "dateFormat": "Takvimden bir tarih seçin."
+    }
   }
 }

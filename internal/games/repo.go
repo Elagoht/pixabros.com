@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"pixabros/internal/id"
+	"pixabros/internal/slug"
 )
 
 var ErrGameNotFound = errors.New("game not found")
@@ -155,7 +156,7 @@ func nullableID(v *string) interface{} {
 }
 
 func (r *Repo) Create(input CreateInput) (Game, error) {
-	slug, err := uniqueSlug(r.db, Slugify(input.Title), "")
+	newSlug, err := slug.Unique(r.db, "games", slug.Make(input.Title, "game"), "")
 	if err != nil {
 		return Game{}, err
 	}
@@ -170,7 +171,7 @@ func (r *Repo) Create(input CreateInput) (Game, error) {
 			id, slug, title, short_description, full_description, tags,
 			is_for_sale, price_display, external_links_json, display_order, is_published
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-		newID, slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
+		newID, newSlug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
 		input.IsForSale, nullableString(input.PriceDisplay), externalLinks,
 		input.DisplayOrder, input.IsPublished,
 	); err != nil {
@@ -198,7 +199,7 @@ func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 	if externalLinks == "" {
 		externalLinks = "[]"
 	}
-	slug, err := uniqueSlug(r.db, Slugify(input.Title), id)
+	newSlug, err := slug.Unique(r.db, "games", slug.Make(input.Title, "game"), id)
 	if err != nil {
 		return Game{}, err
 	}
@@ -212,7 +213,7 @@ func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 			display_order = ?, is_published = ?,
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
 		WHERE id = ?;`,
-		slug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
+		newSlug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
 		input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks,
 		nullableID(input.CartridgeArtID), nullableID(input.CDCoverArtID), nullableID(input.OGImageID),

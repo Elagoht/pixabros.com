@@ -1,12 +1,10 @@
 import { IconTrophy } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
 import { Form, Formik } from "formik";
 import type { FC } from "react";
-import { Card, DatePicker, Input, Select, SubmitButton } from "@/components/ui";
-import { queryKeys } from "@/lib/query/keys";
+import GameSelect from "@/components/games/GameSelect";
+import { Card, DatePicker, Input, SubmitButton } from "@/components/ui";
 import { useI18n } from "@/lib/stores/i18n";
 import { awardValidationSchema } from "@/lib/validation/award";
-import { GameService } from "@/services/game";
 
 export const emptyAwardFormValues: AwardFormValues = {
   title: "",
@@ -38,18 +36,6 @@ const AwardForm: FC<AwardFormProps> = ({
 }) => {
   const { t } = useI18n();
 
-  // Awards can name a related game, so the picker needs the game list. It is
-  // usually already cached by the games screens.
-  const { data: games = [] } = useQuery({
-    queryKey: queryKeys.games.list(),
-    queryFn: () => GameService.list(),
-  });
-
-  const gameOptions = [
-    { label: t("awards.form.gameNone"), value: "" },
-    ...games.map((game) => ({ label: game.title, value: game.id })),
-  ];
-
   return (
     <Formik
       initialValues={initialValues}
@@ -79,10 +65,10 @@ const AwardForm: FC<AwardFormProps> = ({
             <DatePicker name="date" label={t("awards.form.date")} />
 
             <div className="space-y-1.5">
-              <Select
+              <GameSelect
                 name="game_id"
                 label={t("awards.form.game")}
-                options={gameOptions}
+                noneLabel={t("awards.form.gameNone")}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {t("awards.form.gameHelp")}

@@ -10,17 +10,17 @@ describe("Button", () => {
 
   it("applies default variant classes", () => {
     render(<Button>Default</Button>);
-    expect(screen.getByRole("button")).toHaveClass("from-primary-500");
+    expect(screen.getByRole("button")).toHaveClass("bg-primary-600");
   });
 
   it("applies destructive variant classes", () => {
     render(<Button variant="destructive">Delete</Button>);
-    expect(screen.getByRole("button")).toHaveClass("from-red-500");
+    expect(screen.getByRole("button")).toHaveClass("bg-red-600");
   });
 
   it("applies secondary variant classes", () => {
     render(<Button variant="secondary">Secondary</Button>);
-    expect(screen.getByRole("button")).toHaveClass("from-secondary-500");
+    expect(screen.getByRole("button")).toHaveClass("bg-secondary-600");
   });
 
   it("applies ghost variant classes", () => {

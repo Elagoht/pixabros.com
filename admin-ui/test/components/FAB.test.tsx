@@ -28,12 +28,12 @@ describe("FAB", () => {
 
   it("applies default variant classes", () => {
     render(<FAB />);
-    expect(screen.getByRole("button")).toHaveClass("from-primary-400");
+    expect(screen.getByRole("button")).toHaveClass("bg-primary-500");
   });
 
   it("applies secondary variant classes", () => {
     render(<FAB variant="secondary" />);
-    expect(screen.getByRole("button")).toHaveClass("from-secondary-600");
+    expect(screen.getByRole("button")).toHaveClass("bg-secondary-700");
   });
 
   it("applies bottom-right position by default", () => {

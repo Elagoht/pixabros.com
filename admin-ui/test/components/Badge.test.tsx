@@ -10,27 +10,27 @@ describe("Badge", () => {
 
   it("applies default variant classes", () => {
     render(<Badge>Default</Badge>);
-    expect(screen.getByText("Default")).toHaveClass("from-primary-400");
+    expect(screen.getByText("Default")).toHaveClass("bg-primary-500");
   });
 
   it("applies secondary variant classes", () => {
     render(<Badge variant="secondary">Secondary</Badge>);
-    expect(screen.getByText("Secondary")).toHaveClass("from-secondary-600");
+    expect(screen.getByText("Secondary")).toHaveClass("bg-secondary-700");
   });
 
   it("applies success variant classes", () => {
     render(<Badge variant="success">Success</Badge>);
-    expect(screen.getByText("Success")).toHaveClass("from-green-400");
+    expect(screen.getByText("Success")).toHaveClass("bg-green-500");
   });
 
   it("applies warning variant classes", () => {
     render(<Badge variant="warning">Warning</Badge>);
-    expect(screen.getByText("Warning")).toHaveClass("from-yellow-400");
+    expect(screen.getByText("Warning")).toHaveClass("bg-yellow-500");
   });
 
   it("applies destructive variant classes", () => {
     render(<Badge variant="destructive">Destructive</Badge>);
-    expect(screen.getByText("Destructive")).toHaveClass("from-red-400");
+    expect(screen.getByText("Destructive")).toHaveClass("bg-red-500");
   });
 
   it("applies outline variant classes", () => {

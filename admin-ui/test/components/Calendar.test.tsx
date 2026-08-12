@@ -22,7 +22,7 @@ describe("Calendar", () => {
   it("highlights selected day", () => {
     render(<Calendar value={new Date(2025, 5, 15)} onChange={() => {}} />);
     const dayBtn = screen.getByText("15");
-    expect(dayBtn).toHaveClass("from-primary-400");
+    expect(dayBtn).toHaveClass("bg-primary-500");
   });
 
   it("calls onChange when a day is selected", () => {

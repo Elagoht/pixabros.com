@@ -53,6 +53,6 @@ describe("CategoryTable", () => {
         initialFormData={{ name: "" }}
       />,
     );
-    expect(screen.getByText("No categories")).toBeInTheDocument();
+    expect(screen.getByText("No categories yet")).toBeInTheDocument();
   });
 });

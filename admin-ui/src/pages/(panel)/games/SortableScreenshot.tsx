@@ -71,12 +71,7 @@ const SortableScreenshot: FC<SortableScreenshotProps> = ({
       {isLoading ? (
         <Skeleton className="h-20 w-full" variant="rect" />
       ) : data ? (
-        <ImagePreview
-          src={data.url}
-          alt={alt}
-          caption={alt}
-          className="h-20 object-cover"
-        />
+        <ImagePreview src={data.url} alt={alt} className="h-20 object-cover" />
       ) : null}
 
       <div className="flex items-center justify-between">

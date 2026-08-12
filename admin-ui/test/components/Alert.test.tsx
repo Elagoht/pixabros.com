@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, act } from "@testing-library/react";
-import { Alert } from "@/components/ui";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { act, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { Alert } from "@/components/ui";
 
 describe("Alert", () => {
   it("renders title and description", () => {
@@ -43,7 +43,9 @@ describe("Alert", () => {
   it("hides alert when closable and close button clicked", async () => {
     render(<Alert title="Closable" closable />);
     const closeBtn = screen.getByRole("button");
-    await act(() => { closeBtn.click(); });
+    await act(() => {
+      closeBtn.click();
+    });
     expect(screen.queryByText("Closable")).not.toBeInTheDocument();
   });
 });

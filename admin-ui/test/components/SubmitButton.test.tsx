@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { FormikProvider, useFormik } from "formik";
+import { MemoryRouter } from "react-router-dom";
+import { describe, expect, it, vi } from "vitest";
 import { SubmitButton } from "@/components/ui";
 
 vi.mock("@/lib/stores/i18n", () => ({

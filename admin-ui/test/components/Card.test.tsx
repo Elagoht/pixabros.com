@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Card } from "@/components/ui";
 
 describe("Card", () => {
@@ -10,7 +10,9 @@ describe("Card", () => {
 
   it("applies card styling classes", () => {
     render(<Card>Content</Card>);
-    expect(screen.getByText("Content").closest("div")).toHaveClass("rounded-xl");
+    expect(screen.getByText("Content").closest("div")).toHaveClass(
+      "rounded-xl",
+    );
   });
 
   it("renders with Header", () => {

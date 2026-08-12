@@ -1,20 +1,26 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("useGlobalShortcut", () => {
   let listeners: Record<string, Array<(e: Event) => void>> = {};
 
   beforeEach(() => {
     listeners = {};
-    vi.spyOn(document, "addEventListener").mockImplementation((event, handler) => {
-      if (!listeners[event]) listeners[event] = [];
-      listeners[event].push(handler as (e: Event) => void);
-    });
-    vi.spyOn(document, "removeEventListener").mockImplementation((event, handler) => {
-      if (listeners[event]) {
-        listeners[event] = listeners[event].filter((h) => h !== handler);
-      }
-    });
+    vi.spyOn(document, "addEventListener").mockImplementation(
+      (event, handler) => {
+        if (!listeners[event]) {
+          listeners[event] = [];
+        }
+        listeners[event].push(handler as (e: Event) => void);
+      },
+    );
+    vi.spyOn(document, "removeEventListener").mockImplementation(
+      (event, handler) => {
+        if (listeners[event]) {
+          listeners[event] = listeners[event].filter((h) => h !== handler);
+        }
+      },
+    );
   });
 
   afterEach(() => {
@@ -27,7 +33,7 @@ describe("useGlobalShortcut", () => {
 
     renderHook(() => useGlobalShortcut({ key: "k", metaKey: true }, callback));
 
-    const handler = listeners["keydown"]?.[0];
+    const handler = listeners.keydown?.[0];
     expect(handler).toBeDefined();
 
     handler?.(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -40,7 +46,7 @@ describe("useGlobalShortcut", () => {
 
     renderHook(() => useGlobalShortcut({ key: "k", metaKey: true }, callback));
 
-    const handler = listeners["keydown"]?.[0];
+    const handler = listeners.keydown?.[0];
     handler?.(new KeyboardEvent("keydown", { key: "j", metaKey: true }));
     expect(callback).not.toHaveBeenCalled();
   });
@@ -53,11 +59,17 @@ describe("useGlobalShortcut", () => {
       useGlobalShortcut({ key: "k", metaKey: true }, callback),
     );
 
-    expect(document.addEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+    expect(document.addEventListener).toHaveBeenCalledWith(
+      "keydown",
+      expect.any(Function),
+    );
 
     unmount();
 
-    expect(document.removeEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+    expect(document.removeEventListener).toHaveBeenCalledWith(
+      "keydown",
+      expect.any(Function),
+    );
   });
 
   it("respects ctrlKey", async () => {
@@ -66,7 +78,7 @@ describe("useGlobalShortcut", () => {
 
     renderHook(() => useGlobalShortcut({ key: "k", ctrlKey: true }, callback));
 
-    const handler = listeners["keydown"]?.[0];
+    const handler = listeners.keydown?.[0];
     handler?.(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
     expect(callback).toHaveBeenCalled();
   });
@@ -77,7 +89,7 @@ describe("useGlobalShortcut", () => {
 
     renderHook(() => useGlobalShortcut({ key: "k", metaKey: true }, callback));
 
-    const handler = listeners["keydown"]?.[0];
+    const handler = listeners.keydown?.[0];
     const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
     const spy = vi.spyOn(event, "preventDefault");
 

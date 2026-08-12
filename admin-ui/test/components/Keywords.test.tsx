@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Formik, Form } from "formik";
+import { Form, Formik } from "formik";
+import { describe, expect, it, vi } from "vitest";
 import { Keywords } from "@/components/ui";
 
 const renderWithFormik = (
@@ -48,7 +48,9 @@ describe("Keywords", () => {
   });
 
   it("uses custom placeholder", () => {
-    renderWithFormik(<Keywords name="tags" placeholder="Type here..." />, { tags: "" });
+    renderWithFormik(<Keywords name="tags" placeholder="Type here..." />, {
+      tags: "",
+    });
     expect(screen.getByPlaceholderText("Type here...")).toBeInTheDocument();
   });
 });

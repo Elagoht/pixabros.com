@@ -9,8 +9,8 @@ vi.mock("@/utilities/http", () => ({
   },
 }));
 
-import { Http } from "@/utilities/http";
 import { GameService } from "@/services/game";
+import { Http } from "@/utilities/http";
 
 describe("GameService", () => {
   beforeEach(() => {

@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Carousel } from "@/components/ui";
+import { required } from "../utils/dom";
 
 const slides = [
   { id: "1", content: "Slide 1" },
@@ -20,24 +21,32 @@ describe("Carousel", () => {
     render(<Carousel slides={slides} />);
     const buttons = screen.getAllByRole("button");
     const arrowButtons = buttons.filter(
-      (btn) => btn.querySelector("svg") && btn.className.includes("rounded-full"),
+      (btn) =>
+        btn.querySelector("svg") && btn.className.includes("rounded-full"),
     );
     expect(arrowButtons.length).toBe(2);
   });
 
   it("renders dot indicators", () => {
     render(<Carousel slides={slides} />);
-    const dots = screen.getAllByRole("button").filter(
-      (btn) => btn.className.includes("rounded-full") && btn.className.includes("h-2"),
-    );
+    const dots = screen
+      .getAllByRole("button")
+      .filter(
+        (btn) =>
+          btn.className.includes("rounded-full") &&
+          btn.className.includes("h-2"),
+      );
     expect(dots.length).toBe(3);
   });
 
   it("navigates to next slide on next arrow click", () => {
     render(<Carousel slides={slides} />);
-    const nextBtn = screen.getAllByRole("button").find(
-      (btn) => btn.className.includes("right-2"),
-    )!;
+    const nextBtn = required(
+      screen
+        .getAllByRole("button")
+        .find((btn) => btn.className.includes("right-2")),
+      "the next-slide arrow",
+    );
     fireEvent.click(nextBtn);
   });
 
@@ -45,7 +54,9 @@ describe("Carousel", () => {
     render(<Carousel slides={slides} showArrows={false} />);
     const buttons = screen.getAllByRole("button");
     const arrowButtons = buttons.filter(
-      (btn) => btn.className.includes("rounded-full") && btn.className.includes("absolute"),
+      (btn) =>
+        btn.className.includes("rounded-full") &&
+        btn.className.includes("absolute"),
     );
     expect(arrowButtons.length).toBe(0);
   });

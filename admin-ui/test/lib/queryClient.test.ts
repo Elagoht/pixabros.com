@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { queryClient } from "@/lib/query/client";
 
 describe("queryClient", () => {
@@ -11,6 +11,8 @@ describe("queryClient", () => {
   });
 
   it("has refetchOnWindowFocus set to true", () => {
-    expect(queryClient.getDefaultOptions().queries?.refetchOnWindowFocus).toBe(true);
+    expect(queryClient.getDefaultOptions().queries?.refetchOnWindowFocus).toBe(
+      true,
+    );
   });
 });

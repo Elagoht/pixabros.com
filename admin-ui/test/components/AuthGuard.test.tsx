@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuthGuard from "@/components/guards/AuthGuard";
 
 vi.mock("@/lib/stores/auth", () => ({
@@ -43,13 +43,21 @@ describe("AuthGuard", () => {
   });
 
   it("redirects to login when not authenticated", () => {
-    mockAuthStore.mockReturnValue({ ...defaultMock, isAuthenticated: false, isLoading: false });
+    mockAuthStore.mockReturnValue({
+      ...defaultMock,
+      isAuthenticated: false,
+      isLoading: false,
+    });
     const { container } = renderWithRouter(<AuthGuard>Dashboard</AuthGuard>);
     expect(container.textContent).not.toContain("Dashboard");
   });
 
   it("renders children when authenticated", () => {
-    mockAuthStore.mockReturnValue({ ...defaultMock, isAuthenticated: true, isLoading: false });
+    mockAuthStore.mockReturnValue({
+      ...defaultMock,
+      isAuthenticated: true,
+      isLoading: false,
+    });
     renderWithRouter(<AuthGuard>Dashboard</AuthGuard>);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });

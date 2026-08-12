@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Drawer } from "@/components/ui";
+import { parentOf } from "../utils/dom";
 
 describe("Drawer", () => {
   it("renders content when open", () => {
@@ -18,7 +19,7 @@ describe("Drawer", () => {
         <Drawer.Body>Hidden</Drawer.Body>
       </Drawer>,
     );
-    const wrapper = screen.getByText("Hidden").parentElement!;
+    const wrapper = parentOf(screen.getByText("Hidden"), "drawer panel");
     expect(wrapper).toHaveClass("translate-x-full");
   });
 
@@ -29,7 +30,10 @@ describe("Drawer", () => {
         <Drawer.Body>Content</Drawer.Body>
       </Drawer>,
     );
-    const backdrop = screen.getByText("Content").parentElement!.parentElement!;
+    const backdrop = parentOf(
+      parentOf(screen.getByText("Content"), "drawer panel"),
+      "drawer backdrop",
+    );
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -41,7 +45,7 @@ describe("Drawer", () => {
         <Drawer.Body>Content</Drawer.Body>
       </Drawer>,
     );
-    fireEvent.click(screen.getByText("Content").parentElement!);
+    fireEvent.click(parentOf(screen.getByText("Content"), "drawer panel"));
     expect(onClose).not.toHaveBeenCalled();
   });
 

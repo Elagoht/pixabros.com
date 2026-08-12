@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Formik } from "formik";
+import { describe, expect, it } from "vitest";
 import HierarchyTable from "@/components/ui/HierarchyTable";
 
 const items: HierarchyNode<{ label: string }>[] = [

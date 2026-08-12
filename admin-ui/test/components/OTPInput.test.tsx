@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { OTPInput } from "@/components/ui";
 
 describe("OTPInput", () => {
@@ -37,16 +37,16 @@ describe("OTPInput", () => {
   it("has inputMode numeric on inputs", () => {
     render(<OTPInput value="" onChange={() => {}} />);
     const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-    inputs.forEach((input) => {
+    for (const input of inputs) {
       expect(input).toHaveAttribute("inputmode", "numeric");
-    });
+    }
   });
 
   it("disables inputs when disabled prop is set", () => {
     render(<OTPInput value="" onChange={() => {}} disabled />);
     const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-    inputs.forEach((input) => {
+    for (const input of inputs) {
       expect(input).toBeDisabled();
-    });
+    }
   });
 });

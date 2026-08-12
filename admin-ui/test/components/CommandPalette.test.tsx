@@ -1,6 +1,5 @@
-import { beforeEach } from "vitest";
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
 import { CommandPalette } from "@/components/ui";
 
 const groups = [
@@ -27,7 +26,9 @@ describe("CommandPalette", () => {
 
   it("renders when open", () => {
     render(<CommandPalette open onClose={() => {}} groups={groups} />);
-    expect(screen.getByPlaceholderText("Type a command or search...")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Type a command or search..."),
+    ).toBeInTheDocument();
   });
 
   it("renders group headings and items when open", () => {

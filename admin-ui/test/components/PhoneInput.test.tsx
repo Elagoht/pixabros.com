@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Form, Formik } from "formik";
+import { describe, expect, it } from "vitest";
 import { PhoneInput } from "@/components/ui";
 
 const renderWithFormik = (
@@ -22,7 +22,9 @@ describe("PhoneInput", () => {
 
   it("renders with placeholder", () => {
     renderWithFormik(<PhoneInput name="phone" />, { phone: "" });
-    expect(screen.getByPlaceholderText("+90 (5XX) XXX XX XX")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("+90 (5XX) XXX XX XX"),
+    ).toBeInTheDocument();
   });
 
   it("renders input with type tel", () => {

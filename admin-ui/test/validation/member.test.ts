@@ -22,7 +22,9 @@ describe("memberValidationSchema", () => {
   });
 
   it("rejects a whitespace-only name, matching the server's trim", async () => {
-    await expect(schema.isValid({ ...valid, name: "   " })).resolves.toBe(false);
+    await expect(schema.isValid({ ...valid, name: "   " })).resolves.toBe(
+      false,
+    );
   });
 
   it("accepts a fully filled link", async () => {
@@ -40,7 +42,10 @@ describe("memberValidationSchema", () => {
       schema.isValid({ ...valid, links: [{ label: "GitHub", url: "" }] }),
     ).resolves.toBe(false);
     await expect(
-      schema.isValid({ ...valid, links: [{ label: "", url: "https://a.dev" }] }),
+      schema.isValid({
+        ...valid,
+        links: [{ label: "", url: "https://a.dev" }],
+      }),
     ).resolves.toBe(false);
   });
 });

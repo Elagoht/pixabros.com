@@ -26,9 +26,9 @@ describe("devlogValidationSchema", () => {
 
   // The server stamps a date on first publish, so an empty one is normal.
   it("allows an empty publication date", async () => {
-    await expect(
-      schema.isValid({ ...valid, published_at: "" }),
-    ).resolves.toBe(true);
+    await expect(schema.isValid({ ...valid, published_at: "" })).resolves.toBe(
+      true,
+    );
   });
 
   it("only accepts YYYY-MM-DD when a date is given", async () => {

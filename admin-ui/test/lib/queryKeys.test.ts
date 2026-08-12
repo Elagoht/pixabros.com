@@ -15,7 +15,9 @@ describe("queryKeys", () => {
   });
 
   it("keys different games separately", () => {
-    expect(queryKeys.games.detail("a")).not.toEqual(queryKeys.games.detail("b"));
+    expect(queryKeys.games.detail("a")).not.toEqual(
+      queryKeys.games.detail("b"),
+    );
     expect(queryKeys.games.screenshots("a")).not.toEqual(
       queryKeys.games.screenshots("b"),
     );
@@ -34,12 +36,12 @@ describe("queryKeys", () => {
 
 describe("queryKeys.games list sorting", () => {
   it("keys each ordering separately so a re-sort refetches", () => {
-    expect(queryKeys.games.list({ field: "title", direction: "asc" })).not.toEqual(
-      queryKeys.games.list({ field: "title", direction: "desc" }),
-    );
-    expect(queryKeys.games.list({ field: "title", direction: "asc" })).not.toEqual(
-      queryKeys.games.list({ field: "slug", direction: "asc" }),
-    );
+    expect(
+      queryKeys.games.list({ field: "title", direction: "asc" }),
+    ).not.toEqual(queryKeys.games.list({ field: "title", direction: "desc" }));
+    expect(
+      queryKeys.games.list({ field: "title", direction: "asc" }),
+    ).not.toEqual(queryKeys.games.list({ field: "slug", direction: "asc" }));
   });
 
   // Invalidating after a mutation has to clear every cached ordering, not

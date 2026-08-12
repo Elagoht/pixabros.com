@@ -19,9 +19,13 @@ describe("awardValidationSchema", () => {
 
   it("requires a title and an issuer", async () => {
     await expect(schema.isValid({ ...valid, title: "" })).resolves.toBe(false);
-    await expect(schema.isValid({ ...valid, title: "  " })).resolves.toBe(false);
+    await expect(schema.isValid({ ...valid, title: "  " })).resolves.toBe(
+      false,
+    );
     await expect(schema.isValid({ ...valid, issuer: "" })).resolves.toBe(false);
-    await expect(schema.isValid({ ...valid, issuer: " " })).resolves.toBe(false);
+    await expect(schema.isValid({ ...valid, issuer: " " })).resolves.toBe(
+      false,
+    );
   });
 
   describe("date", () => {
@@ -35,9 +39,9 @@ describe("awardValidationSchema", () => {
       for (const date of ["18/03/2026", "2026-3-1", "March 2026", "20260318"]) {
         await expect(schema.isValid({ ...valid, date })).resolves.toBe(false);
       }
-      await expect(schema.isValid({ ...valid, date: "2026-03-18" })).resolves.toBe(
-        true,
-      );
+      await expect(
+        schema.isValid({ ...valid, date: "2026-03-18" }),
+      ).resolves.toBe(true);
     });
   });
 

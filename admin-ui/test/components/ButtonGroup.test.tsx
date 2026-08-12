@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ButtonGroup, Button } from "@/components/ui";
+import { describe, expect, it } from "vitest";
+import { Button, ButtonGroup } from "@/components/ui";
 
 describe("ButtonGroup", () => {
   it("renders children", () => {

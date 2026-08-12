@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { PageLayout } from "@/components/ui";
 
 describe("PageLayout", () => {
@@ -36,6 +36,8 @@ describe("PageLayout", () => {
 
   it("applies right sidebar position", () => {
     render(<PageLayout sidebarPosition="right">Content</PageLayout>);
-    expect(screen.getByText("Content").closest("div")).toHaveClass("flex-row-reverse");
+    expect(screen.getByText("Content").closest("div")).toHaveClass(
+      "flex-row-reverse",
+    );
   });
 });

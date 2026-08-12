@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Stepper } from "@/components/ui";
 
 describe("Stepper", () => {
@@ -24,12 +24,8 @@ describe("Stepper", () => {
   });
 
   it("shows checkmark for completed steps", () => {
-    const { container } = render(
-      <Stepper steps={steps} activeStep={2} />,
-    );
-    const iconElements = container.querySelectorAll(
-      'svg[stroke-width="3"]',
-    );
+    const { container } = render(<Stepper steps={steps} activeStep={2} />);
+    const iconElements = container.querySelectorAll('svg[stroke-width="3"]');
     expect(iconElements.length).toBeGreaterThanOrEqual(1);
   });
 

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Form, Formik } from "formik";
+import { describe, expect, it } from "vitest";
 import { Input } from "@/components/ui";
 
 const renderWithFormik = (

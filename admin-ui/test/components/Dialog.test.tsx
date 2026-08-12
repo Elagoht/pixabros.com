@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Dialog } from "@/components/ui";
+import { required } from "../utils/dom";
 
 describe("Dialog", () => {
   it("renders when open", () => {
@@ -30,9 +31,10 @@ describe("Dialog", () => {
         confirmLabel="Delete"
       />,
     );
-    const confirmBtn = screen.getAllByRole("button").find(
-      (btn) => btn.textContent === "Delete",
-    )!;
+    const confirmBtn = required(
+      screen.getAllByRole("button").find((btn) => btn.textContent === "Delete"),
+      "the confirm button",
+    );
     fireEvent.click(confirmBtn);
     expect(onConfirm).toHaveBeenCalledOnce();
   });

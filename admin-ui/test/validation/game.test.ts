@@ -94,7 +94,9 @@ describe("parseExternalLinks", () => {
   });
 
   it("fills in missing halves rather than dropping the row", () => {
-    expect(parseExternalLinks('[{"label":"Itch"},{"url":"https://a.dev"}]')).toEqual([
+    expect(
+      parseExternalLinks('[{"label":"Itch"},{"url":"https://a.dev"}]'),
+    ).toEqual([
       { label: "Itch", url: "" },
       { label: "", url: "https://a.dev" },
     ]);

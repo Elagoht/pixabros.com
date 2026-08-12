@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { Form, Formik } from "formik";
+import { describe, expect, it, vi } from "vitest";
 import { DatePicker } from "@/components/ui";
 
 vi.mock("@/lib/stores/i18n", () => ({
@@ -23,7 +23,9 @@ const renderWithFormik = (
 
 describe("DatePicker", () => {
   it("renders input with label", () => {
-    renderWithFormik(<DatePicker name="date" label="Birth Date" />, { date: "" });
+    renderWithFormik(<DatePicker name="date" label="Birth Date" />, {
+      date: "",
+    });
     expect(screen.getByText("Birth Date")).toBeInTheDocument();
   });
 

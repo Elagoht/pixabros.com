@@ -1,7 +1,7 @@
-import { type FC, type ReactNode, createElement } from "react";
-import { render, render as rtlRender } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { render, type render as rtlRender } from "@testing-library/react";
 import { FormikProvider, useFormik } from "formik";
+import type { createElement, FC, ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 const AuthenticatedRouter: FC<{ children: ReactNode }> = ({ children }) => (
   <MemoryRouter>{children}</MemoryRouter>
@@ -25,9 +25,15 @@ const renderWithFormik = <T extends FormValues>({
 }: {
   initialValues: T;
   onSubmit?: (values: T) => void;
-  children: (formik: ReturnType<typeof useFormik<T>>) => ReturnType<typeof createElement>;
+  children: (
+    formik: ReturnType<typeof useFormik<T>>,
+  ) => ReturnType<typeof createElement>;
 }) => {
-  const formik = useFormik({ initialValues, onSubmit, validateOnChange: false });
+  const formik = useFormik({
+    initialValues,
+    onSubmit,
+    validateOnChange: false,
+  });
   return render(
     <MemoryRouter>
       <FormikProvider value={formik}>{children(formik)}</FormikProvider>
@@ -35,5 +41,10 @@ const renderWithFormik = <T extends FormValues>({
   );
 };
 
-export { customRender as render, AuthenticatedRouter, AllProviders, renderWithFormik };
 export * from "@testing-library/react";
+export {
+  AllProviders,
+  AuthenticatedRouter,
+  customRender as render,
+  renderWithFormik,
+};

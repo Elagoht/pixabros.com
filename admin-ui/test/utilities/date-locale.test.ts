@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   DAYS_EN,
   DAYS_TR,
-  MONTHS_EN,
-  MONTHS_TR,
-  localeData,
+  formatDateDisplay,
   getDaysInMonth,
   getFirstDay,
-  formatDateDisplay,
+  localeData,
+  MONTHS_EN,
+  MONTHS_TR,
 } from "@/utilities/date-locale";
 
 describe("DAYS constants", () => {
@@ -92,4 +92,5 @@ describe("formatDateDisplay", () => {
   it("formats date with tr locale", () => {
     const result = formatDateDisplay("2024-01-15", "tr");
     expect(result).toBeTruthy();
-  });});
+  });
+});

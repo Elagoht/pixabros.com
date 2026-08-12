@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Modal } from "@/components/ui";
+import { parentOf } from "../utils/dom";
 
 describe("Modal", () => {
   it("renders content when open", () => {
@@ -19,7 +20,7 @@ describe("Modal", () => {
       </Modal>,
     );
     expect(screen.getByText("Hidden content")).toBeInTheDocument();
-    const wrapper = screen.getByText("Hidden content").parentElement!;
+    const wrapper = parentOf(screen.getByText("Hidden content"), "modal panel");
     expect(wrapper).toHaveClass("opacity-0");
   });
 
@@ -30,7 +31,10 @@ describe("Modal", () => {
         <Modal.Body>Content</Modal.Body>
       </Modal>,
     );
-    const backdrop = screen.getByText("Content").parentElement!.parentElement!;
+    const backdrop = parentOf(
+      parentOf(screen.getByText("Content"), "modal panel"),
+      "modal backdrop",
+    );
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -42,7 +46,7 @@ describe("Modal", () => {
         <Modal.Body>Content</Modal.Body>
       </Modal>,
     );
-    fireEvent.click(screen.getByText("Content").parentElement!);
+    fireEvent.click(parentOf(screen.getByText("Content"), "modal panel"));
     expect(onClose).not.toHaveBeenCalled();
   });
 

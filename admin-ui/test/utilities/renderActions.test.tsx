@@ -12,18 +12,16 @@ const row: Row = { id: "g1" };
 
 describe("renderActions", () => {
   it("renders nothing when there are no actions", () => {
-    const { container } = render(<>{renderActions(row, [])}</>);
+    const { container } = render(renderActions(row, []));
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows the action label as a tooltip on hover", async () => {
     const user = userEvent.setup();
     render(
-      <>
-        {renderActions(row, [
-          { icon: IconPencil, label: "Edit", onClick: vi.fn() },
-        ])}
-      </>,
+      renderActions(row, [
+        { icon: IconPencil, label: "Edit", onClick: vi.fn() },
+      ]),
     );
 
     expect(screen.queryByText("Edit")).toBeNull();
@@ -36,11 +34,7 @@ describe("renderActions", () => {
   it("calls the action when clicked", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    render(
-      <>
-        {renderActions(row, [{ icon: IconTrash, label: "Delete", onClick }])}
-      </>,
-    );
+    render(renderActions(row, [{ icon: IconTrash, label: "Delete", onClick }]));
 
     await user.click(screen.getByRole("button"));
 
@@ -49,16 +43,14 @@ describe("renderActions", () => {
 
   it("disables an action whose predicate says so", () => {
     render(
-      <>
-        {renderActions(row, [
-          {
-            icon: IconPencil,
-            label: "Edit",
-            disabled: (r: Row) => r.id === "g1",
-            onClick: vi.fn(),
-          },
-        ])}
-      </>,
+      renderActions(row, [
+        {
+          icon: IconPencil,
+          label: "Edit",
+          disabled: (r: Row) => r.id === "g1",
+          onClick: vi.fn(),
+        },
+      ]),
     );
 
     expect(screen.getByRole("button")).toBeDisabled();
@@ -70,16 +62,14 @@ describe("renderActions", () => {
   it("still shows the tooltip for a disabled action", async () => {
     const user = userEvent.setup();
     render(
-      <>
-        {renderActions(row, [
-          {
-            icon: IconPencil,
-            label: "Not available",
-            disabled: true,
-            onClick: vi.fn(),
-          },
-        ])}
-      </>,
+      renderActions(row, [
+        {
+          icon: IconPencil,
+          label: "Not available",
+          disabled: true,
+          onClick: vi.fn(),
+        },
+      ]),
     );
 
     await user.hover(screen.getByRole("button").parentElement as HTMLElement);

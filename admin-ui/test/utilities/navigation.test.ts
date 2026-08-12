@@ -11,9 +11,9 @@ describe("Navigation", () => {
   });
 
   it("toBrowserPath and toAppPath round-trip", () => {
-    expect(Navigation.toAppPath(Navigation.toBrowserPath("/change-password"))).toBe(
-      "/change-password",
-    );
+    expect(
+      Navigation.toAppPath(Navigation.toBrowserPath("/change-password")),
+    ).toBe("/change-password");
   });
 
   it("toAppPath maps the bare base path to the app root", () => {

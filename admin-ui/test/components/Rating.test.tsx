@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Rating } from "@/components/ui";
 
 describe("Rating", () => {
@@ -36,7 +36,9 @@ describe("Rating", () => {
     const onChange = vi.fn();
     render(<Rating value={3} onChange={onChange} disabled />);
     const buttons = screen.getAllByRole("button");
-    buttons.forEach((btn) => expect(btn).toBeDisabled());
+    for (const btn of buttons) {
+      expect(btn).toBeDisabled();
+    }
     fireEvent.click(buttons[0]);
     expect(onChange).not.toHaveBeenCalled();
   });

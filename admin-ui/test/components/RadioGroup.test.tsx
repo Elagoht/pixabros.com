@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Form, Formik } from "formik";
+import { describe, expect, it } from "vitest";
 import { RadioGroup } from "@/components/ui";
 
 const renderWithFormik = (
@@ -22,7 +22,9 @@ const options = [
 
 describe("RadioGroup", () => {
   it("renders all options", () => {
-    renderWithFormik(<RadioGroup name="size" options={options} />, { size: "" });
+    renderWithFormik(<RadioGroup name="size" options={options} />, {
+      size: "",
+    });
     expect(screen.getByText("Small")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
     expect(screen.getByText("Large")).toBeInTheDocument();
@@ -37,18 +39,22 @@ describe("RadioGroup", () => {
   });
 
   it("selects option on click", () => {
-    renderWithFormik(<RadioGroup name="size" options={options} />, { size: "" });
+    renderWithFormik(<RadioGroup name="size" options={options} />, {
+      size: "",
+    });
     fireEvent.click(screen.getByLabelText("Medium"));
     const mediumRadio = screen.getByLabelText("Medium") as HTMLInputElement;
     expect(mediumRadio).toBeChecked();
   });
 
   it("renders radio inputs with correct name", () => {
-    renderWithFormik(<RadioGroup name="size" options={options} />, { size: "" });
+    renderWithFormik(<RadioGroup name="size" options={options} />, {
+      size: "",
+    });
     const radios = screen.getAllByRole("radio");
     expect(radios).toHaveLength(3);
-    radios.forEach((radio) => {
+    for (const radio of radios) {
       expect(radio).toHaveAttribute("name", "size");
-    });
+    }
   });
 });

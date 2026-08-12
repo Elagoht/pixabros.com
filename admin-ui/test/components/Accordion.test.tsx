@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Accordion } from "@/components/ui";
 
 describe("Accordion", () => {
@@ -35,7 +35,9 @@ describe("Accordion", () => {
   });
 
   it("in multiple mode, allows multiple open items", () => {
-    render(<Accordion items={items} type="multiple" defaultOpen={["1", "2"]} />);
+    render(
+      <Accordion items={items} type="multiple" defaultOpen={["1", "2"]} />,
+    );
     expect(screen.getByText("Content 1")).toBeInTheDocument();
     expect(screen.getByText("Content 2")).toBeInTheDocument();
   });

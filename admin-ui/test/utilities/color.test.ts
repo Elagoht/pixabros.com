@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, isValidHex } from "@/utilities/color";
+import { describe, expect, it } from "vitest";
+import {
+  hexToRgb,
+  hsvToRgb,
+  isValidHex,
+  rgbToHex,
+  rgbToHsv,
+} from "@/utilities/color";
 
 describe("hexToRgb", () => {
   it("converts #ff0000 to [255, 0, 0]", () => {
@@ -46,7 +52,7 @@ describe("rgbToHex", () => {
 });
 
 describe("rgbToHsv", () => {
-it("converts pure red", () => {
+  it("converts pure red", () => {
     const [r, g, b] = rgbToHsv(255, 0, 0);
     expect(r).toBeCloseTo(0, 0);
     expect(g).toBeCloseTo(100, 0);

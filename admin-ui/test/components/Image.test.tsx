@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Image } from "@/components/ui";
 
 describe("Image", () => {
@@ -11,7 +11,9 @@ describe("Image", () => {
   });
 
   it("shows fallback on error", () => {
-    render(<Image src="/broken.jpg" alt="Test image" width={200} height={200} />);
+    render(
+      <Image src="/broken.jpg" alt="Test image" width={200} height={200} />,
+    );
     const img = screen.getByRole("img");
     fireEvent.error(img);
     expect(screen.getByText("Failed to load")).toBeInTheDocument();

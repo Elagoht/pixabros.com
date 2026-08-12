@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  numberFilterFn,
-  dateFilterFn,
   booleanFilterFn,
   chipFilterFn,
+  dateFilterFn,
   filterFnMap,
+  numberFilterFn,
 } from "@/utilities/filter";
 
 const makeRow = (value: unknown) => ({ getValue: (_id: string) => value });
@@ -23,36 +23,60 @@ describe("numberFilterFn", () => {
   });
 
   it("returns true when value is undefined", () => {
-    expect(numberFilterFn(makeRow(10), "col", { op: undefined, value: 10 })).toBe(true);
+    expect(
+      numberFilterFn(makeRow(10), "col", { op: undefined, value: 10 }),
+    ).toBe(true);
   });
 
   it("filters with = operator", () => {
-    expect(numberFilterFn(makeRow(10), "col", { op: "=", value: 10 })).toBe(true);
-    expect(numberFilterFn(makeRow(10), "col", { op: "=", value: 5 })).toBe(false);
+    expect(numberFilterFn(makeRow(10), "col", { op: "=", value: 10 })).toBe(
+      true,
+    );
+    expect(numberFilterFn(makeRow(10), "col", { op: "=", value: 5 })).toBe(
+      false,
+    );
   });
 
   it("filters with > operator", () => {
-    expect(numberFilterFn(makeRow(10), "col", { op: ">", value: 5 })).toBe(true);
-    expect(numberFilterFn(makeRow(10), "col", { op: ">", value: 10 })).toBe(false);
+    expect(numberFilterFn(makeRow(10), "col", { op: ">", value: 5 })).toBe(
+      true,
+    );
+    expect(numberFilterFn(makeRow(10), "col", { op: ">", value: 10 })).toBe(
+      false,
+    );
   });
 
   it("filters with >= operator", () => {
-    expect(numberFilterFn(makeRow(10), "col", { op: ">=", value: 10 })).toBe(true);
-    expect(numberFilterFn(makeRow(10), "col", { op: ">=", value: 11 })).toBe(false);
+    expect(numberFilterFn(makeRow(10), "col", { op: ">=", value: 10 })).toBe(
+      true,
+    );
+    expect(numberFilterFn(makeRow(10), "col", { op: ">=", value: 11 })).toBe(
+      false,
+    );
   });
 
   it("filters with < operator", () => {
-    expect(numberFilterFn(makeRow(5), "col", { op: "<", value: 10 })).toBe(true);
-    expect(numberFilterFn(makeRow(10), "col", { op: "<", value: 10 })).toBe(false);
+    expect(numberFilterFn(makeRow(5), "col", { op: "<", value: 10 })).toBe(
+      true,
+    );
+    expect(numberFilterFn(makeRow(10), "col", { op: "<", value: 10 })).toBe(
+      false,
+    );
   });
 
   it("filters with <= operator", () => {
-    expect(numberFilterFn(makeRow(10), "col", { op: "<=", value: 10 })).toBe(true);
-    expect(numberFilterFn(makeRow(11), "col", { op: "<=", value: 10 })).toBe(false);
+    expect(numberFilterFn(makeRow(10), "col", { op: "<=", value: 10 })).toBe(
+      true,
+    );
+    expect(numberFilterFn(makeRow(11), "col", { op: "<=", value: 10 })).toBe(
+      false,
+    );
   });
 
   it("returns true when cell value is NaN", () => {
-    expect(numberFilterFn(makeRow("abc"), "col", { op: "=", value: 10 })).toBe(true);
+    expect(numberFilterFn(makeRow("abc"), "col", { op: "=", value: 10 })).toBe(
+      true,
+    );
   });
 });
 
@@ -79,12 +103,18 @@ describe("dateFilterFn", () => {
 
   it("filters with start and end date range", () => {
     const row = makeRow("2024-06-15T00:00:00");
-    expect(dateFilterFn(row, "col", { start: "2024-06-01", end: "2024-07-01" })).toBe(true);
-    expect(dateFilterFn(row, "col", { start: "2024-07-01", end: "2024-08-01" })).toBe(false);
+    expect(
+      dateFilterFn(row, "col", { start: "2024-06-01", end: "2024-07-01" }),
+    ).toBe(true);
+    expect(
+      dateFilterFn(row, "col", { start: "2024-07-01", end: "2024-08-01" }),
+    ).toBe(false);
   });
 
   it("returns true for NaN date value", () => {
-    expect(dateFilterFn(makeRow("not-a-date"), "col", { start: "2024-01-01" })).toBe(true);
+    expect(
+      dateFilterFn(makeRow("not-a-date"), "col", { start: "2024-01-01" }),
+    ).toBe(true);
   });
 });
 
@@ -118,11 +148,15 @@ describe("chipFilterFn", () => {
   });
 
   it("returns true when value is in the filter array", () => {
-    expect(chipFilterFn(makeRow("active"), "col", ["active", "pending"])).toBe(true);
+    expect(chipFilterFn(makeRow("active"), "col", ["active", "pending"])).toBe(
+      true,
+    );
   });
 
   it("returns false when value is not in the filter array", () => {
-    expect(chipFilterFn(makeRow("closed"), "col", ["active", "pending"])).toBe(false);
+    expect(chipFilterFn(makeRow("closed"), "col", ["active", "pending"])).toBe(
+      false,
+    );
   });
 
   it("handles null cell value", () => {

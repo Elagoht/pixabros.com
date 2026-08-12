@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/stores/i18n", () => ({
   useI18n: {
@@ -8,13 +8,13 @@ vi.mock("@/lib/stores/i18n", () => ({
 }));
 
 import {
-  formatMoney,
   formatDate,
+  formatMoney,
   formatNumber,
-  renderChip,
   renderBoolean,
-  renderProgress,
   renderCellContent,
+  renderChip,
+  renderProgress,
 } from "@/utilities/format";
 
 describe("formatMoney", () => {
@@ -103,7 +103,9 @@ describe("renderChip", () => {
   });
 
   it("renders chip with label from labels map", () => {
-    const { container } = render(renderChip("active", undefined, { active: "Aktif" }));
+    const { container } = render(
+      renderChip("active", undefined, { active: "Aktif" }),
+    );
     expect(container.textContent).toContain("Aktif");
   });
 
@@ -113,7 +115,9 @@ describe("renderChip", () => {
   });
 
   it("renders chip with specified color", () => {
-    const { container } = render(renderChip("test", { colors: { test: "green" } }));
+    const { container } = render(
+      renderChip("test", { colors: { test: "green" } }),
+    );
     expect(container.querySelector("span")).toBeTruthy();
   });
 });
@@ -183,52 +187,139 @@ describe("renderProgress", () => {
 
 describe("renderCellContent", () => {
   it("calls custom cell renderer when provided", () => {
-    const result = renderCellContent("hello", {} as Record<string, unknown>, { cell: (v: unknown) => `custom: ${v}`, id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      "hello",
+      {} as Record<string, unknown>,
+      {
+        cell: (v: unknown) => `custom: ${v}`,
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBe("custom: hello");
   });
 
   it("formats money type", () => {
-    const result = renderCellContent(100, {} as Record<string, unknown>, { type: "money", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      100,
+      {} as Record<string, unknown>,
+      {
+        type: "money",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(typeof result).toBe("string");
   });
 
   it("formats date type", () => {
-    const result = renderCellContent("2024-01-15", {} as Record<string, unknown>, { type: "date", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      "2024-01-15",
+      {} as Record<string, unknown>,
+      {
+        type: "date",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toContain("2024");
   });
 
   it("renders boolean type", () => {
-    const result = renderCellContent(true, {} as Record<string, unknown>, { type: "boolean", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      true,
+      {} as Record<string, unknown>,
+      {
+        type: "boolean",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBeTruthy();
   });
 
   it("renders chip type", () => {
-    const result = renderCellContent("active", {} as Record<string, unknown>, { type: "chip", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      "active",
+      {} as Record<string, unknown>,
+      {
+        type: "chip",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBeTruthy();
   });
 
   it("renders number type", () => {
-    const result = renderCellContent(42, {} as Record<string, unknown>, { type: "number", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      42,
+      {} as Record<string, unknown>,
+      {
+        type: "number",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(typeof result).toBe("string");
   });
 
   it("renders progress type", () => {
-    const result = renderCellContent(50, {} as Record<string, unknown>, { type: "progress", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      50,
+      {} as Record<string, unknown>,
+      {
+        type: "progress",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBeTruthy();
   });
 
   it("renders actions type", () => {
-    const result = renderCellContent({}, { id: 1 }, { type: "actions", actions: [], id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent({}, { id: 1 }, {
+      type: "actions",
+      actions: [],
+      id: "test",
+      header: "Test",
+      accessor: "test",
+    } as DataTableColumn<Record<string, unknown>>);
     expect(result).toBeNull();
   });
 
   it("defaults to string rendering", () => {
-    const result = renderCellContent("hello", {} as Record<string, unknown>, { type: "string", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      "hello",
+      {} as Record<string, unknown>,
+      {
+        type: "string",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBe("hello");
   });
 
   it("renders null/undefined as empty string by default", () => {
-    const result = renderCellContent(null, {} as Record<string, unknown>, { type: "string", id: "test", header: "Test", accessor: "test" } as DataTableColumn<Record<string, unknown>>);
+    const result = renderCellContent(
+      null,
+      {} as Record<string, unknown>,
+      {
+        type: "string",
+        id: "test",
+        header: "Test",
+        accessor: "test",
+      } as DataTableColumn<Record<string, unknown>>,
+    );
     expect(result).toBe("");
   });
 });

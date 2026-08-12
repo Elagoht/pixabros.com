@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import GuestGuard from "@/components/guards/GuestGuard";
 
 vi.mock("@/lib/stores/auth", () => ({
@@ -43,13 +43,21 @@ describe("GuestGuard", () => {
   });
 
   it("redirects when authenticated", () => {
-    mockAuthStore.mockReturnValue({ ...defaultMock, isAuthenticated: true, isLoading: false });
+    mockAuthStore.mockReturnValue({
+      ...defaultMock,
+      isAuthenticated: true,
+      isLoading: false,
+    });
     const { container } = renderWithRouter(<GuestGuard>Login Page</GuestGuard>);
     expect(container.textContent).not.toContain("Login Page");
   });
 
   it("renders children when not authenticated", () => {
-    mockAuthStore.mockReturnValue({ ...defaultMock, isAuthenticated: false, isLoading: false });
+    mockAuthStore.mockReturnValue({
+      ...defaultMock,
+      isAuthenticated: false,
+      isLoading: false,
+    });
     renderWithRouter(<GuestGuard>Login Page</GuestGuard>);
     expect(screen.getByText("Login Page")).toBeInTheDocument();
   });

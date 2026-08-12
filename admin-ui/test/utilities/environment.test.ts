@@ -26,6 +26,8 @@ describe("Environment", () => {
   });
 
   it("pageSize defaults to 12 when no env var", () => {
-    expect(Environment.pageSize).toBe(Number(import.meta.env.VITE_PAGE_SIZE) || 12);
+    expect(Environment.pageSize).toBe(
+      Number(import.meta.env.VITE_PAGE_SIZE) || 12,
+    );
   });
 });

@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  applyDrop,
   detectCycle,
   getAllDescendantIds,
-  applyDrop,
   getDepth,
   hasChildren,
 } from "@/utilities/hierarchy-table";
@@ -45,7 +45,9 @@ describe("getAllDescendantIds", () => {
   ];
 
   it("returns all descendants of root item", () => {
-    expect(getAllDescendantIds(items, "1")).toEqual(new Set(["2", "3", "4", "5"]));
+    expect(getAllDescendantIds(items, "1")).toEqual(
+      new Set(["2", "3", "4", "5"]),
+    );
   });
 
   it("returns only direct children for leaf-like item", () => {

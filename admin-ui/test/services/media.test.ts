@@ -4,8 +4,8 @@ vi.mock("@/utilities/http", () => ({
   Http: { get: vi.fn(), post: vi.fn() },
 }));
 
-import { Http } from "@/utilities/http";
 import { MediaService } from "@/services/media";
+import { Http } from "@/utilities/http";
 
 describe("MediaService", () => {
   beforeEach(() => {

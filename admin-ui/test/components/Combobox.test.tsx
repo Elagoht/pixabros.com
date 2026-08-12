@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Form, Formik } from "formik";
+import { describe, expect, it, vi } from "vitest";
 import { Combobox } from "@/components/ui";
 
 vi.mock("@/lib/stores/i18n", () => ({
@@ -29,19 +29,26 @@ const options = [
 
 describe("Combobox", () => {
   it("renders with label", () => {
-    renderWithFormik(<Combobox name="fruit" label="Fruit" options={options} />, {
-      fruit: "",
-    });
+    renderWithFormik(
+      <Combobox name="fruit" label="Fruit" options={options} />,
+      {
+        fruit: "",
+      },
+    );
     expect(screen.getByText("Fruit")).toBeInTheDocument();
   });
 
-it("renders with placeholder text", () => {
-    renderWithFormik(<Combobox name="fruit" options={options} />, { fruit: "" });
+  it("renders with placeholder text", () => {
+    renderWithFormik(<Combobox name="fruit" options={options} />, {
+      fruit: "",
+    });
     expect(screen.getByText("Select...")).toBeInTheDocument();
   });
 
   it("shows dropdown options on click", () => {
-    renderWithFormik(<Combobox name="fruit" options={options} />, { fruit: "" });
+    renderWithFormik(<Combobox name="fruit" options={options} />, {
+      fruit: "",
+    });
     const comboboxArea = screen.getByText("Select...");
     fireEvent.click(comboboxArea);
     expect(screen.getByText("Apple")).toBeInTheDocument();
@@ -50,13 +57,17 @@ it("renders with placeholder text", () => {
   });
 
   it("selects an option in single mode", () => {
-    renderWithFormik(<Combobox name="fruit" options={options} />, { fruit: "" });
+    renderWithFormik(<Combobox name="fruit" options={options} />, {
+      fruit: "",
+    });
     fireEvent.click(screen.getByText("Select..."));
     fireEvent.click(screen.getByText("Banana"));
   });
 
   it("filters options based on search in single mode", () => {
-    renderWithFormik(<Combobox name="fruit" options={options} />, { fruit: "" });
+    renderWithFormik(<Combobox name="fruit" options={options} />, {
+      fruit: "",
+    });
     fireEvent.click(screen.getByText("Select..."));
     const searchInput = screen.getByPlaceholderText("Search...");
     fireEvent.change(searchInput, { target: { value: "ch" } });

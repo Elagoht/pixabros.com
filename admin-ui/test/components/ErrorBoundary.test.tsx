@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const ThrowError = (): never => {
@@ -17,7 +17,11 @@ describe("ErrorBoundary", () => {
   });
 
   it("renders children normally when no error", () => {
-    render(<ErrorBoundary><p>Hello world</p></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <p>Hello world</p>
+      </ErrorBoundary>,
+    );
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
@@ -46,7 +50,9 @@ describe("ErrorBoundary", () => {
     let shouldThrow = true;
 
     const Child = () => {
-      if (shouldThrow) throw new Error("boom");
+      if (shouldThrow) {
+        throw new Error("boom");
+      }
       return <p>All good</p>;
     };
 

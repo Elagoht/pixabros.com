@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { Form, Formik } from "formik";
+import { describe, expect, it, vi } from "vitest";
 import { FileInput } from "@/components/ui";
 
 vi.mock("@/lib/stores/i18n", () => ({
@@ -38,8 +38,12 @@ describe("FileInput", () => {
   });
 
   it("applies accept prop to hidden input", () => {
-    renderWithFormik(<FileInput name="file" accept=".pdf,.doc" />, { file: null });
-    const hiddenInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    renderWithFormik(<FileInput name="file" accept=".pdf,.doc" />, {
+      file: null,
+    });
+    const hiddenInput = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(hiddenInput).toHaveAttribute("accept", ".pdf,.doc");
   });
 

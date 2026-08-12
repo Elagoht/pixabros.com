@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { EmptyState } from "@/components/ui";
 import { IconPlus } from "@tabler/icons-react";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { EmptyState } from "@/components/ui";
 
 describe("EmptyState", () => {
   it("renders title", () => {
@@ -10,12 +10,24 @@ describe("EmptyState", () => {
   });
 
   it("renders description when provided", () => {
-    render(<EmptyState title="No items" description="Add some items to get started" />);
-    expect(screen.getByText("Add some items to get started")).toBeInTheDocument();
+    render(
+      <EmptyState
+        title="No items"
+        description="Add some items to get started"
+      />,
+    );
+    expect(
+      screen.getByText("Add some items to get started"),
+    ).toBeInTheDocument();
   });
 
   it("renders action when provided", () => {
-    render(<EmptyState title="No items" action={<button>Add item</button>} />);
+    render(
+      <EmptyState
+        title="No items"
+        action={<button type="button">Add item</button>}
+      />,
+    );
     expect(screen.getByText("Add item")).toBeInTheDocument();
   });
 

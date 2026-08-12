@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Container } from "@/components/ui";
 
 describe("Container", () => {
@@ -30,6 +30,8 @@ describe("Container", () => {
 
   it("applies full max width", () => {
     render(<Container size="full">Content</Container>);
-    expect(screen.getByText("Content").closest("div")).toHaveClass("max-w-full");
+    expect(screen.getByText("Content").closest("div")).toHaveClass(
+      "max-w-full",
+    );
   });
 });

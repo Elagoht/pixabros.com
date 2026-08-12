@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Formik, Form } from "formik";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { Form, Formik } from "formik";
+import { describe, expect, it } from "vitest";
 import { Checkbox } from "@/components/ui";
 
 const renderWithFormik = (
@@ -16,7 +16,9 @@ const renderWithFormik = (
 
 describe("Checkbox", () => {
   it("renders with label", () => {
-    renderWithFormik(<Checkbox name="agree" label="I agree" />, { agree: false });
+    renderWithFormik(<Checkbox name="agree" label="I agree" />, {
+      agree: false,
+    });
     expect(screen.getByText("I agree")).toBeInTheDocument();
   });
 
@@ -26,7 +28,9 @@ describe("Checkbox", () => {
   });
 
   it("toggles checked state on click", () => {
-    renderWithFormik(<Checkbox name="agree" label="I agree" />, { agree: false });
+    renderWithFormik(<Checkbox name="agree" label="I agree" />, {
+      agree: false,
+    });
     const checkbox = screen.getByRole("checkbox");
     expect(checkbox).not.toBeChecked();
     fireEvent.click(checkbox);
@@ -34,7 +38,9 @@ describe("Checkbox", () => {
   });
 
   it("unchecks when clicking a checked checkbox", () => {
-    renderWithFormik(<Checkbox name="agree" label="I agree" />, { agree: true });
+    renderWithFormik(<Checkbox name="agree" label="I agree" />, {
+      agree: true,
+    });
     const checkbox = screen.getByRole("checkbox");
     expect(checkbox).toBeChecked();
     fireEvent.click(checkbox);
@@ -42,15 +48,16 @@ describe("Checkbox", () => {
   });
 
   it("uses id based on name and value when value is provided", () => {
-    renderWithFormik(
-      <Checkbox name="colors" value="red" label="Red" />,
-      { colors: [] },
-    );
+    renderWithFormik(<Checkbox name="colors" value="red" label="Red" />, {
+      colors: [],
+    });
     expect(screen.getByLabelText("Red")).toHaveAttribute("id", "colors-red");
   });
 
   it("uses id based on name only when value is not provided", () => {
-    renderWithFormik(<Checkbox name="agree" label="I agree" />, { agree: false });
+    renderWithFormik(<Checkbox name="agree" label="I agree" />, {
+      agree: false,
+    });
     expect(screen.getByLabelText("I agree")).toHaveAttribute("id", "agree");
   });
 });

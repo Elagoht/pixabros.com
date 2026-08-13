@@ -25,6 +25,15 @@ export const gameValidationSchema = (t: TranslateFunction) =>
       message: t("games.validation.releaseDate"),
     }),
     kind: Yup.string().oneOf(["production", "gamejam"]),
+    // Only YouTube, because that is the only player the public site builds.
+    // Anything else would be stored and then never appear, which reads as a
+    // bug rather than a choice. Mirrors youtube.ID in Go.
+    video_url: Yup.string()
+      .trim()
+      .matches(
+        /^$|^https?:\/\/((www\.|m\.)?(youtube\.com|youtube-nocookie\.com)\/(watch\?v=|embed\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}([?&#].*)?$/,
+        { message: t("games.validation.videoUrl") },
+      ),
     is_for_sale: Yup.boolean(),
     price_display: Yup.string(),
     external_links: Yup.array().of(externalLinkSchema(t)),

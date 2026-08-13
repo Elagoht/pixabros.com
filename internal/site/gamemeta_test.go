@@ -171,3 +171,172 @@ func TestRenderArcade_ShowsTheYearOnACartridge(t *testing.T) {
 		t.Errorf("the caption does not carry the genre: %s", caption)
 	}
 }
+
+func TestBrandFor(t *testing.T) {
+	cases := map[string]string{
+		// A creator's page lives on their own subdomain, which is the form
+		// these links actually take.
+		"https://elagoht.itch.io/dungrid-tactics": brandItch,
+		"https://itch.io/games":                   brandItch,
+		"https://store.steampowered.com/app/1/x/": brandSteam,
+		"https://steamcommunity.com/app/1":        brandSteam,
+		"https://fiuby.com/games/x":               brandFiuby,
+		"https://www.fiuby.com/games/x":           brandFiuby,
+		"https://example.com/anything":            brandOther,
+		// A host that merely ends in the brand's name is not the brand.
+		"https://itch.io.evil.test/x":     brandOther,
+		"https://notitch.io/x":            brandOther,
+		"https://fake-steampowered.com/x": brandOther,
+		"":                                brandOther,
+	}
+	for rawURL, want := range cases {
+		if got := brandFor(rawURL); got != want {
+			t.Errorf("brandFor(%q) = %q, want %q", rawURL, got, want)
+		}
+	}
+}
+
+// The description goes through the same markdown pipeline a devlog post does,
+// which also means raw HTML in it is still dropped.
+func TestRenderGame_RendersTheDescriptionAsMarkdown(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Marked Up", "marked-up", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET full_description = ? WHERE id = ?;`,
+		"## Features\n\n- One\n- Two\n\n**bold**\n\n<script>alert(1)</script>\n", gameID,
+	); err != nil {
+		t.Fatalf("set description: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "marked-up")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	for _, want := range []string{"<h2", "<li>One", "<strong>bold</strong>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the description was not rendered as markdown: missing %q", want)
+		}
+	}
+	if strings.Contains(body, "<script>") {
+		t.Error("raw HTML from a description reached the page")
+	}
+}
+
+func TestRenderGame_EmbedsTheTrailer(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Trailered", "trailered", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET video_url = ? WHERE id = ?;`,
+		"https://youtu.be/9mjjowHX1-g?si=abc", gameID,
+	); err != nil {
+		t.Fatalf("set video: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "trailered")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	if !strings.Contains(body, "youtube-nocookie.com/embed/9mjjowHX1-g") {
+		t.Error("the trailer was not embedded")
+	}
+	// Only the id crosses over, so the tracking parameter goes with the rest
+	// of the URL.
+	if strings.Contains(body, "si=abc") {
+		t.Error("the stored URL's query string reached the page")
+	}
+}
+
+// A link stored before the API validated it might not be a YouTube URL at all.
+// It yields no player rather than being framed as-is.
+func TestRenderGame_IgnoresATrailerThatIsNotYouTube(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Odd", "odd", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET video_url = 'https://evil.test/x' WHERE id = ?;`, gameID,
+	); err != nil {
+		t.Fatalf("set video: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "odd")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	if strings.Contains(string(html), "evil.test") {
+		t.Error("a stored non-YouTube link was framed")
+	}
+}
+
+// The tab shows the game's own cover, so a row of open game pages is told
+// apart by artwork rather than by a truncated title.
+func TestRenderGame_UsesTheCoverAsTheFavicon(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Covered", "covered", true, false, "")
+	coverID := seedMedia(t, conn, "media/cd/2026-cover.webp", "Covered cover")
+	if _, err := conn.Exec(
+		`UPDATE games SET cd_cover_art_id = ? WHERE id = ?;`, coverID, gameID,
+	); err != nil {
+		t.Fatalf("attach cover: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "covered")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	if !strings.Contains(string(html), `rel=icon href=/media/cd/2026-cover.webp`) {
+		t.Errorf("the cover is not the page's icon: %s", html)
+	}
+}
+
+// Every other page keeps the site's own icon, which today means none at all:
+// an empty href would ask the browser to fetch the page as its own icon.
+func TestRenderAwards_DoesNotClaimAFavicon(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+
+	html, _, err := newTestSite(t, conn).renderAwards(PageAwards)
+	if err != nil {
+		t.Fatalf("renderAwards() error = %v", err)
+	}
+	if strings.Contains(string(html), "rel=icon") {
+		t.Error("a page with no icon of its own still emitted one")
+	}
+}
+
+// The stores sit at the foot of the page with a mark each.
+func TestRenderGame_MarksTheStoreLinks(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Linked", "linked", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET external_links_json = ? WHERE id = ?;`,
+		`[{"label":"itch.io","url":"https://elagoht.itch.io/x"},`+
+			`{"label":"Steam","url":"https://store.steampowered.com/app/1/x/"},`+
+			`{"label":"Our site","url":"https://example.com/x"}]`, gameID,
+	); err != nil {
+		t.Fatalf("set links: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "linked")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	if strings.Count(body, "store-link__mark") != 3 {
+		t.Errorf("wanted a mark on each of the three links, got %d",
+			strings.Count(body, "store-link__mark"))
+	}
+	for _, want := range []string{"itch.io", "Steam", "Our site"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the store list is missing %q", want)
+		}
+	}
+}

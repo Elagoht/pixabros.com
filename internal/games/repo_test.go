@@ -545,3 +545,25 @@ func TestNormaliseKind_FillsInTheDefault(t *testing.T) {
 		t.Errorf("NormaliseKind(%q) = %q, want it unchanged", KindGameJam, got)
 	}
 }
+
+func TestRepo_RoundTripsTheTrailer(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	created, err := repo.Create(CreateInput{
+		Title: "Trailered", VideoURL: "https://youtu.be/9mjjowHX1-g",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if created.VideoURL != "https://youtu.be/9mjjowHX1-g" {
+		t.Errorf("VideoURL = %q after create", created.VideoURL)
+	}
+
+	updated, err := repo.Update(created.ID, UpdateInput{Title: "Trailered", VideoURL: ""})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if updated.VideoURL != "" {
+		t.Errorf("VideoURL = %q, want the trailer removed", updated.VideoURL)
+	}
+}

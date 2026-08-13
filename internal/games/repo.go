@@ -24,7 +24,10 @@ type Game struct {
 	// ReleaseDate is YYYY-MM-DD, or empty for a game with no date yet.
 	ReleaseDate string
 	// Kind is KindProduction or KindGameJam.
-	Kind              string
+	Kind string
+	// VideoURL is a YouTube link, or empty. The site embeds the video it
+	// names; nothing else about the URL is used.
+	VideoURL          string
 	IsBrowserPlayable bool
 	IsForSale         bool
 	PriceDisplay      string
@@ -47,6 +50,7 @@ type CreateInput struct {
 	Genre             string
 	ReleaseDate       string
 	Kind              string
+	VideoURL          string
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
@@ -62,6 +66,7 @@ type UpdateInput struct {
 	Genre             string
 	ReleaseDate       string
 	Kind              string
+	VideoURL          string
 	IsForSale         bool
 	PriceDisplay      string
 	ExternalLinksJSON string
@@ -81,7 +86,7 @@ func NewRepo(db *sql.DB) *Repo {
 }
 
 const gameColumns = `id, slug, title, short_description, full_description, tags,
-	genre, release_date, kind,
+	genre, release_date, kind, video_url,
 	is_browser_playable, is_for_sale,
 	price_display, external_links_json,
 	cartridge_art_id, cd_cover_art_id, og_image_id,
@@ -99,7 +104,7 @@ func scanGame(row rowScanner) (Game, error) {
 
 	err := row.Scan(
 		&g.ID, &g.Slug, &g.Title, &g.ShortDescription, &g.FullDescription, &g.Tags,
-		&g.Genre, &g.ReleaseDate, &g.Kind,
+		&g.Genre, &g.ReleaseDate, &g.Kind, &g.VideoURL,
 		&g.IsBrowserPlayable, &g.IsForSale,
 		&priceDisplay, &g.ExternalLinksJSON,
 		&cartridgeArtID, &cdCoverArtID, &ogImageID,
@@ -182,11 +187,11 @@ func (r *Repo) Create(input CreateInput) (Game, error) {
 	if _, err := r.db.Exec(
 		`INSERT INTO games (
 			id, slug, title, short_description, full_description, tags,
-			genre, release_date, kind,
+			genre, release_date, kind, video_url,
 			is_for_sale, price_display, external_links_json, display_order, is_published
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		newID, newSlug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
-		input.Genre, input.ReleaseDate, NormaliseKind(input.Kind),
+		input.Genre, input.ReleaseDate, NormaliseKind(input.Kind), input.VideoURL,
 		input.IsForSale, nullableString(input.PriceDisplay), externalLinks,
 		input.DisplayOrder, input.IsPublished,
 	); err != nil {
@@ -222,7 +227,7 @@ func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 	res, err := r.db.Exec(
 		`UPDATE games SET
 			slug = ?, title = ?, short_description = ?, full_description = ?, tags = ?,
-			genre = ?, release_date = ?, kind = ?,
+			genre = ?, release_date = ?, kind = ?, video_url = ?,
 			is_for_sale = ?,
 			price_display = ?, external_links_json = ?,
 			cartridge_art_id = ?, cd_cover_art_id = ?, og_image_id = ?,
@@ -230,7 +235,7 @@ func (r *Repo) Update(id string, input UpdateInput) (Game, error) {
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
 		WHERE id = ?;`,
 		newSlug, input.Title, input.ShortDescription, input.FullDescription, input.Tags,
-		input.Genre, input.ReleaseDate, NormaliseKind(input.Kind),
+		input.Genre, input.ReleaseDate, NormaliseKind(input.Kind), input.VideoURL,
 		input.IsForSale,
 		nullableString(input.PriceDisplay), externalLinks,
 		nullableID(input.CartridgeArtID), nullableID(input.CDCoverArtID), nullableID(input.OGImageID),

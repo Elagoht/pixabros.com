@@ -29,16 +29,20 @@
 
   <div class="game-body">
     <div class="game-body__main">
-      {{if .Data.Full}}<p class="game-description">{{.Data.Full}}</p>{{end}}
-
-      {{if .Data.Shots}}
-        <h2 class="section__title">Screenshots</h2>
-        <ul class="shots">
-          {{range .Data.Shots}}
-            <li><img src="{{.URL}}" alt="{{.Alt}}" loading="lazy" /></li>
-          {{end}}
-        </ul>
+      {{if .Data.Video}}
+        <div class="embed embed--video">
+          <iframe
+            src="{{.Data.Video}}"
+            title="{{.Data.Title}} trailer"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allow="clipboard-write; encrypted-media; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
       {{end}}
+
+      {{if .Data.Full}}<div class="prose">{{.Data.Full}}</div>{{end}}
     </div>
 
     {{if .Data.HasSideInfo}}
@@ -63,14 +67,36 @@
             {{range .Data.Tags}}<li class="tag">{{.}}</li>{{end}}
           </ul>
         {{end}}
-        {{if .Data.Links}}
-          <ul class="game-links">
-            {{range .Data.Links}}
-              <li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>
-            {{end}}
-          </ul>
+
+        {{if .Data.Shots}}
+          <div class="shots">
+            <h2 class="shots__title">Screenshots</h2>
+            <ul class="shots__list">
+              {{range .Data.Shots}}
+                <li><img src="{{.URL}}" alt="{{.Alt}}" loading="lazy" /></li>
+              {{end}}
+            </ul>
+          </div>
         {{end}}
       </aside>
     {{end}}
   </div>
+
+  {{if .Data.Links}}
+    {{/* The stores sit at the foot of the page, side by side: they are where
+         you go once you have read about the game, not while you are reading. */}}
+    <div class="store-links">
+      <h2 class="store-links__title">Where to get it</h2>
+      <ul class="store-links__list">
+        {{range .Data.Links}}
+          <li>
+            <a class="store-link" href="{{.URL}}" rel="noopener">
+              {{template "brand-icon" .Brand}}
+              <span>{{.Label}}</span>
+            </a>
+          </li>
+        {{end}}
+      </ul>
+    </div>
+  {{end}}
 {{end}}

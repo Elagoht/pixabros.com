@@ -268,7 +268,9 @@
       "genrePlaceholder": "Sıra tabanlı taktik",
       "releaseDate": "Çıkış tarihi",
       "kind": "Yapım türü",
-      "kindHelp": "Game jam oyunları sitede rozetle işaretlenir."
+      "kindHelp": "Game jam oyunları sitede rozetle işaretlenir.",
+      "videoUrl": "Tanıtım videosu",
+      "videoUrlHelp": "YouTube bağlantısı. Oyunun sayfasında oynatılır."
     },
     "create": {
       "title": "Yeni oyun",
@@ -339,7 +341,8 @@
       "externalLinksJson": "Dış bağlantılar geçerli bir JSON dizisi olmalı, örneğin [].",
       "linkLabel": "Etiket zorunludur.",
       "linkUrl": "https:// dahil tam bir adres girin",
-      "releaseDate": "Tarih seçiciyi kullan ya da tarihi YYYY-AA-GG biçiminde yaz."
+      "releaseDate": "Tarih seçiciyi kullan ya da tarihi YYYY-AA-GG biçiminde yaz.",
+      "videoUrl": "YouTube bağlantısı yapıştır ya da boş bırak."
     },
     "actions": {
       "viewOnSite": "Sitede görüntüle"

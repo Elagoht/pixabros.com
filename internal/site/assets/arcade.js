@@ -1,9 +1,13 @@
-// Runs the console on the games page.
+// Runs the console, on the games page and on a game's own page.
 //
-// Without this the cartridges are ordinary links to each game's own page, so
-// the shelf still works with scripting switched off. Everything here is an
-// upgrade on top of that: slotting a cartridge in, the screen controls, and
-// eject.
+// Two ways in, one machine. On the shelf you slot a cartridge in; on a game's
+// own page the cartridge is already there and you press start. Either way the
+// frame gets its src here and nowhere else: a web build is tens of megabytes,
+// so nothing downloads until a visitor asks for it.
+//
+// Without this the cartridges are ordinary links to each game's own page and
+// the start button is replaced by the "open the game on its own" link beneath
+// the console, so the shelf still works with scripting switched off.
 (function () {
   var consoleEl = document.querySelector("[data-console]");
   var screen = document.querySelector("[data-console-screen]");
@@ -18,8 +22,9 @@
   var crtButton = document.querySelector("[data-console-crt]");
   var fullscreenButton = document.querySelector("[data-console-fullscreen]");
   var cartridges = document.querySelectorAll("[data-play-url]");
+  var startButton = document.querySelector("[data-console-start]");
 
-  if (!(consoleEl && screen && cartridges.length)) {
+  if (!(consoleEl && screen) || !(cartridges.length || startButton)) {
     return;
   }
 
@@ -62,24 +67,31 @@
     slot.classList.add("console__cartridge--loaded");
   }
 
-  function load(cartridge) {
-    clearShelf();
-    setShelfGap(cartridge, true);
-    current = cartridge.getAttribute("data-play-url");
-    screen.src = current;
+  function run(url) {
+    current = url;
+    screen.src = url;
 
     show(screen, true);
     show(idle, false);
     show(controls, true);
     show(resetButton, true);
+    if (led) {
+      led.classList.add("nes__led--on");
+    }
+  }
+
+  function load(cartridge) {
+    clearShelf();
+    setShelfGap(cartridge, true);
+    run(cartridge.getAttribute("data-play-url"));
+
+    // Eject only makes sense where there is a shelf to put the cartridge back
+    // on. A game's own page has one cartridge and it is this game's.
     show(ejectButton, true);
     if (title) {
       title.textContent = cartridge.getAttribute("data-play-title") || "";
     }
     insert(cartridge);
-    if (led) {
-      led.classList.add("nes__led--on");
-    }
 
     consoleEl.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -114,6 +126,12 @@
       load(cartridge);
     });
   });
+
+  if (startButton) {
+    startButton.addEventListener("click", function () {
+      run(startButton.getAttribute("data-console-start"));
+    });
+  }
 
   if (resetButton) {
     resetButton.addEventListener("click", function () {

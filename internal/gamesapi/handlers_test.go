@@ -566,3 +566,46 @@ func TestCreate_AcceptsAGameWithNoReleaseDateOrKind(t *testing.T) {
 		t.Errorf("Kind = %q, want production", got.Kind)
 	}
 }
+
+// Only YouTube: the public site builds no other player, so storing another
+// link would leave a game with a trailer that never appears.
+func TestCreate_AcceptsOnlyAYouTubeTrailer(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	for _, ok := range []string{"", "https://youtu.be/9mjjowHX1-g", "https://www.youtube.com/watch?v=9mjjowHX1-g"} {
+		rec := createGame(t, handlers, map[string]interface{}{"title": "X", "video_url": ok})
+		if rec.Code != http.StatusCreated {
+			t.Errorf("video_url %q got status %d, body = %s", ok, rec.Code, rec.Body.String())
+		}
+	}
+
+	for _, bad := range []string{"https://vimeo.com/12345", "https://example.com/x", "not a url"} {
+		rec := createGame(t, handlers, map[string]interface{}{"title": "X", "video_url": bad})
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("video_url %q got status %d, want %d", bad, rec.Code, http.StatusBadRequest)
+		}
+		if !strings.Contains(rec.Body.String(), "invalid_video") {
+			t.Errorf("video_url %q body = %s, want an invalid_video error", bad, rec.Body.String())
+		}
+	}
+}
+
+// Whitespace around a pasted link is the normal result of copying it, so it is
+// trimmed rather than rejected.
+func TestCreate_TrimsTheTrailer(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	rec := createGame(t, handlers, map[string]interface{}{
+		"title": "X", "video_url": "  https://youtu.be/9mjjowHX1-g  ",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var got gameResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if got.VideoURL != "https://youtu.be/9mjjowHX1-g" {
+		t.Errorf("VideoURL = %q, want it trimmed", got.VideoURL)
+	}
+}

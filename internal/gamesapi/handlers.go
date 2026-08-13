@@ -16,6 +16,7 @@ import (
 	"pixabros/internal/httpapi"
 	"pixabros/internal/id"
 	"pixabros/internal/render"
+	"pixabros/internal/youtube"
 )
 
 type Handlers struct {
@@ -41,6 +42,7 @@ type gameResponse struct {
 	Genre             string  `json:"genre"`
 	ReleaseDate       string  `json:"release_date"`
 	Kind              string  `json:"kind"`
+	VideoURL          string  `json:"video_url"`
 	IsBrowserPlayable bool    `json:"is_browser_playable"`
 	IsDownloadable    bool    `json:"is_downloadable"`
 	IsForSale         bool    `json:"is_for_sale"`
@@ -67,6 +69,7 @@ func toGameResponse(g games.Game) gameResponse {
 		Genre:             g.Genre,
 		ReleaseDate:       g.ReleaseDate,
 		Kind:              g.Kind,
+		VideoURL:          g.VideoURL,
 		IsBrowserPlayable: g.IsBrowserPlayable,
 		IsForSale:         g.IsForSale,
 		PriceDisplay:      g.PriceDisplay,
@@ -124,6 +127,7 @@ type createRequest struct {
 	Genre             string `json:"genre"`
 	ReleaseDate       string `json:"release_date"`
 	Kind              string `json:"kind"`
+	VideoURL          string `json:"video_url"`
 	IsBrowserPlayable bool   `json:"is_browser_playable"`
 	IsForSale         bool   `json:"is_for_sale"`
 	PriceDisplay      string `json:"price_display"`
@@ -142,7 +146,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "title is required")
 		return
 	}
-	if !checkReleaseAndKind(w, req.ReleaseDate, req.Kind) {
+	if !checkGameFields(w, req.ReleaseDate, req.Kind, req.VideoURL) {
 		return
 	}
 
@@ -154,6 +158,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		Genre:             req.Genre,
 		ReleaseDate:       req.ReleaseDate,
 		Kind:              req.Kind,
+		VideoURL:          strings.TrimSpace(req.VideoURL),
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -211,6 +216,7 @@ type updateRequest struct {
 	Genre             string  `json:"genre"`
 	ReleaseDate       string  `json:"release_date"`
 	Kind              string  `json:"kind"`
+	VideoURL          string  `json:"video_url"`
 	IsBrowserPlayable bool    `json:"is_browser_playable"`
 	IsDownloadable    bool    `json:"is_downloadable"`
 	IsForSale         bool    `json:"is_for_sale"`
@@ -247,7 +253,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "title is required")
 		return
 	}
-	if !checkReleaseAndKind(w, req.ReleaseDate, req.Kind) {
+	if !checkGameFields(w, req.ReleaseDate, req.Kind, req.VideoURL) {
 		return
 	}
 
@@ -259,6 +265,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		Genre:             req.Genre,
 		ReleaseDate:       req.ReleaseDate,
 		Kind:              req.Kind,
+		VideoURL:          strings.TrimSpace(req.VideoURL),
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -422,7 +429,7 @@ var isoDate = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 // kind means a caller that predates the field, which the repo reads as a
 // production game. What is rejected is a value that is present and wrong,
 // because the database's CHECK would otherwise turn it into a 500.
-func checkReleaseAndKind(w http.ResponseWriter, releaseDate, kind string) bool {
+func checkGameFields(w http.ResponseWriter, releaseDate, kind, videoURL string) bool {
 	if releaseDate != "" && !isoDate.MatchString(releaseDate) {
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_date",
 			"release_date must be formatted YYYY-MM-DD")
@@ -432,6 +439,16 @@ func checkReleaseAndKind(w http.ResponseWriter, releaseDate, kind string) bool {
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_kind",
 			`kind must be "`+games.KindProduction+`" or "`+games.KindGameJam+`"`)
 		return false
+	}
+	// Only YouTube, because that is the only player the site knows how to
+	// build. Storing any other link would leave a game with a trailer that
+	// never appears, which reads as a bug rather than as a choice.
+	if trimmed := strings.TrimSpace(videoURL); trimmed != "" {
+		if _, ok := youtube.ID(trimmed); !ok {
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_video",
+				"video_url must be a YouTube link")
+			return false
+		}
 	}
 	return true
 }

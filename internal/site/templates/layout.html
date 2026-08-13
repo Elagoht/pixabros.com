@@ -10,6 +10,7 @@
     {{if .Description}}<meta property="og:description" content="{{.Description}}" />{{end}}
     {{if .Site.Twitter}}<meta name="twitter:site" content="@{{.Site.Twitter}}" />{{end}}
     <meta name="twitter:card" content="summary_large_image" />
+    {{if .Favicon}}<link rel="icon" href="{{.Favicon}}" />{{end}}
     <link rel="stylesheet" href="{{.CSS}}" />
   </head>
   <body class="site-body">

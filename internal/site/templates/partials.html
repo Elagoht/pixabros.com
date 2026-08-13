@@ -6,38 +6,42 @@
     <div class="crt">
       <div class="crt__screen" data-console-stage>
         {{if .Playable}}
+          {{/* The frame never carries a src from the server. A web build is
+               tens of megabytes, and starting that download for anyone who
+               merely opened the page is not a decision the page gets to make:
+               the visitor presses start. */}}
+          <iframe
+            class="crt__frame"
+            title="{{if .Interactive}}Game{{else}}{{.Title}}{{end}}"
+            hidden
+            data-console-screen
+            allow="autoplay; gamepad; fullscreen"
+          ></iframe>
           {{if .Interactive}}
             <span class="crt__message" data-console-idle>INSERT CARTRIDGE</span>
-            <iframe
-              class="crt__frame"
-              title="Game"
-              hidden
-              data-console-screen
-              allow="autoplay; gamepad; fullscreen"
-            ></iframe>
           {{else}}
-            <iframe
-              class="crt__frame"
-              src="{{.PlayURL}}"
-              title="{{.Title}}"
-              loading="lazy"
-              data-console-screen
-              allow="autoplay; gamepad; fullscreen"
-            ></iframe>
+            <div class="crt__standby" data-console-idle>
+              <button
+                class="crt__start"
+                type="button"
+                data-console-start="{{.PlayURL}}"
+              >
+                Press start
+              </button>
+              <p class="crt__standby-note">
+                The game loads only when you start it.
+              </p>
+            </div>
           {{end}}
         {{else}}
           <span class="crt__message">NO SIGNAL</span>
         {{end}}
       </div>
 
-      {{/* Screen controls. They do nothing without JavaScript, so on the
-           arcade the script reveals them; on a game's own page the frame is
-           already running, so they are shown from the start. */}}
-      <div
-        class="crt__controls"
-        {{if .Interactive}}hidden{{end}}
-        data-console-controls
-      >
+      {{/* Screen controls. Nothing is running until the visitor starts it,
+           and they do nothing without JavaScript, so the script reveals them
+           along with the game. */}}
+      <div class="crt__controls" hidden data-console-controls>
         <button
           class="crt__knob"
           type="button"
@@ -68,9 +72,14 @@
     <div class="nes">
       <div class="nes__bay">
         <span class="nes__lid" aria-hidden="true"></span>
-        <span class="console__cartridge" data-console-cartridge>
+        <span
+          class="console__cartridge{{if and (not .Interactive) .Cartridge.URL}} console__cartridge--loaded{{end}}"
+          data-console-cartridge
+        >
           {{/* A game's own page knows which cartridge is in the machine, so it
-               is drawn here rather than waiting for a click. */}}
+               is drawn here rather than waiting for a click. The lid opens for
+               it even before the game is started: the cartridge is in, the
+               machine simply has not been switched on. */}}
           {{if and (not .Interactive) .Cartridge.URL}}
             <span class="cartridge cartridge--slotted" aria-hidden="true">
               <span class="cartridge__grip"></span>
@@ -89,23 +98,16 @@
           <span class="nes__brand-sub">Entertainment System</span>
         </p>
 
+        {{/* The lamp is off and the switches are hidden until something is
+             actually running, on either page. */}}
         <div class="nes__switches">
-          <span
-            class="nes__led{{if not .Interactive}} nes__led--on{{end}}"
-            data-console-led
-          ></span>
-          {{if .Interactive}}
-            <button class="nes__button" type="button" hidden data-console-reset>
-              Reset
-            </button>
-            <button class="nes__button" type="button" hidden data-console-eject>
-              Eject
-            </button>
-          {{else}}
-            <button class="nes__button" type="button" data-console-reset>
-              Reset
-            </button>
-          {{end}}
+          <span class="nes__led" data-console-led></span>
+          <button class="nes__button" type="button" hidden data-console-reset>
+            Reset
+          </button>
+          <button class="nes__button" type="button" hidden data-console-eject>
+            Eject
+          </button>
         </div>
 
         <p class="nes__now" data-console-title>
@@ -119,4 +121,46 @@
       </div>
     </div>
   </div>
+{{end}}
+
+{{/* The mark beside a store link. Takes a brand string; anything the site does
+     not have a mark for falls through to the globe, which is honest rather
+     than a guess at an unknown site's branding.
+
+     The three brand paths are Tabler Icons (MIT), already a dependency of the
+     admin panel, copied here because the public site ships no icon library. */}}
+{{define "brand-icon"}}
+  <svg
+    class="store-link__mark"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    {{if eq . "itch"}}
+      <path d="M2 7v1c0 1.087 1.078 2 2 2c1.107 0 2 -.91 2 -2c0 1.09 .893 2 2 2s2 -.91 2 -2c0 1.09 .893 2 2 2s2 -.91 2 -2c0 1.09 .893 2 2 2s2 -.91 2 -2c0 1.09 .893 2 2 2c.922 0 2 -.913 2 -2v-1c-.009 -.275 -.538 -.964 -1.588 -2.068a3 3 0 0 0 -2.174 -.932h-12.476a3 3 0 0 0 -2.174 .932c-1.05 1.104 -1.58 1.793 -1.588 2.068" />
+      <path d="M4 10c-.117 6.28 .154 9.765 .814 10.456c1.534 .367 4.355 .535 7.186 .536c2.83 -.001 5.652 -.169 7.186 -.536c.99 -1.037 .898 -9.559 .814 -10.456" />
+      <path d="M10 16l2 -2l2 2" />
+      <path d="M12 14v4" />
+    {{else if eq . "steam"}}
+      <path d="M16.5 5a4.5 4.5 0 1 1 -.653 8.953l-4.347 3.009l0 .038a3 3 0 0 1 -2.824 3l-.176 0a3 3 0 0 1 -2.94 -2.402l-2.56 -1.098v-3.5l3.51 1.755a2.989 2.989 0 0 1 2.834 -.635l2.727 -3.818a4.5 4.5 0 0 1 4.429 -5.302" />
+      <path d="M15.5 9.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" fill="currentColor" />
+    {{else if eq . "fiuby"}}
+      {{/* Fiuby has no icon in any library we ship, so this is a lettermark
+           rather than an invented logo: a wrong logo is worse than none. */}}
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <path d="M9.5 16.5v-9h5" />
+      <path d="M9.5 12h4" />
+    {{else}}
+      <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+      <path d="M3.6 9h16.8" />
+      <path d="M3.6 15h16.8" />
+      <path d="M11.5 3a17 17 0 0 0 0 18" />
+      <path d="M12.5 3a17 17 0 0 1 0 18" />
+    {{end}}
+  </svg>
 {{end}}

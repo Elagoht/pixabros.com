@@ -268,7 +268,9 @@
       "genrePlaceholder": "Turn-based tactics",
       "releaseDate": "Release date",
       "kind": "Type",
-      "kindHelp": "A jam entry is marked as one on the public site."
+      "kindHelp": "A jam entry is marked as one on the public site.",
+      "videoUrl": "Trailer",
+      "videoUrlHelp": "A YouTube link. It plays on the game's page."
     },
     "create": {
       "title": "New game",
@@ -339,7 +341,8 @@
       "externalLinksJson": "External links must be a valid JSON array, for example [].",
       "linkLabel": "A label is required.",
       "linkUrl": "Enter a full URL, including https://",
-      "releaseDate": "Use the date picker, or write the date as YYYY-MM-DD."
+      "releaseDate": "Use the date picker, or write the date as YYYY-MM-DD.",
+      "videoUrl": "Paste a YouTube link, or leave it empty."
     },
     "actions": {
       "viewOnSite": "View on the site"

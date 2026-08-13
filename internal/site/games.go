@@ -3,9 +3,12 @@ package site
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"net/url"
 	"strings"
 
 	"pixabros/internal/games"
+	"pixabros/internal/youtube"
 )
 
 // Page keys for the games section. PageGames is the arcade; each published
@@ -160,16 +163,56 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 type gameLink struct {
 	Label string
 	URL   string
+	// Brand picks the mark shown beside the label. The template knows how to
+	// draw each of these and nothing else.
+	Brand string
+}
+
+// The stores a game actually lives on get their own mark; everything else gets
+// a globe, which is honest rather than a guess at an unknown site's branding.
+const (
+	brandItch  = "itch"
+	brandSteam = "steam"
+	brandFiuby = "fiuby"
+	brandOther = "other"
+)
+
+// brandFor reads the store off a link's host.
+//
+// Matching on the registrable domain rather than the whole host is what makes
+// a creator's own subdomain work: an itch.io page lives at
+// elagoht.itch.io, not at itch.io.
+func brandFor(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return brandOther
+	}
+	host := strings.ToLower(parsed.Hostname())
+
+	switch {
+	case host == "itch.io" || strings.HasSuffix(host, ".itch.io"):
+		return brandItch
+	case host == "steampowered.com" || strings.HasSuffix(host, ".steampowered.com"),
+		host == "steamcommunity.com" || strings.HasSuffix(host, ".steamcommunity.com"):
+		return brandSteam
+	case host == "fiuby.com" || strings.HasSuffix(host, ".fiuby.com"):
+		return brandFiuby
+	default:
+		return brandOther
+	}
 }
 
 type gamePage struct {
 	gameMeta
-	Console     consoleView
-	Title       string
-	Slug        string
-	Tags        []string
-	Short       string
-	Full        string
+	Console consoleView
+	Title   string
+	Slug    string
+	Tags    []string
+	Short   string
+	// Full is rendered markdown, the same pipeline a devlog post goes through:
+	// raw HTML is dropped, and a YouTube link on its own line becomes a player.
+	Full        template.HTML
+	Video       string
 	Cover       imageView
 	Shots       []imageView
 	Playable    bool
@@ -223,6 +266,11 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		}
 	}
 
+	full, err := renderMarkdown(game.FullDescription)
+	if err != nil {
+		return nil, nil, fmt.Errorf("render description: %w", err)
+	}
+
 	page := gamePage{
 		gameMeta: metaFor(game),
 		Console: consoleView{
@@ -236,7 +284,8 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Slug:     game.Slug,
 		Tags:     splitTags(game.Tags),
 		Short:    game.ShortDescription,
-		Full:     game.FullDescription,
+		Full:     full,
+		Video:    videoEmbedURL(game.VideoURL),
 		Cover:    lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
 		Shots:    shotViews,
 		Playable: game.IsBrowserPlayable,
@@ -253,8 +302,12 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Title:       game.Title + " · " + chrome.Name,
 		Description: fallback(game.ShortDescription, game.Title+" by "+chrome.Name+"."),
 		Path:        "/" + PageGames,
-		Site:        chrome,
-		Data:        page,
+		// The game's own cover in the tab, so a row of open game pages is
+		// told apart by artwork rather than by a truncated title.
+		Favicon: page.Cover.URL,
+		Scripts: []string{s.renderer.bundle.URL("arcade.js")},
+		Site:    chrome,
+		Data:    page,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -307,7 +360,25 @@ func parseGameLinks(raw string) []gameLink {
 		if link.URL == "" {
 			continue
 		}
-		views = append(views, gameLink{Label: fallback(link.Label, linkLabel(link.URL)), URL: link.URL})
+		views = append(views, gameLink{
+			Label: fallback(link.Label, linkLabel(link.URL)),
+			URL:   link.URL,
+			Brand: brandFor(link.URL),
+		})
 	}
 	return views
+}
+
+// videoEmbedURL turns a stored trailer link into the player's address.
+//
+// The admin API only accepts a YouTube URL, so a link that fails here is one
+// stored before that check existed. It yields nothing rather than being
+// framed as-is: the point of reading the id out is that nothing else about
+// the URL reaches the page.
+func videoEmbedURL(rawURL string) string {
+	videoID, ok := youtube.ID(rawURL)
+	if !ok {
+		return ""
+	}
+	return youtube.EmbedURL(videoID)
 }

@@ -24,6 +24,7 @@ export const emptyGameFormValues: GameFormValues = {
   genre: "",
   release_date: "",
   kind: "production",
+  video_url: "",
   is_for_sale: false,
   price_display: "",
   external_links: [],
@@ -63,6 +64,7 @@ export const toGameFormValues = (game: ResponseGame): GameFormValues => ({
   genre: game.genre,
   release_date: game.release_date,
   kind: game.kind,
+  video_url: game.video_url,
   is_for_sale: game.is_for_sale,
   price_display: game.price_display,
   external_links: parseExternalLinks(game.external_links_json),
@@ -153,6 +155,17 @@ const GameForm: FC<GameFormProps> = ({
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t("games.form.kindHelp")}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Input
+                  name="video_url"
+                  label={t("games.form.videoUrl")}
+                  placeholder="https://youtu.be/9mjjowHX1-g"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t("games.form.videoUrlHelp")}
                 </p>
               </div>
             </Card.Body>

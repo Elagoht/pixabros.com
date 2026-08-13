@@ -55,6 +55,9 @@ type pageData struct {
 	// Path marks the current nav item and is not otherwise displayed.
 	Path string
 	CSS  string
+	// Favicon overrides the site icon for one page. The game pages use their
+	// own cover art; everywhere else leaves it empty.
+	Favicon string
 	// Scripts are per-page: only the contact form needs one, and every other
 	// page ships none at all.
 	Scripts []string

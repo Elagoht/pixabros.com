@@ -3,9 +3,9 @@ package site
 import (
 	"fmt"
 	"html"
-	"net/url"
-	"regexp"
 	"strings"
+
+	"pixabros/internal/youtube"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -42,47 +42,6 @@ func (n *videoEmbed) Dump(source []byte, level int) {
 	ast.DumpHelper(n, source, level, map[string]string{"VideoID": n.videoID, "Title": n.title}, nil)
 }
 
-// videoID is the shape of a YouTube id, and the reason no other part of the
-// link needs sanitising.
-var videoID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
-
-// youTubeID pulls the video id out of any of the forms YouTube hands out when
-// you press Share: a youtu.be link, a watch URL, an embed URL, a short.
-// Anything else, including a link to another site, is left alone as an
-// ordinary link.
-func youTubeID(raw string) (string, bool) {
-	if raw == "" || strings.ContainsAny(raw, " \t\n\r") {
-		return "", false
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return "", false
-	}
-
-	var candidate string
-	switch strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.") {
-	case "youtu.be":
-		candidate = parsed.Path
-	case "youtube.com", "m.youtube.com", "youtube-nocookie.com":
-		switch {
-		case parsed.Path == "/watch":
-			candidate = parsed.Query().Get("v")
-		case strings.HasPrefix(parsed.Path, "/embed/"):
-			candidate = strings.TrimPrefix(parsed.Path, "/embed/")
-		case strings.HasPrefix(parsed.Path, "/shorts/"):
-			candidate = strings.TrimPrefix(parsed.Path, "/shorts/")
-		}
-	default:
-		return "", false
-	}
-
-	candidate = strings.Trim(candidate, "/")
-	if !videoID.MatchString(candidate) {
-		return "", false
-	}
-	return candidate, true
-}
-
 // videoTransformer replaces a paragraph that is nothing but a video link.
 //
 // It reads the paragraph's own source rather than its children, so it does not
@@ -116,7 +75,7 @@ const defaultVideoTitle = "Embedded video"
 // single child node holding the destination, and link syntax also gives the
 // player a name.
 func videoIn(para *ast.Paragraph, source []byte) (*videoEmbed, bool) {
-	if id, ok := youTubeID(paragraphSource(para, source)); ok {
+	if id, ok := youtube.ID(paragraphSource(para, source)); ok {
 		return &videoEmbed{videoID: id, title: defaultVideoTitle}, true
 	}
 
@@ -127,11 +86,11 @@ func videoIn(para *ast.Paragraph, source []byte) (*videoEmbed, bool) {
 
 	switch link := child.(type) {
 	case *ast.AutoLink:
-		if id, ok := youTubeID(string(link.URL(source))); ok {
+		if id, ok := youtube.ID(string(link.URL(source))); ok {
 			return &videoEmbed{videoID: id, title: defaultVideoTitle}, true
 		}
 	case *ast.Link:
-		id, ok := youTubeID(string(link.Destination))
+		id, ok := youtube.ID(string(link.Destination))
 		if !ok {
 			return nil, false
 		}
@@ -172,13 +131,13 @@ func renderVideoEmbed(w util.BufWriter, _ []byte, node ast.Node, entering bool) 
 	embed := node.(*videoEmbed)
 	fmt.Fprintf(w,
 		`<div class="embed embed--video">`+
-			`<iframe src="https://www.youtube-nocookie.com/embed/%s"`+
+			`<iframe src="%s"`+
 			` title="%s" loading="lazy"`+
 			` referrerpolicy="strict-origin-when-cross-origin"`+
 			` allow="clipboard-write; encrypted-media; picture-in-picture"`+
 			` allowfullscreen></iframe>`+
 			`</div>`,
-		embed.videoID, html.EscapeString(embed.title),
+		youtube.EmbedURL(embed.videoID), html.EscapeString(embed.title),
 	)
 	return ast.WalkSkipChildren, nil
 }

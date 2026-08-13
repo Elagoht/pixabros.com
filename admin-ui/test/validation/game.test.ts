@@ -13,6 +13,7 @@ const valid: GameFormValues = {
   genre: "",
   release_date: "",
   kind: "production",
+  video_url: "",
   is_for_sale: false,
   price_display: "",
   external_links: [],
@@ -140,5 +141,28 @@ describe("release date and kind", () => {
     await expect(
       schema.isValid({ ...valid, kind: "prototype" as GameKind }),
     ).resolves.toBe(false);
+  });
+});
+
+describe("trailer", () => {
+  it.each([
+    "",
+    "https://youtu.be/9mjjowHX1-g",
+    "https://youtu.be/9mjjowHX1-g?si=abc",
+    "https://www.youtube.com/watch?v=9mjjowHX1-g",
+    "https://www.youtube.com/shorts/9mjjowHX1-g",
+  ])("accepts %s", async (video_url) => {
+    await expect(schema.isValid({ ...valid, video_url })).resolves.toBe(true);
+  });
+
+  // The public site only builds a YouTube player, so anything else would be
+  // stored and then never appear.
+  it.each([
+    "https://vimeo.com/12345",
+    "https://example.com/watch?v=9mjjowHX1-g",
+    "youtu.be/9mjjowHX1-g",
+    "https://youtu.be/short",
+  ])("rejects %s", async (video_url) => {
+    await expect(schema.isValid({ ...valid, video_url })).resolves.toBe(false);
   });
 });

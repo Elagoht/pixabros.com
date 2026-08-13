@@ -182,7 +182,10 @@ func TestRenderGame_DeclaresItsOwnGameTag(t *testing.T) {
 	}
 }
 
-func TestRenderGame_EmbedsTheBuildOnlyWhenPlayable(t *testing.T) {
+// A web build is tens of megabytes. Opening the page must not start that
+// download: the frame is rendered empty and the start button holds the address
+// until a visitor asks for it.
+func TestRenderGame_DoesNotStartTheBuildOnItsOwn(t *testing.T) {
 	conn := setupTestDB(t)
 	playable := seedGame(t, conn, "Playable", "playable", true, false, "")
 	if _, err := conn.Exec(
@@ -195,8 +198,17 @@ func TestRenderGame_EmbedsTheBuildOnlyWhenPlayable(t *testing.T) {
 	site := newTestSite(t, conn)
 
 	playableHTML, _ := renderGamePage(t, site, "playable")
-	if !strings.Contains(playableHTML, `src=/play/playable/`) {
-		t.Error("a playable game does not embed its build")
+	if strings.Contains(playableHTML, "src=/play/playable/") ||
+		strings.Contains(playableHTML, `src="/play/playable/"`) {
+		t.Error("the build is loaded on page open, before anyone asked for it")
+	}
+	if !strings.Contains(playableHTML, "data-console-start=/play/playable/") {
+		t.Errorf("the start button does not carry the build's address")
+	}
+	// Without scripting the start button does nothing, so the plain link out
+	// has to still be there.
+	if !strings.Contains(playableHTML, "href=/play/playable/") {
+		t.Error("there is no way to reach the build without scripting")
 	}
 
 	staticHTML, _ := renderGamePage(t, site, "not-playable")

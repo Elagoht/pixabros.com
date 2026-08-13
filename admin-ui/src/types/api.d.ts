@@ -45,6 +45,9 @@ interface ResponseGame {
   // YYYY-MM-DD, or empty for a game with no date yet.
   release_date: string;
   kind: GameKind;
+  // A YouTube link, or empty. Only YouTube: it is the only player the
+  // public site knows how to build.
+  video_url: string;
   // Derived server-side from whether a playable build exists; read-only.
   is_browser_playable: boolean;
   is_for_sale: boolean;
@@ -69,6 +72,7 @@ interface RequestCreateGame {
   genre: string;
   release_date: string;
   kind: GameKind;
+  video_url: string;
   is_for_sale: boolean;
   price_display: string;
   external_links_json: string;
@@ -118,6 +122,7 @@ interface GameFormValues {
   genre: string;
   release_date: string;
   kind: GameKind;
+  video_url: string;
   is_for_sale: boolean;
   price_display: string;
   // Edited as a real list and serialised to external_links_json on submit;

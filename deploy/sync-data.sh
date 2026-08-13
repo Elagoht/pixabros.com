@@ -164,38 +164,57 @@ rsync -a -e "$RSYNC_SHELL" "$SNAPSHOT" "$REMOTE:$STAGE_DIR/pixabros.db"
 # --- Putting it in place ----------------------------------------------------
 
 say "Stopping the service and moving everything into place"
-# -t so sudo can ask for a password. One block, so the service is down for as
-# little time as possible and either all of it lands or none of it does.
-"${SSH_CMD[@]}" -t "$REMOTE" "sudo bash -euo pipefail -s" <<REMOTE_SCRIPT
-  stamp=\$(date +%Y%m%d-%H%M%S)
 
-  systemctl stop $SERVICE
+# The script is handed over encoded rather than on standard input.
+#
+# sudo needs a terminal to ask for a password, and ssh only allocates one when
+# its own standard input is a terminal. Feeding the script in on stdin takes
+# that terminal away, so ssh declines the pty and sudo has nowhere to prompt.
+# Encoded and passed as a command, stdin stays the terminal: bash reads the
+# script from a pipe on the far side, and sudo asks on the pty.
+REMOTE_SCRIPT=$(cat <<'SCRIPT'
+  stamp=$(date +%Y%m%d-%H%M%S)
 
-  if [ -f "$REMOTE_DATA/pixabros.db" ]; then
-    cp -a "$REMOTE_DATA/pixabros.db" "$REMOTE_DATA/pixabros.db.replaced-\$stamp"
-    echo "kept the old database as pixabros.db.replaced-\$stamp"
+  systemctl stop __SERVICE__
+
+  if [ -f "__DATA__/pixabros.db" ]; then
+    cp -a "__DATA__/pixabros.db" "__DATA__/pixabros.db.replaced-$stamp"
+    echo "kept the old database as pixabros.db.replaced-$stamp"
   fi
 
-  rm -rf "$REMOTE_DATA/media" "$REMOTE_DATA/games"
-  mv "$STAGE_DIR/media" "$REMOTE_DATA/media"
-  mv "$STAGE_DIR/games" "$REMOTE_DATA/games"
-  mv "$STAGE_DIR/pixabros.db" "$REMOTE_DATA/pixabros.db"
+  rm -rf "__DATA__/media" "__DATA__/games"
+  mv "__STAGE__/media" "__DATA__/media"
+  mv "__STAGE__/games" "__DATA__/games"
+  mv "__STAGE__/pixabros.db" "__DATA__/pixabros.db"
 
   # A new database file must never meet the old log: SQLite would replay one
   # into the other and the result would be neither.
-  rm -f "$REMOTE_DATA/pixabros.db-wal" "$REMOTE_DATA/pixabros.db-shm"
+  rm -f "__DATA__/pixabros.db-wal" "__DATA__/pixabros.db-shm"
 
   # Rendered pages and built assets are derived, and the ones there now were
   # made from the database that has just been replaced.
-  rm -rf "$REMOTE_DATA/rendered-store" "$REMOTE_DATA/assets"
+  rm -rf "__DATA__/rendered-store" "__DATA__/assets"
 
-  chown -R "$REMOTE_USER:$REMOTE_USER" "$REMOTE_DATA"
-  chmod 0750 "$REMOTE_DATA"
+  chown -R "__USER__:__USER__" "__DATA__"
+  chmod 0750 "__DATA__"
 
-  rmdir "$STAGE_DIR" 2>/dev/null || true
+  rmdir "__STAGE__" 2>/dev/null || true
 
-  systemctl start $SERVICE
-REMOTE_SCRIPT
+  systemctl start __SERVICE__
+SCRIPT
+)
+
+# Quoted heredoc above, substituted here: the paths go in, and $stamp stays a
+# variable for the far side to expand.
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__SERVICE__/$SERVICE}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__DATA__/$REMOTE_DATA}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__STAGE__/$STAGE_DIR}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__USER__/$REMOTE_USER}
+
+ENCODED=$(printf '%s' "$REMOTE_SCRIPT" | base64 | tr -d '\n')
+
+"${SSH_CMD[@]}" -t "$REMOTE" \
+  "printf %s '$ENCODED' | base64 -d | sudo bash -euo pipefail -s"
 
 # --- Did it work ------------------------------------------------------------
 

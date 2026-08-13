@@ -2,8 +2,8 @@
   <div class="page-header">
     <h1>Games</h1>
     <p class="page-header__lead">
-      Slot a cartridge in to play right here in the browser, or flip a case open
-      to read about the rest.
+      Slot a cartridge in to play right here in the browser, or open a case to
+      read about any of them.
     </p>
   </div>
 
@@ -40,45 +40,89 @@
 
   {{if .Data.Cases}}
     <section class="section" aria-labelledby="catalogue-heading">
-      <h2 class="section__title" id="catalogue-heading">The rest of the shelf</h2>
+      <h2 class="section__title" id="catalogue-heading">The shelf</h2>
       <p class="section__subtitle">
-        Not playable in the browser — open a case for the details.
+        Every game we have made. Open a case to read about one.
       </p>
 
-      {{/* :target does the flip: the "open" link points at the case's id, and
-           the close link points back at the shelf. No JavaScript involved. */}}
+      {{/* Each case is a dialog. Closed, it is a CD case with the cover on the
+           front; opening it swings the lid aside in 3D and reveals two pages:
+           the details on the left, the disc itself on the right. */}}
       <ul class="cases">
         {{range .Data.Cases}}
-          <li class="case" id="case-{{.Slug}}">
-            <div class="case__inner">
-              <a class="case__front" href="#case-{{.Slug}}">
-                {{if .Art.URL}}
-                  <img class="case__art" src="{{.Art.URL}}" alt="{{.Art.Alt}}" loading="lazy" />
-                {{else}}
-                  <span class="case__art case__art--empty">{{.Title}}</span>
-                {{end}}
-                <span class="case__spine" aria-hidden="true"></span>
-                <span class="case__front-title">{{.Title}}</span>
-              </a>
+          <li>
+            <button
+              class="case"
+              type="button"
+              data-case-open="case-{{.Slug}}"
+              aria-haspopup="dialog"
+            >
+              {{if .Art.URL}}
+                <img class="case__art" src="{{.Art.URL}}" alt="{{.Art.Alt}}" loading="lazy" />
+              {{else}}
+                <span class="case__art case__art--empty">{{.Title}}</span>
+              {{end}}
+              <span class="case__spine" aria-hidden="true"></span>
+              <span class="case__front-title">{{.Title}}</span>
+            </button>
+          </li>
+        {{end}}
+      </ul>
 
-              <div class="case__back">
-                <h3 class="case__title">{{.Title}}</h3>
-                {{if .Description}}<p class="case__blurb">{{.Description}}</p>{{end}}
+      {{/* One dialog per game, closed until asked for. Without JavaScript the
+           whole shelf still works: each case's link below leads to the game's
+           own page, which says everything this dialog does. */}}
+      {{range .Data.Cases}}
+        <dialog class="jewel" id="case-{{.Slug}}" aria-label="{{.Title}}">
+          <div class="jewel__box">
+            <div class="jewel__lid">
+              {{if .Art.URL}}
+                <img class="jewel__cover" src="{{.Art.URL}}" alt="{{.Art.Alt}}" />
+              {{else}}
+                <span class="jewel__cover jewel__cover--empty">{{.Title}}</span>
+              {{end}}
+            </div>
+
+            <div class="jewel__pages">
+              <div class="jewel__page jewel__page--info">
+                <h3 class="jewel__title">{{.Title}}</h3>
                 {{if .Tags}}
                   <ul class="tags tags--compact">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
                   </ul>
                 {{end}}
-                <p class="case__actions">
-                  <a href="/games/{{.Slug}}">Details</a>
-                  {{if .Link}}<a href="{{.Link}}" rel="noopener">Store</a>{{end}}
-                  <a class="case__close" href="#catalogue-heading">Close</a>
-                </p>
+                {{if .Description}}
+                  <p class="jewel__blurb">{{.Description}}</p>
+                {{end}}
+                {{if .Price}}<p class="jewel__price">{{.Price}}</p>{{end}}
+
+                <ul class="jewel__links">
+                  <li><a href="/games/{{.Slug}}">Full details</a></li>
+                  {{range .Links}}
+                    <li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>
+                  {{end}}
+                </ul>
+              </div>
+
+              <div class="jewel__page jewel__page--disc">
+                {{/* The artwork is clipped to the disc, so it reads as printed
+                     on it rather than sitting behind it. */}}
+                <span class="disc">
+                  {{if .Art.URL}}
+                    <img class="disc__art" src="{{.Art.URL}}" alt="" />
+                  {{end}}
+                  <span class="disc__sheen" aria-hidden="true"></span>
+                  <span class="disc__hole" aria-hidden="true"></span>
+                </span>
               </div>
             </div>
-          </li>
-        {{end}}
-      </ul>
+          </div>
+
+          <button class="jewel__close" type="button" data-case-close aria-label="Close">
+            &times;
+          </button>
+        </dialog>
+      {{end}}
     </section>
   {{end}}
 

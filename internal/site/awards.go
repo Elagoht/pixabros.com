@@ -8,9 +8,12 @@ import (
 // awardView is one row of the timeline, already resolved: the renderer looks
 // up the badge image so the template never has to reach for a repository.
 type awardView struct {
-	Title      string
-	Issuer     string
-	Date       string
+	Title  string
+	Issuer string
+	Date   string
+	// Year is pulled out of the date so it can head the card: it is the thing
+	// people scan a list of awards for.
+	Year       string
 	Link       string
 	PictureURL string
 	PictureAlt string
@@ -43,6 +46,7 @@ func (s *Site) renderAwards(pageKey string) ([]byte, []string, error) {
 			Title:  award.Title,
 			Issuer: award.Issuer,
 			Date:   award.Date,
+			Year:   yearOf(award.Date),
 			Link:   award.Link,
 		}
 
@@ -64,7 +68,7 @@ func (s *Site) renderAwards(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("awards.html", pageData{
-		Title:       "Awards — " + chrome.Name,
+		Title:       "Awards · " + chrome.Name,
 		Description: "Awards and recognition for games made by " + chrome.Name + ".",
 		Path:        "/" + PageAwards,
 		Site:        chrome,
@@ -93,4 +97,18 @@ func parseLinks(raw string) []string {
 		return nil
 	}
 	return links
+}
+
+// yearOf takes the year from a stored YYYY-MM-DD date. Anything else yields
+// nothing rather than a misleading fragment.
+func yearOf(date string) string {
+	if len(date) < 4 {
+		return ""
+	}
+	for _, r := range date[:4] {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+	return date[:4]
 }

@@ -76,19 +76,53 @@ func TestRenderArcade_HidesDrafts(t *testing.T) {
 	}
 }
 
-// The case flip is CSS-only (:target), so the front must link to the case's
-// own id. Losing that leaves a card that cannot be opened.
-func TestRenderArcade_CasesOpenWithoutJavaScript(t *testing.T) {
+// Opening a case raises a dialog, which needs a script. The shelf must still
+// be usable without one, so every case also carries a link to the game's own
+// page -- the page that says everything the dialog does.
+func TestRenderArcade_CasesRemainReachableWithoutJavaScript(t *testing.T) {
 	conn := setupTestDB(t)
 	seedGame(t, conn, "Shelf Game", "shelf-game", true, false, "")
 
 	html, _ := renderArcadePage(t, newTestSite(t, conn))
 
 	if !strings.Contains(html, "id=case-shelf-game") {
-		t.Error("the case has no id for :target to match")
+		t.Error("the case dialog has no id for its button to open")
 	}
-	if !strings.Contains(html, "#case-shelf-game") {
-		t.Error("nothing links to the case, so it can never be opened")
+	if !strings.Contains(html, `data-case-open=case-shelf-game`) {
+		t.Error("nothing opens the case")
+	}
+	if !strings.Contains(html, "href=/games/shelf-game") {
+		t.Error("the case does not link to the game, so it is a dead end without scripting")
+	}
+}
+
+// The open case has two pages: the details, and the disc with the artwork
+// clipped into it.
+func TestRenderArcade_OpenCaseHasBothPages(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Shelf Game", "shelf-game", true, false, "Tactics")
+	artID := seedMedia(t, conn, "media/cd/2026-cover.webp", "Cover art")
+	if _, err := conn.Exec(
+		`UPDATE games SET cd_cover_art_id = ?, short_description = 'A short blurb.',
+		 external_links_json = '[{"label":"itch.io","url":"https://itch.io/x"}]'
+		 WHERE id = ?;`, artID, gameID,
+	); err != nil {
+		t.Fatalf("set case fields: %v", err)
+	}
+
+	html, _ := renderArcadePage(t, newTestSite(t, conn))
+
+	dialog := html[strings.Index(html, "id=case-shelf-game"):]
+	for _, want := range []string{
+		"jewel__page--info", // the details page
+		"jewel__page--disc", // the disc page
+		"disc__hole",        // which is a disc, not a square
+		"A short blurb.",
+		"itch.io",
+	} {
+		if !strings.Contains(dialog, want) {
+			t.Errorf("the open case is missing %q", want)
+		}
 	}
 }
 

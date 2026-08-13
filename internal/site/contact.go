@@ -26,7 +26,7 @@ func (s *Site) renderContact(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("contact.html", pageData{
-		Title:       "Contact — " + chrome.Name,
+		Title:       "Contact · " + chrome.Name,
 		Description: "Get in touch with " + chrome.Name + ".",
 		Path:        "/" + PageContact,
 		Scripts:     []string{s.renderer.bundle.URL("contact.js")},
@@ -51,7 +51,7 @@ func (s *Site) renderContactSent(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("contact-sent.html", pageData{
-		Title:       "Message sent — " + chrome.Name,
+		Title:       "Message sent · " + chrome.Name,
 		Description: "Your message has been sent.",
 		Path:        "/" + PageContact,
 		Site:        chrome,

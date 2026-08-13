@@ -1,34 +1,84 @@
-// Keeps a carousel click inside the carousel.
+// Drives the carousel's arrows.
 //
-// The arrows and dots are anchors to a slide's id, which is what makes the
-// whole thing work without scripting. The cost is that following one is a
-// navigation: the browser scrolls the page vertically to bring the target into
-// view, so choosing a game yanks the page around.
-//
-// This intercepts the click and scrolls the track horizontally instead. With
-// no JavaScript the anchors still work exactly as before.
+// The arrows are the script's own: they sit at the sides of the carousel
+// rather than on each card, so they need to know where the track is scrolled
+// to. Without JavaScript they stay hidden and the track is still an ordinary
+// scroller, with the dots as anchors.
 (function () {
-  var track = document.querySelector(".carousel__track");
-  if (!track) {
+  var carousel = document.querySelector(".carousel");
+  if (!carousel) {
     return;
   }
 
-  track.closest(".carousel").addEventListener("click", function (event) {
-    var control = event.target.closest("[data-carousel-target]");
-    if (!control) {
+  var track = carousel.querySelector(".carousel__track");
+  var prev = carousel.querySelector("[data-carousel-prev]");
+  var next = carousel.querySelector("[data-carousel-next]");
+  var slides = track ? track.querySelectorAll(".slide") : [];
+
+  if (!(track && slides.length > 1)) {
+    return;
+  }
+
+  if (prev) {
+    prev.hidden = false;
+  }
+  if (next) {
+    next.hidden = false;
+  }
+
+  function centreOf(slide) {
+    return (
+      slide.offsetLeft -
+      track.offsetLeft -
+      (track.clientWidth - slide.clientWidth) / 2
+    );
+  }
+
+  // The slide nearest the middle of the track is the one on screen.
+  function currentIndex() {
+    var middle = track.scrollLeft + track.clientWidth / 2;
+    var best = 0;
+    var bestDistance = Infinity;
+    Array.prototype.forEach.call(slides, function (slide, index) {
+      var slideMiddle = slide.offsetLeft - track.offsetLeft + slide.clientWidth / 2;
+      var distance = Math.abs(slideMiddle - middle);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = index;
+      }
+    });
+    return best;
+  }
+
+  function go(step) {
+    // Wraps, so the last card's next arrow returns to the first.
+    var index = (currentIndex() + step + slides.length) % slides.length;
+    track.scrollTo({ left: centreOf(slides[index]), behavior: "smooth" });
+  }
+
+  if (prev) {
+    prev.addEventListener("click", function () {
+      go(-1);
+    });
+  }
+  if (next) {
+    next.addEventListener("click", function () {
+      go(1);
+    });
+  }
+
+  // The dots are anchors, so following one would scroll the page vertically to
+  // bring the slide into view. Scrolling the track instead keeps the page put.
+  carousel.addEventListener("click", function (event) {
+    var dot = event.target.closest("[data-carousel-target]");
+    if (!dot) {
       return;
     }
-
-    var slide = document.getElementById(control.getAttribute("data-carousel-target"));
+    var slide = document.getElementById(dot.getAttribute("data-carousel-target"));
     if (!slide) {
       return;
     }
-
     event.preventDefault();
-
-    // Centre the slide in the track the same way scroll-snap would, measured
-    // from the track's own scroll origin rather than the page's.
-    var left = slide.offsetLeft - track.offsetLeft - (track.clientWidth - slide.clientWidth) / 2;
-    track.scrollTo({ left: left, behavior: "smooth" });
+    track.scrollTo({ left: centreOf(slide), behavior: "smooth" });
   });
 })();

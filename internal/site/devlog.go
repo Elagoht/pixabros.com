@@ -78,7 +78,7 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("devlog.html", pageData{
-		Title:       "Devlog — " + chrome.Name,
+		Title:       "Devlog · " + chrome.Name,
 		Description: "Notes on what we are building at " + chrome.Name + ".",
 		Path:        "/" + PageDevlog,
 		Site:        chrome,
@@ -141,7 +141,7 @@ func (s *Site) renderDevlogPost(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("devlog-post.html", pageData{
-		Title:       post.Title + " — " + chrome.Name,
+		Title:       post.Title + " · " + chrome.Name,
 		Description: excerpt(post.ContentMarkdown, 160),
 		Path:        "/" + PageDevlog,
 		Site:        chrome,

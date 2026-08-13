@@ -29,6 +29,7 @@ import (
 	"pixabros/internal/mediaapi"
 	"pixabros/internal/members"
 	"pixabros/internal/membersapi"
+	"pixabros/internal/ogimage"
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
 	"pixabros/internal/settingsapi"
@@ -101,7 +102,7 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("PUT /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Delete))
 
-	devlogHandlers := devlogapi.NewHandlers(deps.Devlog, deps.DB)
+	devlogHandlers := devlogapi.NewHandlers(deps.Devlog, deps.DB, ogimage.NewStore(deps.Media, deps.MediaFiles))
 	mux.HandleFunc("GET /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.List))
 	mux.HandleFunc("POST /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.Create))
 	mux.HandleFunc("GET /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Get))

@@ -14,6 +14,7 @@ import (
 	"pixabros/internal/devlog"
 	"pixabros/internal/httpapi"
 	"pixabros/internal/id"
+	"pixabros/internal/ogimage"
 	"pixabros/internal/render"
 )
 
@@ -24,11 +25,15 @@ var isoDate = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 type Handlers struct {
 	repo *devlog.Repo
-	db   *sql.DB
+	// og draws a post's social preview. A post without one would share as a
+	// bare link, so every post gets a generated image unless an admin uploads
+	// their own.
+	og *ogimage.Store
+	db *sql.DB
 }
 
-func NewHandlers(repo *devlog.Repo, db *sql.DB) *Handlers {
-	return &Handlers{repo: repo, db: db}
+func NewHandlers(repo *devlog.Repo, db *sql.DB, og *ogimage.Store) *Handlers {
+	return &Handlers{og: og, repo: repo, db: db}
 }
 
 type postResponse struct {
@@ -157,6 +162,24 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The preview is drawn from the title, so it can only be made once the post
+	// exists. A failure here is not worth losing the post over: the picture is
+	// regenerated on the next edit.
+	if h.og != nil {
+		if imageID, err := h.og.Refresh(nil, post.Title); err == nil {
+			if updated, err := h.repo.Update(post.ID, devlog.UpdateInput{
+				Title:           post.Title,
+				ContentMarkdown: post.ContentMarkdown,
+				GameID:          post.GameID,
+				OGImageID:       imageID,
+				IsPublished:     post.IsPublished,
+				PublishedAt:     post.PublishedAt,
+			}); err == nil {
+				post = updated
+			}
+		}
+	}
+
 	if err := h.enqueueRegen(post.ID); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
@@ -229,11 +252,23 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A renamed post needs a preview that says the new name. Refresh keeps an
+	// uploaded picture as it is and replaces a generated one, deleting what it
+	// replaces so old previews do not pile up.
+	ogImageID := req.OGImageID
+	if h.og != nil && ogImageID == nil && req.Title != existing.Title {
+		if refreshed, err := h.og.Refresh(existing.OGImageID, req.Title); err == nil {
+			ogImageID = refreshed
+		}
+	} else if ogImageID == nil {
+		ogImageID = existing.OGImageID
+	}
+
 	post, err := h.repo.Update(existing.ID, devlog.UpdateInput{
 		Title:           req.Title,
 		ContentMarkdown: req.ContentMarkdown,
 		GameID:          req.GameID,
-		OGImageID:       req.OGImageID,
+		OGImageID:       ogImageID,
 		IsPublished:     req.IsPublished,
 		PublishedAt:     req.PublishedAt,
 	})

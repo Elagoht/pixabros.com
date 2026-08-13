@@ -3,6 +3,7 @@ package site
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,5 +145,45 @@ func TestFormatDate(t *testing.T) {
 		if got := formatDate(input); got != want {
 			t.Errorf("formatDate(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+// The site never uses an em dash. It is easy to type without noticing, so this
+// checks the rendered output of every page rather than trusting review.
+func TestPages_ContainNoEmDash(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedGame(t, conn, "A Game", "a-game", true, false, "Tag")
+	seedMember(t, conn, "Someone", "Code", "A bio.", true)
+	seedAward(t, conn, "A Prize", "A Jury", "2026-01-01", "", nil)
+	seedPost(t, conn, "A Post", "a-post", "Body text.", "2026-01-02", true, nil)
+
+	site := newTestSite(t, conn)
+
+	pages := map[string]func(string) ([]byte, []string, error){
+		"index.html":    site.renderLanding,
+		"games":         site.renderArcade,
+		"games/a-game":  site.renderGame,
+		"devlog":        site.renderDevlogIndex,
+		"devlog/a-post": site.renderDevlogPost,
+		"awards":        site.renderAwards,
+		"contact":       site.renderContact,
+	}
+	for key, render := range pages {
+		html, _, err := render(key)
+		if err != nil {
+			t.Fatalf("render %s: %v", key, err)
+		}
+		if strings.Contains(string(html), "—") {
+			t.Errorf("%s contains an em dash", key)
+		}
+	}
+
+	notFound, err := site.NotFoundBody()
+	if err != nil {
+		t.Fatalf("NotFoundBody() error = %v", err)
+	}
+	if strings.Contains(string(notFound), "—") {
+		t.Error("the 404 page contains an em dash")
 	}
 }

@@ -176,8 +176,14 @@ func TestRenderLanding_ShowsOnlyGamesThatAreForSaleInTheSalesGrid(t *testing.T) 
 	if !strings.Contains(html, "$9.99") {
 		t.Error("the price is not shown")
 	}
-	if !strings.Contains(html, "store.steampowered.com") {
-		t.Error("the store link is missing -- there is no on-site checkout, so it is the whole purchase path")
+	// The card leads to the game's own page, where the stores are listed.
+	// Jumping straight out to a shop skipped everything the site has to say
+	// about the game.
+	if !strings.Contains(salesSection, "href=/games/paid") {
+		t.Error("the sales card does not lead to the game")
+	}
+	if strings.Contains(salesSection, "store.steampowered.com") {
+		t.Error("the card still links straight out to a shop")
 	}
 }
 
@@ -220,18 +226,26 @@ func TestRenderLanding_CarouselArrowsPointAtNeighbouringSlides(t *testing.T) {
 
 	html, _ := renderLandingPage(t, newTestSite(t, conn))
 
+	// The dots are anchors, so the carousel is still navigable with scripting
+	// off; the arrows are the script's own and stay hidden until it takes over.
 	for _, want := range []string{"#slide-1", "#slide-2", "#slide-3"} {
 		if !strings.Contains(html, want) {
-			t.Errorf("no control links to %q", want)
+			t.Errorf("no dot links to %q", want)
 		}
 	}
 	if !strings.Contains(html, "id=slide-1") {
-		t.Error("slides have no ids, so the arrows and dots have nothing to target")
+		t.Error("slides have no ids, so the dots have nothing to target")
 	}
-	// Every control the script hooks has to be a real anchor too, or the
-	// carousel dies the moment scripting is off.
 	if !strings.Contains(html, `href=#slide-2 data-carousel-target=slide-2`) {
-		t.Error("a control is missing either its href or the hook the script needs")
+		t.Error("a dot is missing either its href or the hook the script needs")
+	}
+
+	// One pair of arrows for the whole carousel, not a pair per card.
+	if got := strings.Count(html, "data-carousel-prev"); got != 1 {
+		t.Errorf("previous arrows = %d, want exactly 1 for the carousel", got)
+	}
+	if got := strings.Count(html, "data-carousel-next"); got != 1 {
+		t.Errorf("next arrows = %d, want exactly 1 for the carousel", got)
 	}
 }
 
@@ -247,22 +261,6 @@ func TestSplitTags(t *testing.T) {
 	for input, want := range cases {
 		if got := splitTags(input); len(got) != want {
 			t.Errorf("splitTags(%q) = %v, want %d entries", input, got, want)
-		}
-	}
-}
-
-func TestFirstExternalLink(t *testing.T) {
-	cases := map[string]string{
-		`[{"label":"Steam","url":"https://steam.example"}]`: "https://steam.example",
-		`[{"label":"No URL","url":""},{"url":"https://b"}]`: "https://b",
-		`[]`:          "",
-		``:            "",
-		`not json`:    "",
-		`{"url":"x"}`: "",
-	}
-	for input, want := range cases {
-		if got := firstExternalLink(input); got != want {
-			t.Errorf("firstExternalLink(%q) = %q, want %q", input, got, want)
 		}
 	}
 }

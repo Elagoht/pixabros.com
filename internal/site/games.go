@@ -32,7 +32,9 @@ type caseView struct {
 	Tags        []string
 	Description string
 	Price       string
-	Link        string
+	// Links are the stores and pages the game lives on, shown on the open
+	// case's first page.
+	Links []gameLink
 }
 
 // consoleView is what the shared console partial needs. Interactive is the
@@ -96,17 +98,20 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 			Tags:        splitTags(game.Tags),
 			Description: game.ShortDescription,
 			Price:       priceFor(game),
-			Link:        firstExternalLink(game.ExternalLinksJSON),
+			Links:       parseGameLinks(game.ExternalLinksJSON),
 		})
 	}
 
 	html, err := s.renderer.render("arcade.html", pageData{
-		Title:       "Games — " + chrome.Name,
+		Title:       "Games · " + chrome.Name,
 		Description: "Play our browser games and browse the rest of the catalogue.",
 		Path:        "/" + PageGames,
-		Scripts:     []string{s.renderer.bundle.URL("arcade.js")},
-		Site:        chrome,
-		Data:        page,
+		Scripts: []string{
+			s.renderer.bundle.URL("arcade.js"),
+			s.renderer.bundle.URL("cases.js"),
+		},
+		Site: chrome,
+		Data: page,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -204,7 +209,7 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" || len(page.Links) > 0
 
 	html, err := s.renderer.render("game.html", pageData{
-		Title:       game.Title + " — " + chrome.Name,
+		Title:       game.Title + " · " + chrome.Name,
 		Description: fallback(game.ShortDescription, game.Title+" by "+chrome.Name+"."),
 		Path:        "/" + PageGames,
 		Site:        chrome,
@@ -240,6 +245,12 @@ func priceFor(game games.Game) string {
 		return ""
 	}
 	return game.PriceDisplay
+}
+
+// externalLink mirrors the {label,url,icon} shape the admin panel stores.
+type externalLink struct {
+	Label string `json:"label"`
+	URL   string `json:"url"`
 }
 
 func parseGameLinks(raw string) []gameLink {

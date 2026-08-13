@@ -101,7 +101,7 @@ func (s *Site) NotFoundBody() ([]byte, error) {
 		return nil, err
 	}
 	return s.renderer.render("404.html", pageData{
-		Title:       "Page not found — " + chrome.Name,
+		Title:       "Page not found · " + chrome.Name,
 		Description: "The page you were looking for does not exist.",
 		Site:        chrome,
 	})

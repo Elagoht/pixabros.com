@@ -1,7 +1,6 @@
 package site
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -21,7 +20,6 @@ type imageView struct {
 
 type heroView struct {
 	Logo        imageView
-	Feature     imageView
 	Slogan      string
 	Description string
 	CTAText     string
@@ -45,10 +43,10 @@ type slideView struct {
 
 type saleView struct {
 	Title string
+	Slug  string
 	Tags  []string
 	Cover imageView
 	Price string
-	Link  string
 }
 
 type memberView struct {
@@ -122,7 +120,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	}
 
 	page := landingPage{
-		Hero:            s.buildHero(copyValues, images, published),
+		Hero:            s.buildHero(copyValues, images),
 		PortfolioTitle:  fallback(copyValues["portfolio_section_title"], "Our games"),
 		Slides:          slides,
 		SalesTitle:      fallback(copyValues["sales_section_title"], "Available now"),
@@ -136,7 +134,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	page.HasMembers = len(page.Members) > 0
 
 	html, err := s.renderer.render("landing.html", pageData{
-		Title:       chrome.Name + " — game studio",
+		Title:       chrome.Name + " · game studio",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
 		Path:        "/",
 		Scripts:     []string{s.renderer.bundle.URL("carousel.js")},
@@ -157,24 +155,19 @@ const (
 	memberListTag = "member:list"
 )
 
-func (s *Site) buildHero(values map[string]string, images map[string]media.Media, published []games.Game) heroView {
+// buildHero assembles the site's opening statement.
+//
+// There is deliberately no featured image beside it. The spec called for one,
+// and it was taken from whichever game happened to be first: an arbitrary
+// picture, linked to nothing, that said nothing about the studio. The
+// portfolio below is where the games introduce themselves.
+func (s *Site) buildHero(values map[string]string, images map[string]media.Media) heroView {
 	hero := heroView{
 		Slogan:      values["hero_slogan"],
 		Description: values["hero_description"],
 		CTAText:     values["hero_cta_text"],
 		CTALink:     values["hero_cta_link"],
 		Logo:        lookupImage(images, ptr(values["hero_logo"]), "Studio logo"),
-	}
-
-	// The right-hand side shows the first published game's artwork, per the
-	// visual spec's "featured image (game image or portfolio preview)". With no
-	// artwork uploaded the hero simply becomes a single column rather than
-	// leaving a hole.
-	for _, game := range published {
-		if art := firstNonNil(game.CDCoverArtID, game.CartridgeArtID); art != nil {
-			hero.Feature = lookupImage(images, art, game.Title)
-			break
-		}
 	}
 
 	// A CTA with no destination is a button that does nothing.
@@ -236,10 +229,10 @@ func buildSales(published []games.Game, images map[string]media.Media) []saleVie
 		}
 		sales = append(sales, saleView{
 			Title: game.Title,
+			Slug:  game.Slug,
 			Tags:  splitTags(game.Tags),
 			Cover: lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
 			Price: game.PriceDisplay,
-			Link:  firstExternalLink(game.ExternalLinksJSON),
 		})
 	}
 	return sales
@@ -309,32 +302,6 @@ func splitTags(raw string) []string {
 		}
 	}
 	return tags
-}
-
-// externalLink mirrors the {label,url,icon} shape the admin panel stores.
-type externalLink struct {
-	Label string `json:"label"`
-	URL   string `json:"url"`
-}
-
-// firstExternalLink picks the store a for-sale game should link to. There is
-// no on-site checkout, so the first external link is the whole purchase path.
-// Malformed JSON yields no link rather than an error: one bad record must not
-// stop the landing page rendering.
-func firstExternalLink(raw string) string {
-	if strings.TrimSpace(raw) == "" {
-		return ""
-	}
-	var links []externalLink
-	if err := json.Unmarshal([]byte(raw), &links); err != nil {
-		return ""
-	}
-	for _, link := range links {
-		if link.URL != "" {
-			return link.URL
-		}
-	}
-	return ""
 }
 
 func fallback(value, orElse string) string {

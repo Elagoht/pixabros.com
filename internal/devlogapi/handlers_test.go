@@ -11,6 +11,10 @@ import (
 
 	"pixabros/internal/db"
 	"pixabros/internal/devlog"
+	"pixabros/internal/id"
+	"pixabros/internal/media"
+	"pixabros/internal/ogimage"
+	"pixabros/internal/storage"
 )
 
 func setup(t *testing.T) (*Handlers, *devlog.Repo, *sql.DB) {
@@ -25,7 +29,11 @@ func setup(t *testing.T) (*Handlers, *devlog.Repo, *sql.DB) {
 	t.Cleanup(func() { conn.Close() })
 
 	repo := devlog.NewRepo(conn)
-	return NewHandlers(repo, conn), repo, conn
+	// A real image store, writing into a temporary directory: the generated
+	// preview is part of what creating a post does, so stubbing it out would
+	// test a code path that never runs in production.
+	og := ogimage.NewStore(media.NewRepo(conn), storage.NewLocalDisk(t.TempDir(), ""))
+	return NewHandlers(repo, conn, og), repo, conn
 }
 
 func post(t *testing.T, h *Handlers, body any) *httptest.ResponseRecorder {
@@ -210,5 +218,111 @@ func TestList_ReturnsAnEmptyArrayNotNull(t *testing.T) {
 
 	if body := rec.Body.String(); body != "[]\n" {
 		t.Errorf("empty list body = %q, want %q", body, "[]\n")
+	}
+}
+
+// A post without a preview shares as a bare link, so one is drawn from the
+// title at creation.
+func TestCreate_GeneratesAnOpenGraphImage(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	rec := post(t, handlers, map[string]any{
+		"title": "Fifty Two Days", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (%s)", rec.Code, rec.Body.String())
+	}
+
+	list, err := repo.List("published_at", true)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("List() = %d posts, err = %v", len(list), err)
+	}
+	if list[0].OGImageID == nil {
+		t.Fatal("the post has no preview image")
+	}
+
+	var path string
+	if err := conn.QueryRow(
+		`SELECT path FROM media WHERE id = ?;`, *list[0].OGImageID,
+	).Scan(&path); err != nil {
+		t.Fatalf("look up the image: %v", err)
+	}
+	if !ogimage.IsGenerated(path) {
+		t.Errorf("image path = %q, want one marked as generated", path)
+	}
+}
+
+// Renaming a post has to redraw its preview, and take the old one with it --
+// otherwise every rename leaves another orphaned picture behind.
+func TestUpdate_RedrawsThePreviewWhenTheTitleChanges(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	post(t, handlers, map[string]any{
+		"title": "First Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	list, _ := repo.List("published_at", true)
+	original := list[0]
+
+	put(t, handlers, original.ID, map[string]any{
+		"title": "Second Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+
+	updated, err := repo.FindByID(original.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if updated.OGImageID == nil {
+		t.Fatal("the renamed post lost its preview")
+	}
+	if *updated.OGImageID == *original.OGImageID {
+		t.Error("the preview still shows the old title")
+	}
+
+	var leftovers int
+	if err := conn.QueryRow(
+		`SELECT COUNT(*) FROM media WHERE id = ?;`, *original.OGImageID,
+	).Scan(&leftovers); err != nil {
+		t.Fatalf("count old image: %v", err)
+	}
+	if leftovers != 0 {
+		t.Error("the previous preview was left behind")
+	}
+}
+
+// An admin who uploads their own picture has overridden the default, and a
+// title edit must not throw that away.
+func TestUpdate_KeepsAnUploadedImage(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	post(t, handlers, map[string]any{
+		"title": "First Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	list, _ := repo.List("published_at", true)
+	original := list[0]
+
+	uploaded := id.New()
+	if _, err := conn.Exec(
+		`INSERT INTO media (id, path, width, height) VALUES (?, 'media/og_image/2026-chosen.webp', 1200, 630);`,
+		uploaded,
+	); err != nil {
+		t.Fatalf("seed uploaded image: %v", err)
+	}
+	put(t, handlers, original.ID, map[string]any{
+		"title": "First Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20", "og_image_id": uploaded,
+	})
+
+	put(t, handlers, original.ID, map[string]any{
+		"title": "Renamed", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+
+	updated, _ := repo.FindByID(original.ID)
+	if updated.OGImageID == nil || *updated.OGImageID != uploaded {
+		t.Error("the uploaded image was replaced by a generated one")
 	}
 }

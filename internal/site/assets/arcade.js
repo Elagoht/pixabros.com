@@ -31,6 +31,21 @@
     }
   }
 
+  // A cartridge is in the machine, so its place on the shelf is empty: the
+  // gap is kept rather than closed, so the grid does not reflow underneath.
+  function setShelfGap(cartridge, empty) {
+    var slotOnShelf = cartridge.closest("li");
+    if (slotOnShelf) {
+      slotOnShelf.classList.toggle("cartridges__slot--empty", empty);
+    }
+  }
+
+  function clearShelf() {
+    Array.prototype.forEach.call(cartridges, function (cartridge) {
+      setShelfGap(cartridge, false);
+    });
+  }
+
   function insert(cartridge) {
     if (!slot) {
       return;
@@ -48,6 +63,8 @@
   }
 
   function load(cartridge) {
+    clearShelf();
+    setShelfGap(cartridge, true);
     current = cartridge.getAttribute("data-play-url");
     screen.src = current;
 
@@ -68,6 +85,7 @@
   }
 
   function eject() {
+    clearShelf();
     current = "";
     // about:blank first so the running game is torn down rather than left
     // playing audio behind a hidden frame.

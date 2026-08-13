@@ -1,32 +1,20 @@
 {{define "main"}}
   <section class="hero">
-    <div class="hero__text">
-      {{if .Data.Hero.Logo.URL}}
-        <img
-          class="hero__logo"
-          src="{{.Data.Hero.Logo.URL}}"
-          alt="{{.Data.Hero.Logo.Alt}}"
-          width="96"
-          height="96"
-        />
-      {{end}}
-      <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>
-      {{if .Data.Hero.Description}}
-        <p class="hero__description">{{.Data.Hero.Description}}</p>
-      {{end}}
-      {{if .Data.Hero.CTAText}}
-        <a class="button" href="{{.Data.Hero.CTALink}}">{{.Data.Hero.CTAText}}</a>
-      {{end}}
-    </div>
-
-    {{if .Data.Hero.Feature.URL}}
-      <div class="hero__feature">
-        <img
-          src="{{.Data.Hero.Feature.URL}}"
-          alt="{{.Data.Hero.Feature.Alt}}"
-          loading="eager"
-        />
-      </div>
+    {{if .Data.Hero.Logo.URL}}
+      <img
+        class="hero__logo"
+        src="{{.Data.Hero.Logo.URL}}"
+        alt="{{.Data.Hero.Logo.Alt}}"
+        width="128"
+        height="128"
+      />
+    {{end}}
+    <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>
+    {{if .Data.Hero.Description}}
+      <p class="hero__description">{{.Data.Hero.Description}}</p>
+    {{end}}
+    {{if .Data.Hero.CTAText}}
+      <a class="button" href="{{.Data.Hero.CTALink}}">{{.Data.Hero.CTAText}}</a>
     {{end}}
   </section>
 
@@ -39,6 +27,25 @@
            slide, and the thumbnail hover-swap is a :has() rule. It therefore
            works before, during and without script execution. */}}
       <div class="carousel">
+        <button
+          class="carousel__arrow carousel__arrow--prev"
+          type="button"
+          hidden
+          aria-label="Previous game"
+          data-carousel-prev
+        >
+          &lsaquo;
+        </button>
+        <button
+          class="carousel__arrow carousel__arrow--next"
+          type="button"
+          hidden
+          aria-label="Next game"
+          data-carousel-next
+        >
+          &rsaquo;
+        </button>
+
         <div class="carousel__track">
           {{range .Data.Slides}}
             <article class="slide" id="{{.ID}}">
@@ -92,20 +99,6 @@
                 {{end}}
               </div>
 
-              <a
-                class="carousel__arrow carousel__arrow--prev"
-                href="#{{.PrevID}}"
-                data-carousel-target="{{.PrevID}}"
-                aria-label="Previous game"
-                >&lsaquo;</a
-              >
-              <a
-                class="carousel__arrow carousel__arrow--next"
-                href="#{{.NextID}}"
-                data-carousel-target="{{.NextID}}"
-                aria-label="Next game"
-                >&rsaquo;</a
-              >
             </article>
           {{end}}
         </div>
@@ -132,6 +125,7 @@
       <ul class="sales-grid">
         {{range .Data.Sales}}
           <li class="sale-card">
+            <a class="sale-card__link" href="/games/{{.Slug}}">
             {{if .Cover.URL}}
               <img class="sale-card__art" src="{{.Cover.URL}}" alt="{{.Cover.Alt}}" loading="lazy" />
             {{else}}
@@ -144,13 +138,13 @@
                   {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
                 </ul>
               {{end}}
-              <p class="sale-card__foot">
-                {{if .Price}}<span class="sale-card__price">{{.Price}}</span>{{end}}
-                {{if .Link}}
-                  <a class="sale-card__link" href="{{.Link}}" rel="noopener">Get it</a>
-                {{end}}
-              </p>
+              {{if .Price}}
+                <p class="sale-card__foot">
+                  <span class="sale-card__price">{{.Price}}</span>
+                </p>
+              {{end}}
             </div>
+            </a>
           </li>
         {{end}}
       </ul>

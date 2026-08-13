@@ -8,46 +8,33 @@
 
   {{with .Data}}
     {{if .Awards}}
-      <ol class="timeline">
+      <ul class="awards">
         {{range .Awards}}
-          <li class="timeline__item">
-            {{if .PictureURL}}
-              <div class="timeline__badge">
-                <img
-                  src="{{.PictureURL}}"
-                  alt="{{.PictureAlt}}"
-                  width="320"
-                  height="320"
-                  loading="lazy"
-                />
-              </div>
-            {{else}}
-              <div
-                class="timeline__badge timeline__badge--empty"
-                aria-hidden="true"
-              >
-                ★
-              </div>
-            {{end}}
+          <li class="award">
+            <div class="award__picture">
+              {{if .PictureURL}}
+                <img src="{{.PictureURL}}" alt="{{.PictureAlt}}" loading="lazy" />
+              {{else}}
+                <span class="award__picture-empty" aria-hidden="true">
+                  {{.Issuer}}
+                </span>
+              {{end}}
+            </div>
 
-            <div class="timeline__body">
-              <h2 class="timeline__title">{{.Title}}</h2>
-              <p class="timeline__meta">
-                <span>{{.Issuer}}</span>
-                {{if .Date}}
-                  <span class="timeline__meta-sep" aria-hidden="true">/</span>
-                  <span>{{formatDate .Date}}</span>
-                {{end}}
-              </p>
+            <div class="award__body">
+              <p class="award__year">{{.Year}}</p>
+              <h2 class="award__title">{{.Title}}</h2>
+              <p class="award__issuer">{{.Issuer}}</p>
+              {{if .Date}}<p class="award__date">{{formatDate .Date}}</p>{{end}}
               {{if .Link}}
-                <a class="timeline__link" href="{{.Link}}" rel="noopener"
-                  >Read more</a
-                >
+                <a class="award__link" href="{{.Link}}" rel="noopener">
+                  Read more
+                </a>
               {{end}}
             </div>
           </li>
         {{end}}
-      </ol>
+      </ul>
     {{else}}
       <p class="empty-note">No awards to show just yet.</p>
     {{end}}

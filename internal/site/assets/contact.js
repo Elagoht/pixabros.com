@@ -55,7 +55,7 @@
       .then(function (result) {
         if (result.ok) {
           form.reset();
-          show("Thank you — your message is on its way.", "ok");
+          show("Thank you. Your message is on its way.", "ok");
           return;
         }
         var error = result.payload && result.payload.error;

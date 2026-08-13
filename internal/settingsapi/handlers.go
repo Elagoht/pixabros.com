@@ -81,6 +81,22 @@ func (h *Handlers) validate(group settings.Group, values map[string]string) (str
 			if err != nil || !parsed.IsAbs() || parsed.Host == "" {
 				return "invalid_uri", key + " must be a full URL, including its scheme", false
 			}
+		case settings.KindLink:
+			// A path on this site, or a whole address elsewhere. A path has to
+			// start at the root: a relative one would resolve against whatever
+			// page it happened to be rendered on.
+			if strings.HasPrefix(value, "/") {
+				if strings.HasPrefix(value, "//") {
+					// "//host/path" is an address on another site wearing a
+					// path's clothes, which is not what an admin means by one.
+					return "invalid_link", key + " must be a path on this site or a full URL", false
+				}
+				break
+			}
+			parsed, err := url.Parse(value)
+			if err != nil || !parsed.IsAbs() || parsed.Host == "" {
+				return "invalid_link", key + " must be a path starting with / or a full URL", false
+			}
 		case settings.KindURIList:
 			// Stored as text, but it must really be a list of addresses: the
 			// public site emits these straight into JSON-LD, where a bad entry

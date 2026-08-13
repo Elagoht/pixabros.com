@@ -449,3 +449,22 @@ func TestRenderGame_ShowsEveryTag(t *testing.T) {
 		t.Error("the detail page clamped its tag list")
 	}
 }
+
+// The homepage button usually points at a page of this site, so a path is what
+// an admin writes. It has to render as that path, not be mangled into
+// something absolute.
+func TestRenderLanding_UsesAPathForTheButton(t *testing.T) {
+	conn := setupTestDB(t)
+	if _, err := conn.Exec(
+		`INSERT INTO homepage_settings (key, value, value_type) VALUES
+		 ('hero_cta_text', 'Play now', 'text'),
+		 ('hero_cta_link', '/games', 'link');`,
+	); err != nil {
+		t.Fatalf("seed settings: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+	if !strings.Contains(html, `href=/games`) {
+		t.Errorf("the button does not point at the path it was given: %s", html)
+	}
+}

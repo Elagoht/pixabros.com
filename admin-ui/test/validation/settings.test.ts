@@ -88,3 +88,48 @@ describe("uri_list settings", () => {
     ).resolves.toBe(false);
   });
 });
+
+describe("addresses", () => {
+  const schema = settingsValidationSchema(mockT, [
+    { key: "site_url", kind: "uri", multiline: false },
+    { key: "hero_cta_link", kind: "link", multiline: false },
+  ]);
+
+  // The site runs on localhost while it is being built, and refusing to save a
+  // real address is a worse failure than letting an odd one through.
+  it.each([
+    "http://localhost:8080",
+    "https://pixabros.com",
+    "https://pixabros.com/",
+    "http://127.0.0.1:3000",
+  ])("accepts %s as a site address", async (site_url) => {
+    await expect(schema.isValid({ site_url })).resolves.toBe(true);
+  });
+
+  it.each([
+    "pixabros.com",
+    "/games",
+    "not a url",
+    "ftp://pixabros.com",
+  ])("rejects %s as a site address", async (site_url) => {
+    await expect(schema.isValid({ site_url })).resolves.toBe(false);
+  });
+
+  // A link is usually a page of this site, so a path is what gets typed.
+  it.each([
+    "/games",
+    "/games/dungrid-tactics",
+    "https://example.com/play",
+    "",
+  ])("accepts %s as a link", async (hero_cta_link) => {
+    await expect(schema.isValid({ hero_cta_link })).resolves.toBe(true);
+  });
+
+  it.each([
+    "games",
+    "not a url",
+    "//evil.test/games",
+  ])("rejects %s as a link", async (hero_cta_link) => {
+    await expect(schema.isValid({ hero_cta_link })).resolves.toBe(false);
+  });
+});

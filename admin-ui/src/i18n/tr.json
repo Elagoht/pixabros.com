@@ -101,7 +101,8 @@
       "unknownReference": "Görsellerden biri artık mevcut değil"
     },
     "validation": {
-      "uri": "https:// dahil tam bir adres girin"
+      "uri": "https:// dahil tam bir adres girin",
+      "link": "/ ile başlayan bir yol ya da https:// dahil tam bir adres gir."
     },
     "labels": {
       "site_name": "Site adı",
@@ -130,6 +131,29 @@
       "placeholder": "https://twitter.com/pixabros",
       "add": "Adres ekle",
       "empty": "Henüz adres yok."
+    },
+    "hints": {
+      "site_url": "Sitenin yayınlandığı adres, sonda eğik çizgi olmadan. Her canonical bağlantı ve her paylaşım kartı adresi bundan kurulur. Geliştirirken http://localhost:8080 yazabilirsin.",
+      "site_tagline": "Arama sonucunda okunamayacak kadar kısa kalan sayfa başlıklarına eklenir.",
+      "site_name": "Başlıkta, her sayfa başlığında ve arama sonuçlarında stüdyonun adı olarak görünür.",
+      "twitter_handle": "@ işareti olmadan. Biri sayfayı paylaştığında stüdyoyu künyeye ekler.",
+      "org_logo": "Stüdyonun işareti. Arama sonuçlarında ve kendi görseli olmayan sayfaların paylaşım kartında kullanılır.",
+      "default_og_image": "Kendi görseli olmayan bir sayfa paylaşıldığında görünen resim. 1200x630.",
+      "org_sameas_json": "Stüdyonun başka yerlerdeki profilleri: itch.io, Steam, sosyal hesaplar. Arama motorları siteyi bu hesaplarla eşleştirmek için kullanır.",
+      "org_legal_name": "Site adından farklıysa tescilli unvan. Aynıysa boş bırak.",
+      "org_description": "Stüdyonun ne olduğunu anlatan bir iki cümle. Arama sonuçlarında görünür ve tek başına kısa kalan sayfa açıklamalarını tamamlar.",
+      "org_email": "Bir oyuncunun ya da gazetecinin yazacağı adres. Stüdyonun yapısal verisinde yayımlanır.",
+      "org_founding_date": "YYYY-AA-GG. Yalnızca stüdyonun yapısal verisi için.",
+      "org_founding_location": "Şehir ya da ülke. Yalnızca stüdyonun yapısal verisi için.",
+      "hero_cta_link": "Ana sayfadaki butonun gideceği yer. Bu sitede bir yol (/games) ya da başka bir yerin tam adresi."
+    },
+    "placeholders": {
+      "site_url": "https://pixabros.com",
+      "site_tagline": "Brothers Makes Games",
+      "twitter_handle": "PixaBrosStudio",
+      "org_email": "hello@pixabros.com",
+      "org_founding_date": "2022-06-01",
+      "hero_cta_link": "/games"
     }
   },
   "pages": {

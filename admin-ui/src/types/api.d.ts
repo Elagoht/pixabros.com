@@ -325,7 +325,7 @@ interface ContactSort {
 
 // Mirrors settings.Kind in Go. The kind decides both validation and which
 // control the admin gets.
-type SettingKind = "text" | "uri" | "uri_list" | "media";
+type SettingKind = "text" | "uri" | "uri_list" | "media" | "link";
 
 interface SettingDefinition {
   key: string;

@@ -101,7 +101,8 @@
       "unknownReference": "One of the images no longer exists"
     },
     "validation": {
-      "uri": "Enter a full URL, including https://"
+      "uri": "Enter a full URL, including https://",
+      "link": "Enter a path starting with / or a full address including https://"
     },
     "labels": {
       "site_name": "Site name",
@@ -130,6 +131,29 @@
       "placeholder": "https://twitter.com/pixabros",
       "add": "Add address",
       "empty": "No addresses yet."
+    },
+    "hints": {
+      "site_url": "Where the site is served from, with no trailing slash. Used for every canonical link and every share-card address. Use http://localhost:8080 while developing.",
+      "site_tagline": "Added to a page title that would otherwise be too short to read in a search result.",
+      "site_name": "Shown in the header, in every page title and as the studio's name in search results.",
+      "twitter_handle": "Without the @. Credits the studio when someone shares a page.",
+      "org_logo": "The studio's mark. Used in search results and as the share picture when a page has none of its own.",
+      "default_og_image": "The picture shown when a page with no image of its own is shared. 1200x630.",
+      "org_sameas_json": "The studio's profiles elsewhere: itch.io, Steam, social accounts. Search engines use them to tie the site to those accounts.",
+      "org_legal_name": "The registered name, if it differs from the site name. Leave blank if they are the same.",
+      "org_description": "One or two sentences on what the studio is. Appears in search results, and fills out any page description too short on its own.",
+      "org_email": "The address a player or a journalist should write to. Published in the studio's structured data.",
+      "org_founding_date": "YYYY-MM-DD. Only for the studio's structured data.",
+      "org_founding_location": "A city or a country. Only for the studio's structured data.",
+      "hero_cta_link": "Where the homepage button goes. A path on this site (/games) or a full address elsewhere."
+    },
+    "placeholders": {
+      "site_url": "https://pixabros.com",
+      "site_tagline": "Brothers Makes Games",
+      "twitter_handle": "PixaBrosStudio",
+      "org_email": "hello@pixabros.com",
+      "org_founding_date": "2022-06-01",
+      "hero_cta_link": "/games"
     }
   },
   "pages": {

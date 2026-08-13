@@ -92,6 +92,17 @@ const SettingsForm: FC<SettingsFormProps> = ({
     return translated === `settings.labels.${key}` ? key : translated;
   };
 
+  // Settings are not self-explanatory -- "Studio description" says what shape
+  // the value has, not where it ends up -- so each one may carry a line saying
+  // what it is for. Missing hints simply do not render.
+  const optional = (prefix: string) => (key: string) => {
+    const lookup = `settings.${prefix}.${key}` as TranslationKey;
+    const translated = t(lookup);
+    return translated === lookup ? "" : translated;
+  };
+  const hintFor = optional("hints");
+  const placeholderFor = optional("placeholders");
+
   return (
     <Formik
       initialValues={toFormValues(definitions, values)}
@@ -160,12 +171,21 @@ const SettingsForm: FC<SettingsFormProps> = ({
                 }
 
                 return (
-                  <Input
-                    key={definition.key}
-                    name={definition.key}
-                    type={definition.kind === "uri" ? "url" : "text"}
-                    label={labelFor(definition.key)}
-                  />
+                  <div key={definition.key} className="space-y-1.5">
+                    <Input
+                      name={definition.key}
+                      // A link may be a path, and type="url" would have the
+                      // browser refuse one before the schema is consulted.
+                      type={definition.kind === "uri" ? "url" : "text"}
+                      label={labelFor(definition.key)}
+                      placeholder={placeholderFor(definition.key)}
+                    />
+                    {hintFor(definition.key) && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {hintFor(definition.key)}
+                      </p>
+                    )}
+                  </div>
                 );
               })}
             </Card.Body>

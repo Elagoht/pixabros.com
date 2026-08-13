@@ -26,6 +26,11 @@ const (
 	// list of fields rather than hand-writing JSON.
 	KindURIList Kind = "uri_list"
 	KindMedia   Kind = "media"
+	// KindLink is somewhere to send a visitor: a path on this site, or a full
+	// address elsewhere. It exists because most links an admin writes point at
+	// a page of their own, and demanding the whole address for those means
+	// typing the domain in twice and breaking the link the day it changes.
+	KindLink Kind = "link"
 )
 
 var ErrUnknownGroup = errors.New("unknown settings group")
@@ -97,7 +102,7 @@ var homepage = Group{
 		{Key: "hero_slogan", Kind: KindText},
 		{Key: "hero_description", Kind: KindText, Multiline: true},
 		{Key: "hero_cta_text", Kind: KindText},
-		{Key: "hero_cta_link", Kind: KindURI},
+		{Key: "hero_cta_link", Kind: KindLink},
 		{Key: "portfolio_section_title", Kind: KindText},
 		{Key: "sales_section_title", Kind: KindText},
 		{Key: "members_section_title", Kind: KindText},

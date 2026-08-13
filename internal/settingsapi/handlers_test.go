@@ -138,18 +138,48 @@ func TestUpdate_RejectsAKeyFromTheOtherGroup(t *testing.T) {
 	}
 }
 
-func TestUpdate_ValidatesURIValues(t *testing.T) {
+// The homepage's button usually points at a page of this site, so a path is
+// what an admin writes. A whole address still works, for a button that leads
+// somewhere else.
+func TestUpdate_AcceptsAPathOrAFullURLForALink(t *testing.T) {
 	handlers, _ := setup(t)
 
-	for _, value := range []string{"example.com", "/relative", "not a url"} {
+	for _, value := range []string{"/games", "/games/dungrid-tactics", "https://example.com/play"} {
+		body := `{"values":{"hero_cta_link":"` + value + `"}}`
+		if rec := put(t, handlers, "homepage", body); rec.Code != http.StatusOK {
+			t.Errorf("hero_cta_link %q was rejected: %s", value, rec.Body.String())
+		}
+	}
+}
+
+func TestUpdate_RejectsALinkThatIsNeither(t *testing.T) {
+	handlers, _ := setup(t)
+
+	for _, value := range []string{
+		"example.com",
+		"games",
+		"not a url",
+		// A protocol-relative address is somewhere else wearing a path's
+		// clothes, which is not what an admin means by a path.
+		"//evil.test/games",
+	} {
 		body := `{"values":{"hero_cta_link":"` + value + `"}}`
 		if rec := put(t, handlers, "homepage", body); rec.Code != http.StatusBadRequest {
 			t.Errorf("hero_cta_link %q: status = %d, want %d", value, rec.Code, http.StatusBadRequest)
 		}
 	}
+}
 
-	if rec := put(t, handlers, "homepage", `{"values":{"hero_cta_link":"https://example.com/play"}}`); rec.Code != http.StatusOK {
-		t.Errorf("a full URL was rejected: %s", rec.Body.String())
+// A site address is a whole address, and a local one is still a whole address:
+// the studio runs the site on localhost while building it.
+func TestUpdate_AcceptsALocalSiteAddress(t *testing.T) {
+	handlers, _ := setup(t)
+
+	for _, value := range []string{"http://localhost:8080", "https://pixabros.com"} {
+		body := `{"values":{"site_url":"` + value + `"}}`
+		if rec := put(t, handlers, "site", body); rec.Code != http.StatusOK {
+			t.Errorf("site_url %q was rejected: %s", value, rec.Body.String())
+		}
 	}
 }
 

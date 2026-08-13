@@ -4,10 +4,10 @@
  *
  * The site is what is on the television. The page is a dark room lit by a
  * cathode ray tube, the header is the channel banner the set draws over the
- * picture, and the colours are the ones a tube actually makes: phosphor green
- * and the amber of a power lamp. Nothing here is picked from a palette
- * generator -- these values were already inside the console and the screen the
- * games are shown in, and the frame now speaks the same language as them.
+ * picture, and the whole thing is monochrome amber: the P3 phosphor an amber
+ * terminal actually glows with. One hue for everything the screen draws, and a
+ * single red for the lamp on the machine, which is the one light in the room
+ * that is not the screen.
  *
  * One world, deliberately: there is no light theme. A room lit by a screen
  * makes no sense with the lights on, and half a second world is worse than one
@@ -27,14 +27,18 @@
   --color-text: #dfe5e0;
   --color-text-muted: #7f9187;
 
-  /* The phosphor the screen already glows with, and the lamp on the console. */
-  --color-accent: #4ade80;
-  --color-accent-strong: #86ffb0;
-  --color-amber: #ffb020;
+  /* Amber phosphor, and the red lamp on the machine. The lamp is the exact
+     red the console further down the page already uses, so the two lights in
+     the room are the same light. */
+  --color-accent: #ffb642;
+  --color-accent-strong: #ffd694;
+  --color-lamp: #e5312a;
 
-  --color-success: #4ade80;
-  --color-warning: #ffb020;
-  --color-error: #ff5c5c;
+  /* A monochrome screen says "good" by being brighter, not by turning green.
+     Only a fault gets a colour of its own. */
+  --color-success: #ffd694;
+  --color-warning: #ffb642;
+  --color-error: #ff6b5c;
 
   /* Archivo carries a width axis as well as weight, which is what lets the
      headings be condensed like a broadcast caption without a second file.
@@ -114,12 +118,12 @@ body {
   background-image:
     radial-gradient(
       ellipse 90% 42% at 50% 0%,
-      rgb(74 222 128 / 0.09),
+      rgb(255 182 66 / 0.075),
       transparent 72%
     ),
     repeating-linear-gradient(
       90deg,
-      rgb(223 229 224 / 0.016) 0 1px,
+      rgb(255 214 148 / 0.018) 0 1px,
       transparent 1px 3px
     );
   background-attachment: fixed;
@@ -286,12 +290,12 @@ a:hover {
   color: var(--color-accent);
 }
 
-/* The power lamp, which is amber because that is the colour of the one on the
-   machine drawn further down the page. */
+/* The power lamp, in the red the machine drawn further down the page uses: the
+   one light in the room that is not the screen. */
 .osd__lamp {
-  background-color: var(--color-amber);
+  background-color: var(--color-lamp);
   border-radius: 50%;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-amber) 70%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-lamp) 70%, transparent);
   flex: none;
   height: 0.45rem;
   width: 0.45rem;
@@ -772,7 +776,7 @@ a:hover {
   border: 0;
   border-radius: 0;
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
-  color: #04120a;
+  color: #180d00;
   display: inline-block;
   font-family: var(--font-display);
   font-stretch: 86%;
@@ -790,7 +794,7 @@ a:hover {
 .button:focus-visible {
   background-color: var(--color-accent-strong);
   box-shadow: 0 0 22px -2px color-mix(in srgb, var(--color-accent) 55%, transparent);
-  color: #04120a;
+  color: #180d00;
 }
 
 /* Tags ------------------------------------------------------------------- */
@@ -1452,7 +1456,7 @@ a:hover {
   aspect-ratio: 16 / 9;
   margin-inline: auto;
   max-width: 1280px;
-  background: radial-gradient(circle at 50% 40%, #14301f, #050806 75%);
+  background: radial-gradient(circle at 50% 40%, #2b1c06, #050806 75%);
   border: 2px solid #0b0d10;
   border-radius: 1rem;
   display: flex;
@@ -1537,10 +1541,11 @@ a:hover {
 }
 
 .crt__message {
-  color: #4ade80;
-  font-size: clamp(0.75rem, 0.5rem + 1.5vw, 1.1rem);
+  color: var(--color-accent);
+  font-family: var(--font-osd);
+  font-size: clamp(0.9rem, 0.6rem + 1.6vw, 1.35rem);
   letter-spacing: 0.2em;
-  text-shadow: 0 0 12px rgb(74 222 128 / 0.6);
+  text-shadow: 0 0 12px rgb(255 182 66 / 0.55);
 }
 
 /* Screen controls, sat on the bezel where a real set's knobs would be. */
@@ -2361,29 +2366,33 @@ a:hover {
   text-align: center;
 }
 
+/* The one control drawn on the tube itself, so it is set in the terminal face
+   like everything else the screen writes. Square, because the set drew it. */
 .crt__start {
   background-color: var(--color-accent);
   border: 0;
-  border-radius: 999px;
-  color: #12040f;
+  border-radius: 0;
+  color: #180d00;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0.7rem 1.6rem;
+  font-family: var(--font-osd);
+  font-size: 1.15rem;
+  letter-spacing: 0.18em;
+  padding: 0.5rem 1.7rem;
   text-transform: uppercase;
 }
 
 .crt__start:hover,
 .crt__start:focus-visible {
   background-color: var(--color-accent-strong);
-  color: #fff;
+  box-shadow: 0 0 24px -2px color-mix(in srgb, var(--color-accent) 60%, transparent);
+  color: #180d00;
 }
 
-/* Always on a dark screen, so this colour is fixed rather than themed. */
+/* Always on a dark screen, and written by the set, so it is amber like
+   everything else the set writes. */
 .crt__standby-note {
-  color: rgb(255 255 255 / 0.55);
+  color: color-mix(in srgb, var(--color-accent) 62%, transparent);
+  font-family: var(--font-osd);
   font-size: 0.75rem;
   margin: 0;
   padding-inline: 1rem;

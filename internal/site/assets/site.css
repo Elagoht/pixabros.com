@@ -2251,7 +2251,14 @@ a:hover {
 .game-body {
   display: grid;
   gap: 2.5rem;
-  grid-template-columns: 1fr;
+  /* minmax(0, 1fr) rather than 1fr.
+     A bare 1fr is minmax(auto, 1fr), and a grid column with an auto minimum
+     refuses to be narrower than its contents. The trailer carries an
+     aspect-ratio, which gives it an automatic minimum size of its own, and on
+     a phone that minimum pushed the column -- and the whole page with it --
+     past the edge of the screen. The wide layout below already said minmax(0,
+     ...), which is why this only ever showed up on a phone. */
+  grid-template-columns: minmax(0, 1fr);
   margin-top: 3rem;
 }
 
@@ -2259,6 +2266,13 @@ a:hover {
   .game-body:has(.game-body__side) {
     grid-template-columns: minmax(0, 1fr) 19rem;
   }
+}
+
+/* Nothing inside the column may set its width: the column is what the page
+   has room for, and its contents fit into that. */
+.game-body__main,
+.prose {
+  min-width: 0;
 }
 
 .game-body__side {
@@ -2686,6 +2700,7 @@ a:hover {
    in from. */
 .embed--video {
   aspect-ratio: 16 / 9;
+  max-width: 100%;
   background-color: #0b0d11;
   border-radius: var(--radius);
   overflow: hidden;

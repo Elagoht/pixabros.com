@@ -85,6 +85,14 @@ say "Checking the server"
 REMOTE_USER=$("${SSH_CMD[@]}" "$REMOTE" "systemctl show -p User --value $SERVICE" 2>/dev/null || true)
 [ -n "$REMOTE_USER" ] || die "No $SERVICE service on $REMOTE. Run deploy/install.sh there first."
 
+# rsync has to exist at both ends. Finding out at the far end mid-transfer is
+# a confusing failure, and this is a fixable one: say what fixes it.
+if ! "${SSH_CMD[@]}" "$REMOTE" "command -v rsync" >/dev/null 2>&1; then
+  warn "$REMOTE has no rsync. Install it there and run this again:"
+  warn "    ssh -p $SSH_PORT $REMOTE 'sudo apt update && sudo apt install -y rsync'"
+  die "Nothing was copied."
+fi
+
 # Where the staged copy lands. Resolved now, as the login user: the move below
 # runs under sudo, where $HOME is root's and the staged files are not.
 REMOTE_HOME=$("${SSH_CMD[@]}" "$REMOTE" 'printf %s "$HOME"')

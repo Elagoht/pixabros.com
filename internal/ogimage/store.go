@@ -69,9 +69,23 @@ func IsGenerated(path string) bool {
 	return strings.HasPrefix(path, generatedPrefix)
 }
 
-// Create draws the title and stores the result.
-func (s *Store) Create(title string) (media.Media, error) {
-	encoded, err := GenerateWebP(title, s.logo())
+// gameName resolves the game a post is about, for the band above the title.
+// A post with no game, or one pointing at a game that has since gone, simply
+// gets the mark on its own.
+func (s *Store) gameName(gameID *string) string {
+	if s.db == nil || gameID == nil || *gameID == "" {
+		return ""
+	}
+	var title string
+	if err := s.db.QueryRow(`SELECT title FROM games WHERE id = ?;`, *gameID).Scan(&title); err != nil {
+		return ""
+	}
+	return title
+}
+
+// Create draws the card for a title and stores the result.
+func (s *Store) Create(title string, gameID *string) (media.Media, error) {
+	encoded, err := GenerateWebP(title, s.logo(), s.gameName(gameID))
 	if err != nil {
 		return media.Media{}, fmt.Errorf("draw og image: %w", err)
 	}
@@ -100,7 +114,7 @@ func (s *Store) Create(title string) (media.Media, error) {
 // the generated default, and a title edit must not throw that away. Otherwise
 // it draws a new one and deletes the old, so a renamed post never leaves its
 // previous preview behind.
-func (s *Store) Refresh(currentID *string, title string) (*string, error) {
+func (s *Store) Refresh(currentID *string, title string, gameID *string) (*string, error) {
 	if currentID != nil {
 		existing, err := s.repo.FindByID(*currentID)
 		if err == nil && !IsGenerated(existing.Path) {
@@ -108,7 +122,7 @@ func (s *Store) Refresh(currentID *string, title string) (*string, error) {
 		}
 	}
 
-	image, err := s.Create(title)
+	image, err := s.Create(title, gameID)
 	if err != nil {
 		return nil, err
 	}

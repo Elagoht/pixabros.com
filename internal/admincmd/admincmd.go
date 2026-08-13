@@ -21,7 +21,8 @@ import (
 const usage = `usage:
   pixabros                                        start the server
   pixabros create-admin   -username <u> -password <p>
-  pixabros reset-password -username <u> -password <p>`
+  pixabros reset-password -username <u> -password <p>
+  pixabros redraw-og-images                       redraw the generated devlog cards`
 
 // Run executes an operator command.
 //
@@ -49,6 +50,11 @@ func Run(args []string) (handled bool) {
 			os.Exit(1)
 		}
 		fmt.Println("password reset:", username)
+	case "redraw-og-images":
+		if err := redrawOGImages(); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 	default:
@@ -72,8 +78,8 @@ func parseCredentials(name string, args []string) (username, password string) {
 	return *u, *p
 }
 
-// openDB opens the configured database and applies migrations, so both
-// subcommands work against a database that may not exist yet.
+// openDB opens the configured database and applies migrations, so every
+// subcommand works against a database that may not exist yet.
 func openDB() (*sql.DB, error) {
 	cfg := config.Load()
 

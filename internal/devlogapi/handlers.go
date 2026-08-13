@@ -166,7 +166,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	// exists. A failure here is not worth losing the post over: the picture is
 	// regenerated on the next edit.
 	if h.og != nil {
-		if imageID, err := h.og.Refresh(nil, post.Title); err == nil {
+		if imageID, err := h.og.Refresh(nil, post.Title, post.GameID); err == nil {
 			if updated, err := h.repo.Update(post.ID, devlog.UpdateInput{
 				Title:           post.Title,
 				ContentMarkdown: post.ContentMarkdown,
@@ -257,7 +257,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 	// replaces so old previews do not pile up.
 	ogImageID := req.OGImageID
 	if h.og != nil && ogImageID == nil && req.Title != existing.Title {
-		if refreshed, err := h.og.Refresh(existing.OGImageID, req.Title); err == nil {
+		if refreshed, err := h.og.Refresh(existing.OGImageID, req.Title, req.GameID); err == nil {
 			ogImageID = refreshed
 		}
 	} else if ogImageID == nil {

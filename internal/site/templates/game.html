@@ -29,20 +29,23 @@
 
   <div class="game-body">
     <div class="game-body__main">
-      {{if .Data.Video}}
-        <div class="embed embed--video">
-          <iframe
-            src="{{.Data.Video}}"
-            title="{{.Data.Title}} trailer"
-            loading="lazy"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allow="clipboard-write; encrypted-media; picture-in-picture"
-            allowfullscreen
-          ></iframe>
+      {{if or .Data.Video .Data.Full}}
+        <div class="prose">
+          {{if .Data.Video}}
+            <div class="embed embed--video">
+              <iframe
+                src="{{.Data.Video}}"
+                title="{{.Data.Title}} trailer"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allow="clipboard-write; encrypted-media; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>
+          {{end}}
+          {{.Data.Full}}
         </div>
       {{end}}
-
-      {{if .Data.Full}}<div class="prose">{{.Data.Full}}</div>{{end}}
     </div>
 
     {{if .Data.HasSideInfo}}
@@ -73,7 +76,26 @@
             <h2 class="shots__title">Screenshots</h2>
             <ul class="shots__list">
               {{range .Data.Shots}}
-                <li><img src="{{.URL}}" alt="{{.Alt}}" loading="lazy" /></li>
+                <li>
+                  {{/* A screenshot in a narrow column is too small to read, so
+                       it opens full size. Without scripting it stays an
+                       ordinary image. */}}
+                  <button
+                    class="shot"
+                    type="button"
+                    data-zoom-src="{{.URL}}"
+                    data-zoom-alt="{{.Alt}}"
+                    aria-label="View screenshot full size"
+                  >
+                    <img src="{{.URL}}" alt="{{.Alt}}" loading="lazy" />
+                    <span class="shot__zoom" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <circle cx="11" cy="11" r="6.5" />
+                        <path d="M15.8 15.8 21 21M11 8.5v5M8.5 11h5" />
+                      </svg>
+                    </span>
+                  </button>
+                </li>
               {{end}}
             </ul>
           </div>
@@ -81,6 +103,13 @@
       </aside>
     {{end}}
   </div>
+
+  <dialog class="lightbox" data-zoom-dialog aria-label="Screenshot">
+    <img class="lightbox__image" data-zoom-image src="" alt="" />
+    <button class="lightbox__close" type="button" data-zoom-close aria-label="Close">
+      &times;
+    </button>
+  </dialog>
 
   {{if .Data.Links}}
     {{/* The stores sit at the foot of the page, side by side: they are where

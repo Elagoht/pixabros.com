@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"strings"
 	"testing"
+
+	"pixabros/internal/id"
 )
 
 // setGameMeta fills in the three fields on an already-seeded game, so the
@@ -338,5 +340,99 @@ func TestRenderGame_MarksTheStoreLinks(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("the store list is missing %q", want)
 		}
+	}
+}
+
+// A screenshot in the narrow side column is too small to read, so it opens
+// full size the way an award's badge does.
+func TestRenderGame_OpensAScreenshotFullSize(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Shot", "shot", true, false, "")
+	shotID := seedMedia(t, conn, "media/screenshot/2026-one.webp", "A screenshot")
+	if _, err := conn.Exec(
+		`INSERT INTO game_screenshots (id, game_id, media_id, display_order)
+		 VALUES (?, ?, ?, 0);`, id.New(), gameID, shotID,
+	); err != nil {
+		t.Fatalf("seed screenshot: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "shot")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	for _, want := range []string{
+		"data-zoom-src=/media/screenshot/2026-one.webp",
+		"data-zoom-dialog",
+		"lightbox.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the screenshot does not open full size: missing %q", want)
+		}
+	}
+	// Without scripting the picture is still on the page.
+	if !strings.Contains(body, "src=/media/screenshot/2026-one.webp") {
+		t.Error("the screenshot itself is not on the page")
+	}
+}
+
+// The page leads with the OG image, which is drawn at a wide banner's shape.
+// The tab icon stays the portrait cover.
+func TestRenderGame_LeadsWithTheOGImageAndKeepsTheCoverAsIcon(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Both", "both", true, false, "")
+	ogID := seedMedia(t, conn, "media/og/2026-wide.webp", "Wide art")
+	coverID := seedMedia(t, conn, "media/cd/2026-tall.webp", "Tall art")
+	if _, err := conn.Exec(
+		`UPDATE games SET og_image_id = ?, cd_cover_art_id = ? WHERE id = ?;`,
+		ogID, coverID, gameID,
+	); err != nil {
+		t.Fatalf("attach art: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "both")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	if !strings.Contains(body, `class=game-cover><img src=/media/og/2026-wide.webp`) {
+		t.Errorf("the page does not lead with the OG image: %s", body)
+	}
+	if !strings.Contains(body, "rel=icon href=/media/cd/2026-tall.webp") {
+		t.Error("the tab icon is not the cover")
+	}
+}
+
+// The trailer sits at the head of the description rather than in a block of
+// its own, so the words read as being about the thing above them.
+func TestRenderGame_PutsTheTrailerInsideTheDescription(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Both", "both", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET video_url = ?, full_description = 'Some prose.' WHERE id = ?;`,
+		"https://youtu.be/9mjjowHX1-g", gameID,
+	); err != nil {
+		t.Fatalf("set video: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "both")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+
+	prose := body[strings.Index(body, "class=prose"):]
+	player := strings.Index(prose, "embed--video")
+	words := strings.Index(prose, "Some prose.")
+	if player < 0 || words < 0 {
+		t.Fatalf("player at %d, words at %d, wanted both inside the description", player, words)
+	}
+	if player > words {
+		t.Error("the trailer comes after the description rather than heading it")
 	}
 }

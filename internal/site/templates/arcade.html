@@ -124,12 +124,16 @@
                 {{end}}
                 {{if .Price}}<p class="jewel__price">{{.Price}}</p>{{end}}
 
-                <ul class="jewel__links">
-                  <li><a href="/games/{{.Slug}}">Full details</a></li>
-                  {{range .Links}}
-                    <li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>
-                  {{end}}
-                </ul>
+                {{/* One way out of the case, to the game's own page. The
+                     stores live there, at the foot of it: a case is for
+                     deciding whether you are interested, not for buying
+                     from. */}}
+                <a class="jewel__more" href="/games/{{.Slug}}">
+                  Examine
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M5 12h13M13 6.5l5.5 5.5L13 17.5" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>

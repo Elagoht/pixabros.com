@@ -104,6 +104,14 @@ svg {
   max-width: 100%;
 }
 
+/* The hidden attribute is how the scripts show and hide things, and the user
+   agent expresses it as display: none -- which any author display rule beats.
+   A flex container with hidden set stayed on screen, so this states it once
+   for the whole site rather than per component. */
+[hidden] {
+  display: none !important;
+}
+
 h1,
 h2,
 h3 {
@@ -1621,12 +1629,37 @@ a:hover {
   margin-top: 0.9rem;
 }
 
-.jewel__links {
-  display: grid;
+.jewel__more {
+  align-items: center;
+  align-self: flex-start;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 999px;
+  color: var(--case-ink);
+  display: inline-flex;
   gap: 0.4rem;
-  list-style: none;
   margin-top: 1.25rem;
-  padding: 0;
+  padding: 0.45rem 1.1rem;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.jewel__more:hover,
+.jewel__more:focus-visible {
+  background-color: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.5);
+  color: var(--case-ink);
+}
+
+.jewel__more svg {
+  fill: none;
+  height: 0.9rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 0.9rem;
 }
 
 .jewel__close {
@@ -1855,10 +1888,59 @@ a:hover {
   }
 }
 
-.shots img {
+.shot {
+  appearance: none;
+  background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  cursor: zoom-in;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.15s ease;
   width: 100%;
+}
+
+.shot:hover,
+.shot:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.shot img {
+  width: 100%;
+}
+
+.shot__zoom {
+  align-items: center;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 999px;
+  color: #f4f4f5;
+  display: flex;
+  inset-inline-start: 50%;
+  opacity: 0;
+  padding: 0.4rem;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.shot__zoom svg {
+  fill: none;
+  height: 1.1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+  width: 1.1rem;
+}
+
+.shot:hover .shot__zoom,
+.shot:focus-visible .shot__zoom {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 /* Stores, at the foot of the page and side by side. */
@@ -2042,6 +2124,12 @@ a:hover {
 
 .prose > * + * {
   margin-top: 1.1rem;
+}
+
+/* A player is a different kind of thing from a paragraph, so the words below
+   it start further down than they would after more words. */
+.prose > .embed--video {
+  margin-bottom: 1.75rem;
 }
 
 .prose h2 {

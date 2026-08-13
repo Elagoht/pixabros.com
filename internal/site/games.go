@@ -211,9 +211,13 @@ type gamePage struct {
 	Short   string
 	// Full is rendered markdown, the same pipeline a devlog post goes through:
 	// raw HTML is dropped, and a YouTube link on its own line becomes a player.
-	Full        template.HTML
-	Video       string
+	Full  template.HTML
+	Video string
+	// Cover leads the page, so it is the OG image: the one drawn at a wide
+	// banner's shape. Icon is the portrait artwork, which is what a browser
+	// tab wants.
 	Cover       imageView
+	Icon        imageView
 	Shots       []imageView
 	Playable    bool
 	PlayURL     string
@@ -286,7 +290,8 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Short:    game.ShortDescription,
 		Full:     full,
 		Video:    videoEmbedURL(game.VideoURL),
-		Cover:    lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
+		Cover:    lookupImage(images, game.OGImageID, game.Title),
+		Icon:     lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
 		Shots:    shotViews,
 		Playable: game.IsBrowserPlayable,
 		// The build is served straight from disk at /play/{slug}/, which is why
@@ -295,8 +300,11 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Price:   priceFor(game),
 		Links:   parseGameLinks(game.ExternalLinksJSON),
 	}
-	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" || len(page.Links) > 0 ||
-		page.Released != "" || page.Genre != ""
+	// Everything the side column can hold. The screenshots belong here too:
+	// leaving them out meant a game whose only extra was screenshots rendered
+	// no column, and so no screenshots.
+	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" ||
+		page.Released != "" || page.Genre != "" || len(page.Shots) > 0
 
 	html, err := s.renderer.render("game.html", pageData{
 		Title:       game.Title + " · " + chrome.Name,
@@ -304,10 +312,13 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Path:        "/" + PageGames,
 		// The game's own cover in the tab, so a row of open game pages is
 		// told apart by artwork rather than by a truncated title.
-		Favicon: page.Cover.URL,
-		Scripts: []string{s.renderer.bundle.URL("arcade.js")},
-		Site:    chrome,
-		Data:    page,
+		Favicon: page.Icon.URL,
+		Scripts: []string{
+			s.renderer.bundle.URL("arcade.js"),
+			s.renderer.bundle.URL("lightbox.js"),
+		},
+		Site: chrome,
+		Data: page,
 	})
 	if err != nil {
 		return nil, nil, err

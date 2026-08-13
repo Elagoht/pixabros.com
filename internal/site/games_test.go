@@ -119,11 +119,18 @@ func TestRenderArcade_OpenCaseHasBothPages(t *testing.T) {
 		"jewel__tray",         // the tray the disc sits in
 		"disc__hole",          // which is a disc, not a square
 		"A short blurb.",
-		"itch.io",
+		// One way out of the case, to the game's own page.
+		"href=/games/shelf-game",
 	} {
 		if !strings.Contains(dialog, want) {
 			t.Errorf("the open case is missing %q", want)
 		}
+	}
+
+	// The stores live on the game's page, at the foot of it. A case is for
+	// deciding whether you are interested, not for buying from.
+	if strings.Contains(dialog, "itch.io/x") {
+		t.Error("the open case still lists the stores")
 	}
 }
 

@@ -314,7 +314,11 @@ func TestRenderLanding_MemberTagsSitBetweenNameAndBio(t *testing.T) {
 	conn := setupTestDB(t)
 	seedMember(t, conn, "Someone", "Code, Music", "A short biography line.", true)
 
-	html, _ := renderLandingPage(t, newTestSite(t, conn))
+	page, _ := renderLandingPage(t, newTestSite(t, conn))
+	// The order being tested is the order on screen, so the head is cut away:
+	// the structured data there names the same member for a crawler, in an
+	// order that has nothing to do with the layout.
+	html := page[strings.Index(page, "<body"):]
 
 	name := strings.Index(html, "Someone")
 	tag := strings.Index(html, "Music")

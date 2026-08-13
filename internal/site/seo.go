@@ -15,11 +15,14 @@ import (
 // configured is the shape: a title is always built the same way, and a page
 // always states its own address.
 
-// Title length. Search engines truncate a long title and skip a short one, so
-// the rule is a floor as well as a ceiling.
+// Title and description lengths. A search engine truncates what is too long and
+// skips what says too little, so both are a floor as well as a ceiling.
 const (
 	titleMinLength = 65
 	titleMaxLength = 100
+
+	descriptionMinLength = 75
+	descriptionMaxLength = 155
 )
 
 // defaultTagline is what a title too short to be useful is padded with when the
@@ -49,6 +52,36 @@ func buildTitle(siteName, tagline, subject string) string {
 		title += " | " + tagline
 	}
 	return truncateRunes(title, titleMaxLength)
+}
+
+// buildDescription assembles the sentence under a page's title in a result.
+//
+// A page's own summary comes first, because it is the one that answers what
+// this page is. A summary too short to be worth showing is followed by what the
+// studio says about itself, and then by a line built from what is always known,
+// so a page is never published with two words under it.
+func buildDescription(subject, siteName, studioDescription string) string {
+	if siteName == "" {
+		siteName = "Pixabros"
+	}
+
+	text := strings.TrimSpace(subject)
+	for _, extra := range []string{
+		strings.TrimSpace(studioDescription),
+		"Games, devlogs and awards from the " + siteName + " studio.",
+	} {
+		if utf8.RuneCountInString(text) >= descriptionMinLength {
+			break
+		}
+		// Never say the same thing twice: a short page summary is often a
+		// sentence the studio's own description already contains.
+		if extra == "" || strings.Contains(text, extra) {
+			continue
+		}
+		text = strings.TrimSpace(text+" ") + " " + extra
+		text = strings.TrimSpace(text)
+	}
+	return truncateRunes(text, descriptionMaxLength)
 }
 
 // gameSubject names a game the way a search result should read it.
@@ -105,15 +138,38 @@ func canonicalURL(baseURL, path string) string {
 
 // absoluteURL turns a site-relative path into one a crawler or a chat client
 // can fetch. Share cards and structured data are read off-site, where a
-// relative path means nothing.
+// relative path is worth less.
+//
+// With no site address configured the path is returned as it is rather than
+// dropped: most scrapers resolve a relative image against the page they found
+// it on, and a picture that some of them miss beats no picture at all.
 func absoluteURL(baseURL, path string) string {
-	if path == "" || baseURL == "" {
+	if path == "" {
 		return ""
 	}
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+	if baseURL == "" ||
+		strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
 	}
 	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
+}
+
+// nodeID identifies a node in the graph.
+//
+// With a site address configured these are absolute, which is what lets another
+// site reference them. Without one they are document-relative fragments, which
+// JSON-LD resolves against the page itself: less useful than an absolute id,
+// and far better than publishing no graph at all.
+func (c SiteChrome) nodeID(fragment string) string {
+	return c.URL + fragment
+}
+
+// fallbackID keeps a node identifiable when there is no address to name it by.
+func fallbackID(url, fragment string) string {
+	if url == "" {
+		return fragment
+	}
+	return url
 }
 
 // jsonLD is one block of structured data, ready for the template.
@@ -155,7 +211,7 @@ func (s schema) set(key string, value any) {
 func (c SiteChrome) organization() schema {
 	org := schema{
 		"@type": "Organization",
-		"@id":   c.URL + "#organization",
+		"@id":   c.nodeID("#organization"),
 		"name":  c.Name,
 	}
 	org.set("url", c.URL)
@@ -186,9 +242,9 @@ func (c SiteChrome) organization() schema {
 func (c SiteChrome) website() schema {
 	site := schema{
 		"@type":     "WebSite",
-		"@id":       c.URL + "#website",
+		"@id":       c.nodeID("#website"),
 		"name":      c.Name,
-		"publisher": schema{"@id": c.URL + "#organization"},
+		"publisher": schema{"@id": c.nodeID("#organization")},
 	}
 	site.set("url", c.URL)
 	site.set("description", c.Description)

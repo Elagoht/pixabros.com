@@ -146,22 +146,47 @@ func TestPages_AreCanonicalToThemselves(t *testing.T) {
 	}
 }
 
-// With no address configured there is nothing truthful to point at, so nothing
-// is claimed rather than a relative or invented one being published.
-func TestPages_OmitTheCanonicalWithoutASiteAddress(t *testing.T) {
+// An unset site address costs the canonical link and nothing else.
+//
+// A canonical pointing at a guess is worse than none, so that one is dropped.
+// Everything that does not need an address -- the studio's name, its logo, the
+// share card's picture -- is published either way. An optional setting must not
+// silently switch off features that do not depend on it.
+func TestPages_DegradeWithoutASiteAddress(t *testing.T) {
 	conn := setupTestDB(t)
-	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	logoID := seedMedia(t, conn, "media/org_logo/2026-logo.webp", "The logo")
+	seedSiteSettings(t, conn, map[string]string{
+		"site_name":       "Pixabros",
+		"org_description": "A two brother game studio.",
+		"org_logo":        logoID,
+	})
 
 	html, _, err := newTestSite(t, conn).renderAwards(PageAwards)
 	if err != nil {
 		t.Fatalf("renderAwards() error = %v", err)
 	}
 	body := string(html)
+
 	if strings.Contains(body, "rel=canonical") {
 		t.Error("a canonical link was published with no site address to build it from")
 	}
-	if strings.Contains(body, "application/ld+json") {
-		t.Error("structured data was published with no stable addresses to identify its nodes")
+	if !strings.Contains(body, "og:image") {
+		t.Error("the share card lost its picture along with the address")
+	}
+
+	org := nodeOfType(graphOf(t, body), "Organization")
+	if org == nil {
+		t.Fatal("the studio was not published at all")
+	}
+	if org["name"] != "Pixabros" || org["description"] != "A two brother game studio." {
+		t.Errorf("the studio was published without what it does know: %v", org)
+	}
+	// A document-relative id still lets the nodes reference each other.
+	if org["@id"] != "#organization" {
+		t.Errorf("organization @id = %v, want a document-relative fragment", org["@id"])
+	}
+	if _, present := org["url"]; present {
+		t.Errorf("a URL was published with no address to build one from: %v", org["url"])
 	}
 }
 
@@ -413,5 +438,60 @@ func everyPage(site *Site) map[string]func(string) ([]byte, []string, error) {
 		PageAwards:              site.renderAwards,
 		PageContact:             site.renderContact,
 		PageContactSent:         site.renderContactSent,
+	}
+}
+
+func TestBuildDescription_PadsOnlyAShortOne(t *testing.T) {
+	studio := "A two brother game studio making small, sharp games."
+
+	short := buildDescription("Get in touch.", "Pixabros", studio)
+	if !strings.Contains(short, studio) {
+		t.Errorf("a short description was not padded: %q", short)
+	}
+
+	long := "Dungrid Tactics is a fully deterministic five versus five turn-based " +
+		"tactics game played on two grids, with no dice rolls anywhere."
+	if got := buildDescription(long, "Pixabros", studio); strings.Contains(got, studio) {
+		t.Errorf("a description already long enough was padded anyway: %q", got)
+	}
+}
+
+// Padding must not make a page say the same sentence twice, which is what
+// happens when a page's own summary already is the studio's description.
+func TestBuildDescription_DoesNotRepeatItself(t *testing.T) {
+	studio := "A two brother game studio."
+	got := buildDescription(studio, "Pixabros", studio)
+	if strings.Count(got, studio) != 1 {
+		t.Errorf("the studio's description was repeated: %q", got)
+	}
+}
+
+// The rule holds for every page, the same way the title rule does.
+func TestPages_DescriptionsObeyTheLengthRule(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSEOSettings(t, conn)
+	seedGame(t, conn, "Dungrid Tactics", "dungrid-tactics", true, false, "Tactics")
+	seedMember(t, conn, "Someone", "Code", "A bio.", true)
+	seedAward(t, conn, "A Prize", "A Jury", "2026-01-01", "", nil)
+	seedPost(t, conn, "A Post", "a-post", "Body text.", "2026-01-02", true, nil)
+
+	pattern := regexp.MustCompile(`<meta name=description content="([^"]*)"`)
+
+	site := newTestSite(t, conn)
+	for key, render := range everyPage(site) {
+		html, _, err := render(key)
+		if err != nil {
+			t.Fatalf("render %s: %v", key, err)
+		}
+
+		match := pattern.FindStringSubmatch(string(html))
+		if match == nil {
+			t.Errorf("%s has no description at all", key)
+			continue
+		}
+		if n := utf8.RuneCountInString(match[1]); n < descriptionMinLength || n > descriptionMaxLength {
+			t.Errorf("%s description is %d characters, want %d to %d: %q",
+				key, n, descriptionMinLength, descriptionMaxLength, match[1])
+		}
 	}
 }

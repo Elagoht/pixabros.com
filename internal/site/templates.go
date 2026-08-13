@@ -186,6 +186,7 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 	// Applied here rather than by each page, so the title rule and the share
 	// card's fallbacks hold for every page including ones added later.
 	data.Title = buildTitle(data.Site.Name, data.Site.Tagline, data.Title)
+	data.Description = buildDescription(data.Description, data.Site.Name, data.Site.Description)
 	if data.OGType == "" {
 		data.OGType = "website"
 	}

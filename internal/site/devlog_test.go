@@ -113,14 +113,27 @@ func TestRenderDevlogPost_DropsRawHTMLFromTheBody(t *testing.T) {
 	}
 	body := string(html)
 
+	// Inside the post's own rendered body nothing from the source may have
+	// become a tag at all. This is the assertion that matters: it is the only
+	// region the post's markdown reaches.
+	prose := body[strings.Index(body, "class=prose"):]
+	if end := strings.Index(prose, "</div>"); end >= 0 {
+		prose = prose[:end]
+	}
+	for _, tag := range []string{"<script", "<img", "onerror"} {
+		if strings.Contains(prose, tag) {
+			t.Errorf("%q from post content became markup: %s", tag, prose)
+		}
+	}
+
+	// And nowhere in the document may a bare <script> appear: everything the
+	// site emits itself carries a src or a type, so an attribute-less one
+	// could only have come through as raw HTML.
 	if strings.Contains(body, "<script>") {
 		t.Error("a script tag from post content reached the page")
 	}
-	if strings.Contains(body, "onerror=alert") {
+	if strings.Contains(body, "onerror=") {
 		t.Error("an inline event handler from post content reached the page")
-	}
-	if strings.Contains(body, "<script") {
-		t.Error("a script fragment survived into the page, meta tags included")
 	}
 	if !strings.Contains(body, "Hello") {
 		t.Error("the surrounding prose was lost")

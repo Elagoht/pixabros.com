@@ -19,12 +19,11 @@ import (
 // the emptiness check lives in one place.
 
 // baseNodes are the studio and the site, published on every page.
+//
+// These do not depend on the site's address being configured: an Organization
+// with a name, a logo and a description is worth publishing whether or not it
+// can also state its own URL.
 func baseNodes(chrome SiteChrome) []schema {
-	if chrome.URL == "" {
-		// With no address configured there are no stable @id values to hang a
-		// graph off, and a graph of anonymous nodes is worse than none.
-		return nil
-	}
 	return []schema{chrome.organization(), chrome.website()}
 }
 
@@ -33,20 +32,17 @@ func (c SiteChrome) page(path, name, description string) schema {
 	url := canonicalURL(c.URL, path)
 	node := schema{
 		"@type":    "WebPage",
-		"@id":      url,
-		"url":      url,
+		"@id":      fallbackID(url, "#webpage"),
 		"name":     name,
-		"isPartOf": schema{"@id": c.URL + "#website"},
+		"isPartOf": schema{"@id": c.nodeID("#website")},
 	}
+	node.set("url", url)
 	node.set("description", description)
 	return node
 }
 
 func landingSchema(chrome SiteChrome, page landingPage) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	// The team is the studio's own people, so they are attached to the
 	// organization rather than floating as unrelated Person nodes.
@@ -82,12 +78,12 @@ func videoGame(chrome SiteChrome, game games.Game, imageURL string) schema {
 	url := canonicalURL(chrome.URL, GamePagePrefix+game.Slug)
 	node := schema{
 		"@type":     "VideoGame",
-		"@id":       url,
-		"url":       url,
+		"@id":       fallbackID(url, "#game"),
 		"name":      game.Title,
-		"publisher": schema{"@id": chrome.URL + "#organization"},
-		"author":    schema{"@id": chrome.URL + "#organization"},
+		"publisher": schema{"@id": chrome.nodeID("#organization")},
+		"author":    schema{"@id": chrome.nodeID("#organization")},
 	}
+	node.set("url", url)
 	node.set("description", game.ShortDescription)
 	node.set("genre", strings.TrimSpace(game.Genre))
 	node.set("datePublished", game.ReleaseDate)
@@ -113,13 +109,14 @@ func videoGame(chrome SiteChrome, game games.Game, imageURL string) schema {
 		// The stored price is a label an admin typed ("$4.99", "Free"), not a
 		// number, so it is published as one rather than guessed into a
 		// currency and an amount that might both be wrong.
-		node.set("offers", schema{
+		offer := schema{
 			"@type":         "Offer",
 			"availability":  "https://schema.org/InStock",
-			"url":           url,
 			"priceCurrency": "USD",
 			"description":   game.PriceDisplay,
-		})
+		}
+		offer.set("url", url)
+		node.set("offers", offer)
 	}
 	return node
 }
@@ -133,9 +130,6 @@ func trailerID(rawURL string) (string, bool) {
 
 func arcadeSchema(chrome SiteChrome, page arcadePage) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	items := make([]any, 0, len(page.Cases))
 	for i, item := range page.Cases {
@@ -163,9 +157,6 @@ func arcadeSchema(chrome SiteChrome, page arcadePage) jsonLD {
 
 func gameSchema(chrome SiteChrome, game games.Game, page gamePage) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	node := videoGame(chrome, game, page.Cover.URL)
 
@@ -191,9 +182,6 @@ func gameSchema(chrome SiteChrome, game games.Game, page gamePage) jsonLD {
 
 func (s *Site) devlogIndexSchema(chrome SiteChrome, posts []postSummary) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	items := make([]any, 0, len(posts))
 	for i, post := range posts {
@@ -207,7 +195,7 @@ func (s *Site) devlogIndexSchema(chrome SiteChrome, posts []postSummary) jsonLD 
 
 	blog := chrome.page(PageDevlog, "Devlog", "Notes on what the studio is building.")
 	blog["@type"] = "Blog"
-	blog.set("publisher", schema{"@id": chrome.URL + "#organization"})
+	blog.set("publisher", schema{"@id": chrome.nodeID("#organization")})
 	blog.set("mainEntity", schema{
 		"@type":           "ItemList",
 		"numberOfItems":   len(items),
@@ -222,20 +210,21 @@ func (s *Site) devlogIndexSchema(chrome SiteChrome, posts []postSummary) jsonLD 
 
 func (s *Site) devlogPostSchema(chrome SiteChrome, post devlog.Post, page devlogPostPage) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	url := canonicalURL(chrome.URL, DevlogPagePrefix+post.Slug)
 	article := schema{
 		"@type":            "BlogPosting",
-		"@id":              url,
-		"url":              url,
+		"@id":              fallbackID(url, "#post"),
 		"headline":         post.Title,
-		"mainEntityOfPage": schema{"@type": "WebPage", "@id": url},
-		"publisher":        schema{"@id": chrome.URL + "#organization"},
-		"author":           schema{"@id": chrome.URL + "#organization"},
-		"isPartOf":         schema{"@id": canonicalURL(chrome.URL, PageDevlog)},
+		"mainEntityOfPage": schema{"@type": "WebPage", "@id": fallbackID(url, "#webpage")},
+		"publisher":        schema{"@id": chrome.nodeID("#organization")},
+		"author":           schema{"@id": chrome.nodeID("#organization")},
+	}
+	article.set("url", url)
+	if index := canonicalURL(chrome.URL, PageDevlog); index != "" {
+		// An @id of nothing is worse than no link between the two: it points
+		// the graph at a node that cannot exist.
+		article.set("isPartOf", schema{"@id": index})
 	}
 	article.set("datePublished", post.PublishedAt)
 	article.set("dateModified", post.UpdatedAt.UTC().Format("2006-01-02"))
@@ -255,9 +244,6 @@ func (s *Site) devlogPostSchema(chrome SiteChrome, post devlog.Post, page devlog
 
 func awardsSchema(chrome SiteChrome, awards []awardView) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	// An award belongs to whoever won it, so the studio carries them rather
 	// than the page listing them as unattached things.
@@ -292,9 +278,6 @@ func awardsSchema(chrome SiteChrome, awards []awardView) jsonLD {
 
 func contactSchema(chrome SiteChrome) jsonLD {
 	nodes := baseNodes(chrome)
-	if nodes == nil {
-		return ""
-	}
 
 	page := chrome.page(PageContact, "Contact", "Get in touch with the studio.")
 	page["@type"] = "ContactPage"

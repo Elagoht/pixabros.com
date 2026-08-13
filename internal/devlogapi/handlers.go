@@ -221,6 +221,45 @@ type updateRequest struct {
 	PublishedAt     string  `json:"published_at"`
 }
 
+// resolveOGImage decides which picture a post carries after an edit.
+//
+// The panel sends the post's current image back with every save, so "the caller
+// did not pick a different one" means the id came back unchanged, not that it
+// came back empty. That is the case where a rename has to be redrawn: an
+// unchanged, generated card still shows the old name. The game counts too,
+// because the card names it beside the studio's mark.
+//
+// Refresh does the deciding about what may be replaced: it leaves an uploaded
+// picture alone and deletes the generated one it supersedes.
+func (h *Handlers) resolveOGImage(existing devlog.Post, req updateRequest) *string {
+	requested := req.OGImageID
+	if requested == nil {
+		requested = existing.OGImageID
+	}
+
+	if h.og == nil || !sameID(requested, existing.OGImageID) {
+		return requested
+	}
+	if req.Title == existing.Title && sameID(req.GameID, existing.GameID) {
+		return requested
+	}
+
+	refreshed, err := h.og.Refresh(existing.OGImageID, req.Title, req.GameID)
+	if err != nil {
+		// A card that could not be redrawn is not worth losing the edit over;
+		// the post keeps the one it has.
+		return requested
+	}
+	return refreshed
+}
+
+func sameID(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
 func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
@@ -252,23 +291,11 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// A renamed post needs a preview that says the new name. Refresh keeps an
-	// uploaded picture as it is and replaces a generated one, deleting what it
-	// replaces so old previews do not pile up.
-	ogImageID := req.OGImageID
-	if h.og != nil && ogImageID == nil && req.Title != existing.Title {
-		if refreshed, err := h.og.Refresh(existing.OGImageID, req.Title, req.GameID); err == nil {
-			ogImageID = refreshed
-		}
-	} else if ogImageID == nil {
-		ogImageID = existing.OGImageID
-	}
-
 	post, err := h.repo.Update(existing.ID, devlog.UpdateInput{
 		Title:           req.Title,
 		ContentMarkdown: req.ContentMarkdown,
 		GameID:          req.GameID,
-		OGImageID:       ogImageID,
+		OGImageID:       h.resolveOGImage(existing, req),
 		IsPublished:     req.IsPublished,
 		PublishedAt:     req.PublishedAt,
 	})

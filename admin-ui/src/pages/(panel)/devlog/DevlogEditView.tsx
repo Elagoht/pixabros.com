@@ -85,9 +85,7 @@ const DevlogEditView: FC = () => {
                 <span className="font-mono text-gray-700 dark:text-gray-300">
                   {post.slug}
                 </span>{" "}
-                {post.is_published || post.published_at
-                  ? t("devlog.form.slugFrozen")
-                  : t("devlog.form.slugFollowsTitle")}
+                {t("devlog.form.slugFollowsTitle")}
               </p>
             }
             onSubmit={async (values) => {

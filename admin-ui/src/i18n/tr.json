@@ -561,8 +561,7 @@
       "publishedAt": "Yayın tarihi",
       "publishedAtHelp": "İlk yayınlamada otomatik dolar. Geçmişe tarihlemek için değiştirebilirsiniz.",
       "slug": "Adres:",
-      "slugFollowsTitle": "Adres, yazı yayınlanana kadar başlığı izler; sonra sabitlenir.",
-      "slugFrozen": "Yayınlandığında sabitlendi, mevcut bağlantılar çalışmaya devam ediyor."
+      "slugFollowsTitle": "Adres her zaman başlığı izler; başlığı değiştirirsen yazının bağlantısı da değişir."
     },
     "create": {
       "title": "Yeni yazı",

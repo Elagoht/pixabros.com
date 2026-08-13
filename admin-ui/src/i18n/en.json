@@ -561,8 +561,7 @@
       "publishedAt": "Publication date",
       "publishedAtHelp": "Filled in automatically the first time you publish. Change it to back-date a post.",
       "slug": "Address:",
-      "slugFollowsTitle": "The address follows the title until the post is published, then stays fixed.",
-      "slugFrozen": "Fixed on publication, so existing links keep working."
+      "slugFollowsTitle": "The address always follows the title, so renaming the post changes its link."
     },
     "create": {
       "title": "New post",

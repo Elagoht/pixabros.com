@@ -169,22 +169,19 @@ func (r *Repo) FindBySlug(postSlug string) (Post, error) {
 	return scanPost(row)
 }
 
-// Update regenerates the slug from the title only while the post has never
-// been published. Once a post is public its slug is a URL people may have
-// linked to, and silently moving it would break those links -- unlike a game,
-// whose page is reached from the site's own listing.
+// Update regenerates the slug from the title, published or not, the same way a
+// game's does. A renamed post whose URL still said the old name would be the
+// odder outcome, and the admin API resolves a post by id as readily as by slug,
+// so nothing inside the panel depends on the slug holding still.
 func (r *Repo) Update(postID string, input UpdateInput) (Post, error) {
 	existing, err := r.FindByID(postID)
 	if err != nil {
 		return Post{}, err
 	}
 
-	nextSlug := existing.Slug
-	if existing.PublishedAt == "" && !existing.IsPublished {
-		nextSlug, err = slug.Unique(r.db, table, slug.Make(input.Title, "post"), postID)
-		if err != nil {
-			return Post{}, err
-		}
+	nextSlug, err := slug.Unique(r.db, table, slug.Make(input.Title, "post"), postID)
+	if err != nil {
+		return Post{}, err
 	}
 
 	publishedAt := resolvePublishedAt(input.PublishedAt, input.IsPublished, existing.PublishedAt)

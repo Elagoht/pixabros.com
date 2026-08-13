@@ -326,3 +326,111 @@ func TestUpdate_KeepsAnUploadedImage(t *testing.T) {
 		t.Error("the uploaded image was replaced by a generated one")
 	}
 }
+
+// seedGame inserts the little a card needs: the game's name.
+func seedGame(t *testing.T, conn *sql.DB, title string) string {
+	t.Helper()
+	gameID := id.New()
+	if _, err := conn.Exec(
+		`INSERT INTO games (id, slug, title) VALUES (?, ?, ?);`, gameID, title, title,
+	); err != nil {
+		t.Fatalf("seed game %q: %v", title, err)
+	}
+	return gameID
+}
+
+// The panel's edit form sends the post's current picture back with every save,
+// so a rename arrives with og_image_id already filled in. Reading that as "the
+// admin chose this picture" skipped the redraw entirely and left every renamed
+// post sharing under its old title.
+func TestUpdate_RedrawsWhenThePanelEchoesTheCurrentImage(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	post(t, handlers, map[string]any{
+		"title": "First Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	list, _ := repo.List("published_at", true)
+	original := list[0]
+	if original.OGImageID == nil {
+		t.Fatal("the new post has no preview to echo back")
+	}
+
+	put(t, handlers, original.ID, map[string]any{
+		"title": "Second Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20", "og_image_id": *original.OGImageID,
+	})
+
+	updated, _ := repo.FindByID(original.ID)
+	if updated.OGImageID == nil {
+		t.Fatal("the renamed post lost its preview")
+	}
+	if *updated.OGImageID == *original.OGImageID {
+		t.Error("the preview still shows the old title")
+	}
+
+	var leftovers int
+	if err := conn.QueryRow(
+		`SELECT COUNT(*) FROM media WHERE id = ?;`, *original.OGImageID,
+	).Scan(&leftovers); err != nil {
+		t.Fatalf("count old image: %v", err)
+	}
+	if leftovers != 0 {
+		t.Error("the previous preview was left behind")
+	}
+}
+
+// The card names the game beside the studio's mark, so moving a post to another
+// game dates the picture just as a rename does.
+func TestUpdate_RedrawsWhenTheGameChanges(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	post(t, handlers, map[string]any{
+		"title": "Steady Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	list, _ := repo.List("published_at", true)
+	original := list[0]
+
+	put(t, handlers, original.ID, map[string]any{
+		"title": "Steady Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20", "og_image_id": *original.OGImageID,
+		"game_id": seedGame(t, conn, "Dungrid Tactics"),
+	})
+
+	updated, _ := repo.FindByID(original.ID)
+	if updated.OGImageID == nil || *updated.OGImageID == *original.OGImageID {
+		t.Error("the preview does not name the game the post moved to")
+	}
+}
+
+// An ordinary save that changes neither the title nor the game must reuse the
+// picture. Redrawing on every save would churn a new file each time.
+func TestUpdate_KeepsThePreviewWhenTheCardWouldNotChange(t *testing.T) {
+	handlers, repo, conn := setup(t)
+
+	gameID := seedGame(t, conn, "Dungrid Tactics")
+	post(t, handlers, map[string]any{
+		"title": "Steady Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20",
+	})
+	list, _ := repo.List("published_at", true)
+	attached := put(t, handlers, list[0].ID, map[string]any{
+		"title": "Steady Name", "content_markdown": "Body", "is_published": true,
+		"published_at": "2026-04-20", "og_image_id": *list[0].OGImageID, "game_id": gameID,
+	})
+	if attached.Code != http.StatusOK {
+		t.Fatalf("attach game: status = %d", attached.Code)
+	}
+	original, _ := repo.FindByID(list[0].ID)
+
+	put(t, handlers, original.ID, map[string]any{
+		"title": "Steady Name", "content_markdown": "Edited body", "is_published": true,
+		"published_at": "2026-04-20", "og_image_id": *original.OGImageID, "game_id": gameID,
+	})
+
+	updated, _ := repo.FindByID(original.ID)
+	if updated.OGImageID == nil || *updated.OGImageID != *original.OGImageID {
+		t.Error("an edit that does not touch the card redrew it anyway")
+	}
+}

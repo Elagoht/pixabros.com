@@ -133,7 +133,7 @@ func TestRepo_PublishedAtSurvivesLaterSaves(t *testing.T) {
 	}
 }
 
-func TestRepo_SlugFollowsTheTitleWhileUnpublished(t *testing.T) {
+func TestRepo_SlugFollowsTheTitle(t *testing.T) {
 	repo := NewRepo(setupTestDB(t))
 
 	post, _ := repo.Create(CreateInput{Title: "First Draft"})
@@ -142,30 +142,49 @@ func TestRepo_SlugFollowsTheTitleWhileUnpublished(t *testing.T) {
 		t.Fatalf("Update() error = %v", err)
 	}
 	if renamed.Slug != "second-draft" {
-		t.Errorf("Slug = %q, want it to follow the title while unpublished", renamed.Slug)
+		t.Errorf("Slug = %q, want it to follow the title", renamed.Slug)
 	}
 }
 
-// Once a post is public its slug is a URL people may have linked to, so
-// renaming the post must not move it.
-func TestRepo_SlugIsFrozenOncePublished(t *testing.T) {
+// Publication does not pin the slug down: a renamed post gets a URL that says
+// the new name.
+func TestRepo_SlugFollowsTheTitleOncePublished(t *testing.T) {
 	pinToday(t, "2026-08-12")
 	repo := NewRepo(setupTestDB(t))
 
 	post, _ := repo.Create(CreateInput{Title: "Launch Day"})
-	published, _ := repo.Update(post.ID, UpdateInput{Title: "Launch Day", IsPublished: true})
+	if _, err := repo.Update(post.ID, UpdateInput{Title: "Launch Day", IsPublished: true}); err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
 
 	renamed, err := repo.Update(post.ID, UpdateInput{
-		Title: "Launch Day (updated)", IsPublished: true,
+		Title: "Launch Week", IsPublished: true,
 	})
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
-	if renamed.Slug != published.Slug {
-		t.Errorf("Slug moved after publication: %q -> %q", published.Slug, renamed.Slug)
+	if renamed.Slug != "launch-week" {
+		t.Errorf("Slug = %q, want launch-week", renamed.Slug)
 	}
-	if renamed.Title != "Launch Day (updated)" {
+	if renamed.Title != "Launch Week" {
 		t.Errorf("Title = %q, want the rename to still apply", renamed.Title)
+	}
+}
+
+// Saving a post without renaming it must leave the slug exactly where it is,
+// rather than appending a uniqueness suffix each time by colliding with itself.
+func TestRepo_SlugSurvivesRepeatedSaves(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	post, _ := repo.Create(CreateInput{Title: "Steady Title"})
+	for i := range 3 {
+		saved, err := repo.Update(post.ID, UpdateInput{Title: "Steady Title"})
+		if err != nil {
+			t.Fatalf("Update() error = %v", err)
+		}
+		if saved.Slug != "steady-title" {
+			t.Fatalf("save %d moved the slug to %q", i+1, saved.Slug)
+		}
 	}
 }
 

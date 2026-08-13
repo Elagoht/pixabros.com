@@ -49,9 +49,29 @@ STAGE="pixabros-sync"
 
 # One place decides how to reach the server, so ssh and rsync cannot disagree
 # about it. rsync needs the whole command rather than a port of its own.
+#
+# The connection is shared: this makes half a dozen of them, and without a
+# master you type your password for every one. The socket lives under a short
+# path because a unix socket name has far less room than a file name does.
 SSH_PORT=${PORT:-22}
-SSH_CMD=(ssh -p "$SSH_PORT")
-RSYNC_SHELL="ssh -p $SSH_PORT"
+SSH_CONTROL="${TMPDIR:-/tmp}/pixabros-ssh.$$"
+SSH_OPTS=(-p "$SSH_PORT" -o ControlMaster=auto -o "ControlPath=$SSH_CONTROL" -o ControlPersist=120)
+SSH_CMD=(ssh "${SSH_OPTS[@]}")
+RSYNC_SHELL="ssh -p $SSH_PORT -o ControlMaster=auto -o ControlPath=$SSH_CONTROL -o ControlPersist=120"
+
+# Close the shared connection on the way out, however we leave.
+close_ssh() {
+  [ -S "$SSH_CONTROL" ] && ssh -O exit -o "ControlPath=$SSH_CONTROL" "$REMOTE" 2>/dev/null || true
+}
+
+# Old rsync -- the one macOS ships, and openrsync with it -- has no --info at
+# all. --progress says less but every version understands it, and a transfer
+# that reports nothing is worse than one that reports per file.
+if rsync --help 2>&1 | grep -q -- '--info'; then
+  PROGRESS=(--info=progress2)
+else
+  PROGRESS=(--progress)
+fi
 
 for tool in ssh rsync sqlite3; do
   command -v "$tool" >/dev/null 2>&1 || die "This needs $tool and cannot find it."
@@ -76,7 +96,7 @@ say "Service runs as $REMOTE_USER, data lives in $REMOTE_DATA"
 # --- A database that is safe to move ---------------------------------------
 
 SNAPSHOT=$(mktemp "${TMPDIR:-/tmp}/pixabros-db.XXXXXX")
-trap 'rm -f "$SNAPSHOT" "$SNAPSHOT-wal" "$SNAPSHOT-shm"' EXIT
+trap 'rm -f "$SNAPSHOT" "$SNAPSHOT-wal" "$SNAPSHOT-shm"; close_ssh' EXIT
 
 say "Taking a consistent snapshot of the database"
 # .backup reads through SQLite rather than off the filesystem, so it is safe
@@ -123,11 +143,11 @@ confirm "Go ahead?" || die "Nothing was copied."
 
 say "Copying media"
 "${SSH_CMD[@]}" "$REMOTE" "mkdir -p '$STAGE_DIR'"
-rsync -a --delete --info=progress2 -e "$RSYNC_SHELL" \
+rsync -a --delete "${PROGRESS[@]}" -e "$RSYNC_SHELL" \
   "$LOCAL_DATA/media/" "$REMOTE:$STAGE_DIR/media/"
 
 say "Copying game builds (this is the big one)"
-rsync -a --delete --info=progress2 -e "$RSYNC_SHELL" \
+rsync -a --delete "${PROGRESS[@]}" -e "$RSYNC_SHELL" \
   "$LOCAL_DATA/games/" "$REMOTE:$STAGE_DIR/games/"
 
 say "Copying the database snapshot"

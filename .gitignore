@@ -8,3 +8,4 @@
 
 # `make build` output: the server binary with the panel embedded.
 /pixabros
+dist/

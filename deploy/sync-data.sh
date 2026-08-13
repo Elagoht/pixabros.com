@@ -4,6 +4,9 @@
 #
 #   ./deploy/sync-data.sh user@host
 #   ./deploy/sync-data.sh user@host /var/lib/pixabros
+#   PORT=10987 ./deploy/sync-data.sh user@host
+#
+# PORT is the ssh port, for a server that does not listen on 22.
 #
 # Run it from the repository on the machine that has the data, after
 # deploy/install.sh has run on the server. It replaces the server's database,
@@ -44,6 +47,12 @@ REMOTE=$1
 REMOTE_DATA=${2:-/var/lib/pixabros}
 STAGE="pixabros-sync"
 
+# One place decides how to reach the server, so ssh and rsync cannot disagree
+# about it. rsync needs the whole command rather than a port of its own.
+SSH_PORT=${PORT:-22}
+SSH_CMD=(ssh -p "$SSH_PORT")
+RSYNC_SHELL="ssh -p $SSH_PORT"
+
 for tool in ssh rsync sqlite3; do
   command -v "$tool" >/dev/null 2>&1 || die "This needs $tool and cannot find it."
 done
@@ -53,12 +62,12 @@ done
 say "Checking the server"
 # The service user is read off the installed unit rather than asked for: the
 # unit is the truth about what is running there.
-REMOTE_USER=$(ssh "$REMOTE" "systemctl show -p User --value $SERVICE" 2>/dev/null || true)
+REMOTE_USER=$("${SSH_CMD[@]}" "$REMOTE" "systemctl show -p User --value $SERVICE" 2>/dev/null || true)
 [ -n "$REMOTE_USER" ] || die "No $SERVICE service on $REMOTE. Run deploy/install.sh there first."
 
 # Where the staged copy lands. Resolved now, as the login user: the move below
 # runs under sudo, where $HOME is root's and the staged files are not.
-REMOTE_HOME=$(ssh "$REMOTE" 'printf %s "$HOME"')
+REMOTE_HOME=$("${SSH_CMD[@]}" "$REMOTE" 'printf %s "$HOME"')
 [ -n "$REMOTE_HOME" ] || die "Could not work out the home directory on $REMOTE."
 STAGE_DIR="$REMOTE_HOME/$STAGE"
 
@@ -113,23 +122,23 @@ confirm "Go ahead?" || die "Nothing was copied."
 # which on a single-partition server they do.
 
 say "Copying media"
-ssh "$REMOTE" "mkdir -p '$STAGE_DIR'"
-rsync -a --delete --info=progress2 \
+"${SSH_CMD[@]}" "$REMOTE" "mkdir -p '$STAGE_DIR'"
+rsync -a --delete --info=progress2 -e "$RSYNC_SHELL" \
   "$LOCAL_DATA/media/" "$REMOTE:$STAGE_DIR/media/"
 
 say "Copying game builds (this is the big one)"
-rsync -a --delete --info=progress2 \
+rsync -a --delete --info=progress2 -e "$RSYNC_SHELL" \
   "$LOCAL_DATA/games/" "$REMOTE:$STAGE_DIR/games/"
 
 say "Copying the database snapshot"
-rsync -a "$SNAPSHOT" "$REMOTE:$STAGE_DIR/pixabros.db"
+rsync -a -e "$RSYNC_SHELL" "$SNAPSHOT" "$REMOTE:$STAGE_DIR/pixabros.db"
 
 # --- Putting it in place ----------------------------------------------------
 
 say "Stopping the service and moving everything into place"
 # -t so sudo can ask for a password. One block, so the service is down for as
 # little time as possible and either all of it lands or none of it does.
-ssh -t "$REMOTE" "sudo bash -euo pipefail -s" <<REMOTE_SCRIPT
+"${SSH_CMD[@]}" -t "$REMOTE" "sudo bash -euo pipefail -s" <<REMOTE_SCRIPT
   stamp=\$(date +%Y%m%d-%H%M%S)
 
   systemctl stop $SERVICE
@@ -164,13 +173,13 @@ REMOTE_SCRIPT
 
 say "Checking"
 sleep 3
-if ! ssh "$REMOTE" "systemctl is-active --quiet $SERVICE"; then
+if ! "${SSH_CMD[@]}" "$REMOTE" "systemctl is-active --quiet $SERVICE"; then
   warn "The service did not come back. The last of its log:"
-  ssh "$REMOTE" "journalctl -u $SERVICE --no-pager -n 30" || true
+  "${SSH_CMD[@]}" "$REMOTE" "journalctl -u $SERVICE --no-pager -n 30" || true
   die "The old database is still there as pixabros.db.replaced-*"
 fi
 
-ssh "$REMOTE" "journalctl -u $SERVICE --no-pager -n 5 | sed 's/^/   /'" || true
+"${SSH_CMD[@]}" "$REMOTE" "journalctl -u $SERVICE --no-pager -n 5 | sed 's/^/   /'" || true
 
 echo
 say "Done."
@@ -178,5 +187,5 @@ echo "   Every page was re-rendered on startup, which is what the reconcile"
 echo "   line above is reporting."
 echo
 echo "   Once you are satisfied, the old database can go:"
-echo "     ssh $REMOTE 'sudo rm $REMOTE_DATA/pixabros.db.replaced-*'"
+echo "     ssh -p $SSH_PORT $REMOTE 'sudo rm $REMOTE_DATA/pixabros.db.replaced-*'"
 echo

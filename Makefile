@@ -1,7 +1,7 @@
 DATA_DIR ?= ./data
 PANEL_DIR = internal/adminui/dist
 
-.PHONY: admin-build admin-embed build run dev test
+.PHONY: admin-build admin-embed build release-linux run dev test
 
 admin-build:
 	npm --prefix admin-ui ci
@@ -19,6 +19,26 @@ admin-embed: admin-build
 # public site's templates, its stylesheet and its fonts.
 build: admin-embed
 	go build -o pixabros ./cmd/server
+
+# What gets shipped to a Debian server: the binary cross-compiled for it, with
+# the installer and the unit beside it in the layout install.sh expects.
+#
+# CGO is off, so the result is static and depends on no glibc version at all --
+# nothing here needs it, because the SQLite driver is Go rather than a C
+# library wrapped in it. -trimpath keeps this machine's paths out of the
+# binary; -s -w drops the debug tables, which Go stack traces do not use.
+RELEASE_DIR = dist/pixabros-linux-amd64
+
+release-linux: admin-embed
+	rm -rf $(RELEASE_DIR)
+	mkdir -p $(RELEASE_DIR)/deploy
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+		go build -trimpath -ldflags "-s -w" -o $(RELEASE_DIR)/pixabros ./cmd/server
+	cp deploy/install.sh deploy/pixabros.service $(RELEASE_DIR)/deploy/
+	chmod +x $(RELEASE_DIR)/deploy/install.sh
+	@echo
+	@echo "Built $(RELEASE_DIR):"
+	@ls -la $(RELEASE_DIR) $(RELEASE_DIR)/deploy
 
 run:
 	go run ./cmd/server

@@ -1,12 +1,15 @@
 {{define "main"}}
   <section class="hero">
     {{if .Data.Hero.Logo.URL}}
+      {{/* The stored mark is 512 square. Saying so lets the browser keep the
+           room for it before it arrives, instead of the page jumping once it
+           does; the width it is actually drawn at is the stylesheet's. */}}
       <img
         class="hero__logo"
         src="{{.Data.Hero.Logo.URL}}"
         alt="{{.Data.Hero.Logo.Alt}}"
-        width="128"
-        height="128"
+        width="512"
+        height="512"
       />
     {{end}}
     <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>

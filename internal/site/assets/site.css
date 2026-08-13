@@ -1059,12 +1059,14 @@ a:hover {
   text-align: center;
 }
 
+/* The mark leads the page, so it is sized like the thing you are meant to see
+   first rather than like an avatar. Square: it is a printed mark, and rounding
+   its corners made it read as an app icon. */
 .hero__logo {
-  border-radius: var(--radius);
   height: auto;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
   margin-inline: auto;
-  width: 6rem;
+  width: clamp(9rem, 26vw, 16rem);
 }
 
 .hero__description {

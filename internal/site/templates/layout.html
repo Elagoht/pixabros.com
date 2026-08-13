@@ -5,13 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{.Title}}</title>
     {{if .Description}}<meta name="description" content="{{.Description}}" />{{end}}
+
+    {{/* Self-referencing on every page: without it a query string or a
+         trailing slash reads as a second copy of the same page. It is only
+         omitted when the studio has not configured the site's address, since
+         there would be nothing truthful to point at. */}}
+    {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}" />{{end}}
+
+    <meta property="og:site_name" content="{{.Site.Name}}" />
     <meta property="og:title" content="{{.Title}}" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content="{{.OGType}}" />
+    <meta property="og:locale" content="en_GB" />
     {{if .Description}}<meta property="og:description" content="{{.Description}}" />{{end}}
-    {{if .Site.Twitter}}<meta name="twitter:site" content="@{{.Site.Twitter}}" />{{end}}
-    <meta name="twitter:card" content="summary_large_image" />
+    {{if .Canonical}}<meta property="og:url" content="{{.Canonical}}" />{{end}}
+    {{if .OGImage}}
+      <meta property="og:image" content="{{.OGImage}}" />
+      <meta property="og:image:alt" content="{{.Title}}" />
+    {{end}}
+
+    <meta name="twitter:card" content="{{if .OGImage}}summary_large_image{{else}}summary{{end}}" />
+    {{if .Site.Twitter}}
+      <meta name="twitter:site" content="@{{.Site.Twitter}}" />
+      <meta name="twitter:creator" content="@{{.Site.Twitter}}" />
+    {{end}}
+    {{if .OGImage}}<meta name="twitter:image" content="{{.OGImage}}" />{{end}}
+
     {{if .Favicon}}<link rel="icon" href="{{.Favicon}}" />{{end}}
     <link rel="stylesheet" href="{{.CSS}}" />
+
+    {{/* A script whose type is not JavaScript is a data block: the browser
+         never executes it, which is also why the content policy's script-src
+         does not stand in its way. */}}
+    {{if .Schema}}
+      <script type="application/ld+json">{{.Schema}}</script>
+    {{end}}
   </head>
   <body class="site-body">
     <header class="site-header">
@@ -31,7 +58,9 @@
       </div>
     </header>
 
-    <main class="site-main">{{block "main" .}}{{end}}</main>
+    <main class="site-main{{if .PageClass}} {{.PageClass}}{{end}}">
+      {{block "main" .}}{{end}}
+    </main>
 
     <footer class="site-footer">
       <div class="site-footer__inner">

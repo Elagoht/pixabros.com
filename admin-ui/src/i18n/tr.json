@@ -85,7 +85,7 @@
   "settings": {
     "site": {
       "title": "Site Ayarları",
-      "hint": "Sitenin tamamında ve bağlantı önizlemelerinde kullanılan genel bilgiler."
+      "hint": "Site adresi ve bu stüdyo bilgileri her sayfanın canonical bağlantısını, paylaşım kartını ve yapısal verisini besler."
     },
     "homepage": {
       "title": "Anasayfa",
@@ -117,7 +117,14 @@
       "portfolio_section_title": "Portfolyo bölüm başlığı",
       "sales_section_title": "Satıştakiler bölüm başlığı",
       "members_section_title": "Ekip bölüm başlığı",
-      "members_section_subtitle": "Ekip bölüm alt başlığı"
+      "members_section_subtitle": "Ekip bölüm alt başlığı",
+      "site_url": "Site adresi",
+      "site_tagline": "Slogan",
+      "org_legal_name": "Yasal unvan",
+      "org_description": "Stüdyo açıklaması",
+      "org_email": "İletişim e-postası",
+      "org_founding_date": "Kuruluş tarihi",
+      "org_founding_location": "Kuruluş yeri"
     },
     "urlList": {
       "placeholder": "https://twitter.com/pixabros",

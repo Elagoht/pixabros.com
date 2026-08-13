@@ -85,7 +85,7 @@
   "settings": {
     "site": {
       "title": "Site settings",
-      "hint": "Global metadata used across the site and in link previews."
+      "hint": "The site address and these studio details feed every page's canonical link, share card and structured data."
     },
     "homepage": {
       "title": "Homepage",
@@ -117,7 +117,14 @@
       "portfolio_section_title": "Portfolio section title",
       "sales_section_title": "For-sale section title",
       "members_section_title": "Team section title",
-      "members_section_subtitle": "Team section subtitle"
+      "members_section_subtitle": "Team section subtitle",
+      "site_url": "Site address",
+      "site_tagline": "Tagline",
+      "org_legal_name": "Legal name",
+      "org_description": "Studio description",
+      "org_email": "Contact email",
+      "org_founding_date": "Founded on",
+      "org_founding_location": "Founded in"
     },
     "urlList": {
       "placeholder": "https://twitter.com/pixabros",

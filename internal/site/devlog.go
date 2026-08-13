@@ -78,9 +78,11 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("devlog.html", pageData{
-		Title:       "Devlog · " + chrome.Name,
+		Title:       "Devlog: how our games get made, one post at a time",
 		Description: "Notes on what we are building at " + chrome.Name + ".",
 		Path:        "/" + PageDevlog,
+		Canonical:   canonicalURL(chrome.URL, PageDevlog),
+		Schema:      s.devlogIndexSchema(chrome, summaries),
 		Site:        chrome,
 		Data:        devlogIndexPage{Posts: summaries},
 	})
@@ -141,9 +143,13 @@ func (s *Site) renderDevlogPost(pageKey string) ([]byte, []string, error) {
 	}
 
 	html, err := s.renderer.render("devlog-post.html", pageData{
-		Title:       post.Title + " · " + chrome.Name,
+		Title:       postSubject(post.Title, chrome.Name),
 		Description: excerpt(post.ContentMarkdown, 160),
 		Path:        "/" + PageDevlog,
+		Canonical:   canonicalURL(chrome.URL, pageKey),
+		OGType:      "article",
+		OGImage:     page.Image.URL,
+		Schema:      s.devlogPostSchema(chrome, post, page),
 		Site:        chrome,
 		Data:        page,
 	})

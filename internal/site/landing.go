@@ -159,9 +159,12 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	page.HasMembers = len(page.Members) > 0
 
 	html, err := s.renderer.render("landing.html", pageData{
-		Title:       chrome.Name + " · game studio",
+		Title:       "A two brother game studio making small, sharp games",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
 		Path:        "/",
+		PageClass:   "landing",
+		Canonical:   canonicalURL(chrome.URL, ""),
+		Schema:      landingSchema(chrome, page),
 		Scripts:     []string{s.renderer.bundle.URL("carousel.js")},
 		Site:        chrome,
 		Data:        page,

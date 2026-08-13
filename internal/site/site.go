@@ -9,6 +9,7 @@ package site
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"pixabros/internal/awards"
 	"pixabros/internal/devlog"
@@ -101,7 +102,7 @@ func (s *Site) NotFoundBody() ([]byte, error) {
 		return nil, err
 	}
 	return s.renderer.render("404.html", pageData{
-		Title:       "Page not found · " + chrome.Name,
+		Title:       "Page not found, but the games are still where they were",
 		Description: "The page you were looking for does not exist.",
 		Site:        chrome,
 	})
@@ -125,9 +126,45 @@ func (s *Site) chrome() (SiteChrome, error) {
 		name = "Pixabros"
 	}
 
+	images, err := s.mediaByID()
+	if err != nil {
+		return SiteChrome{}, err
+	}
+	// A media setting stores an id; the templates and the structured data want
+	// a path. Resolving it here means a deleted image leaves the field empty
+	// rather than pointing at nothing.
+	imageURL := func(key string) string {
+		image, ok := images[values[key]]
+		if !ok {
+			return ""
+		}
+		return mediaURL(image.Path)
+	}
+
+	ogImage := imageURL("default_og_image")
+	if ogImage == "" {
+		// A share card with no picture is a bare link. The studio's own mark is
+		// a poorer lead than artwork, and a better one than nothing.
+		ogImage = imageURL("org_logo")
+	}
+
 	return SiteChrome{
 		Name:    name,
 		Twitter: values["twitter_handle"],
 		Links:   parseLinks(values["org_sameas_json"]),
+
+		// Trailing slashes are trimmed once, here, so nothing downstream has to
+		// wonder whether the configured address ends in one.
+		URL:     strings.TrimRight(strings.TrimSpace(values["site_url"]), "/"),
+		Tagline: values["site_tagline"],
+
+		LegalName:        values["org_legal_name"],
+		Description:      values["org_description"],
+		Email:            values["org_email"],
+		FoundingDate:     values["org_founding_date"],
+		FoundingLocation: values["org_founding_location"],
+
+		LogoURL:    imageURL("org_logo"),
+		OGImageURL: ogImage,
 	}, nil
 }

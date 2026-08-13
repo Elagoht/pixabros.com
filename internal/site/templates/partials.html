@@ -5,6 +5,16 @@
   <div class="console" data-console data-console-drop>
     <div class="crt">
       <div class="crt__screen" data-console-stage>
+        {{if .Backdrop.URL}}
+          {{/* The game's own artwork on the tube while the machine is idle.
+               Decoration: the page already names the game above it. */}}
+          <img
+            class="crt__backdrop"
+            src="{{.Backdrop.URL}}"
+            alt=""
+            aria-hidden="true"
+          />
+        {{end}}
         {{if .Playable}}
           {{/* The frame never carries a src from the server. A web build is
                tens of megabytes, and starting that download for anyone who

@@ -71,9 +71,6 @@ type caseView struct {
 	Tags        []string
 	Description string
 	Price       string
-	// Links are the stores and pages the game lives on, shown on the open
-	// case's first page.
-	Links []gameLink
 }
 
 // consoleView is what the shared console partial needs. Interactive is the
@@ -86,6 +83,10 @@ type consoleView struct {
 	Playable    bool
 	PlayURL     string
 	Cartridge   imageView
+	// Backdrop is what the tube shows before a game is started: the game's own
+	// wide artwork. The arcade's machine has none, because it does not yet
+	// know which game it is about to play.
+	Backdrop imageView
 }
 
 type arcadePage struct {
@@ -139,14 +140,15 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 			Tags:        splitTags(game.Tags),
 			Description: game.ShortDescription,
 			Price:       priceFor(game),
-			Links:       parseGameLinks(game.ExternalLinksJSON),
 		})
 	}
 
 	html, err := s.renderer.render("arcade.html", pageData{
-		Title:       "Games · " + chrome.Name,
+		Title:       "Games you can play right here in your browser, and the rest",
 		Description: "Play our browser games and browse the rest of the catalogue.",
 		Path:        "/" + PageGames,
+		Canonical:   canonicalURL(chrome.URL, PageGames),
+		Schema:      arcadeSchema(chrome, page),
 		Scripts: []string{
 			s.renderer.bundle.URL("arcade.js"),
 			s.renderer.bundle.URL("cases.js"),
@@ -283,6 +285,7 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 			Playable:  game.IsBrowserPlayable,
 			PlayURL:   "/play/" + game.Slug + "/",
 			Cartridge: lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
+			Backdrop:  lookupImage(images, game.OGImageID, game.Title),
 		},
 		Title:    game.Title,
 		Slug:     game.Slug,
@@ -307,9 +310,12 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		page.Released != "" || page.Genre != "" || len(page.Shots) > 0
 
 	html, err := s.renderer.render("game.html", pageData{
-		Title:       game.Title + " · " + chrome.Name,
+		Title:       gameSubject(game.Title, game.Genre, chrome.Name),
 		Description: fallback(game.ShortDescription, game.Title+" by "+chrome.Name+"."),
 		Path:        "/" + PageGames,
+		Canonical:   canonicalURL(chrome.URL, pageKey),
+		OGImage:     page.Cover.URL,
+		Schema:      gameSchema(chrome, game, page),
 		// The game's own cover in the tab, so a row of open game pages is
 		// told apart by artwork rather than by a truncated title.
 		Favicon: page.Icon.URL,

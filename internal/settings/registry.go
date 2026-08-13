@@ -63,10 +63,26 @@ var site = Group{
 	RegenTag: "site_settings",
 	Definitions: []Definition{
 		{Key: "site_name", Kind: KindText},
+		// The address the site is served from, with no trailing slash. Every
+		// canonical link, every absolute image URL in a share card and every
+		// @id in the structured data is built from it, so a blank one costs
+		// the site all three.
+		{Key: "site_url", Kind: KindURI},
+		// The words appended to a page title that would otherwise be too short
+		// for a search result to be worth reading.
+		{Key: "site_tagline", Kind: KindText},
 		{Key: "twitter_handle", Kind: KindText},
 		{Key: "org_logo", Kind: KindMedia, Target: "org_logo"},
 		{Key: "default_og_image", Kind: KindMedia, Target: "og_image"},
 		{Key: "org_sameas_json", Kind: KindURIList},
+		// Organization fields, all of them optional. Each one that is filled in
+		// becomes a property of the studio's structured data; each one left
+		// blank is simply left out rather than published empty.
+		{Key: "org_legal_name", Kind: KindText},
+		{Key: "org_description", Kind: KindText, Multiline: true},
+		{Key: "org_email", Kind: KindText},
+		{Key: "org_founding_date", Kind: KindText},
+		{Key: "org_founding_location", Kind: KindText},
 	},
 }
 

@@ -58,15 +58,38 @@ var navItems = []navItem{
 // SiteChrome is what the header and footer need, read from site_settings. It
 // is the same on every page, so it is fetched once per render rather than
 // threaded through each page's view model.
+// SiteChrome is what every page knows about the studio: the header and footer
+// read the first few fields, and everything below them exists so a page can
+// state its own address, its share card and its structured data.
 type SiteChrome struct {
 	Name    string
 	Twitter string
 	Links   []string
+
+	// URL is the site's own address, with no trailing slash. Empty when the
+	// studio has not set one, in which case no canonical link and no absolute
+	// URL can be built and none is published.
+	URL     string
+	Tagline string
+
+	LegalName        string
+	Description      string
+	Email            string
+	FoundingDate     string
+	FoundingLocation string
+
+	// LogoURL and OGImageURL are site-relative. The share card and the
+	// structured data make them absolute against URL.
+	LogoURL    string
+	OGImageURL string
 }
 
 // pageData is what every template can rely on: the site chrome plus whatever
 // the page itself adds under Data.
 type pageData struct {
+	// Title is the page's own subject, not the finished <title>: the site's
+	// name and the length rule are applied by the renderer, in one place, so
+	// no page can opt out of them.
 	Title       string
 	Description string
 	// Path marks the current nav item and is not otherwise displayed.
@@ -75,6 +98,21 @@ type pageData struct {
 	// Favicon overrides the site icon for one page. The game pages use their
 	// own cover art; everywhere else leaves it empty.
 	Favicon string
+	// Canonical is the page's own address, and Path above is only the nav
+	// highlight, which is why they are separate: a game's page highlights
+	// Games but is canonical to itself.
+	Canonical string
+	// OGImage is the picture a share card leads with, site-relative. Empty
+	// falls back to the site's default.
+	OGImage string
+	// Schema is the page's structured data, already encoded.
+	Schema jsonLD
+	// OGType is the Open Graph type. Most pages are a website; an article is
+	// the exception, so the zero value is filled in rather than repeated.
+	OGType string
+	// PageClass goes on <main>, for the few rules that belong to one page
+	// rather than to a component.
+	PageClass string
 	// Scripts are per-page: only the contact form needs one, and every other
 	// page ships none at all.
 	Scripts []string
@@ -144,6 +182,17 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 	data.CSS = r.bundle.URL("site.css")
 	data.Nav = navItems
 	data.Year = r.now().UTC().Year()
+
+	// Applied here rather than by each page, so the title rule and the share
+	// card's fallbacks hold for every page including ones added later.
+	data.Title = buildTitle(data.Site.Name, data.Site.Tagline, data.Title)
+	if data.OGType == "" {
+		data.OGType = "website"
+	}
+	if data.OGImage == "" {
+		data.OGImage = data.Site.OGImageURL
+	}
+	data.OGImage = absoluteURL(data.Site.URL, data.OGImage)
 
 	var raw bytes.Buffer
 	if err := parsed.ExecuteTemplate(&raw, "layout", data); err != nil {

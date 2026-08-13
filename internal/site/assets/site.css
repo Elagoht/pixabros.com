@@ -532,9 +532,15 @@ a:hover {
 /* Tags ------------------------------------------------------------------- */
 
 .tags {
+  --tag-size: 0.75rem;
+  --tag-line: 1.2rem;
+  --tag-pad-block: 0.15rem;
+  --tag-pad-inline: 0.6rem;
+  --tags-gap: 0.4rem;
+
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--tags-gap);
   list-style: none;
   margin: 0.75rem 0 0;
   padding: 0;
@@ -555,16 +561,29 @@ a:hover {
   );
   border-radius: 999px;
   color: var(--tag-ink, var(--color-accent));
-  font-size: 0.75rem;
+  font-size: var(--tag-size);
   /* Pinned rather than inherited: .tags--clamped counts rows, so a pill has to
      be a known height whatever the surrounding text does. */
-  line-height: 1.2rem;
-  padding: 0.15rem 0.6rem;
+  line-height: var(--tag-line);
+  padding: var(--tag-pad-block) var(--tag-pad-inline);
   white-space: nowrap;
 }
 
-.tags--compact .tag {
-  font-size: 0.7rem;
+.tags--compact {
+  --tag-size: 0.7rem;
+}
+
+/* Cards get smaller, tighter pills than a page does. Two rows is all a card
+   can spare, so the cheaper each row is the more of a game's tags fit before
+   the counter takes over. */
+.tags--tight {
+  --tag-size: 0.6875rem;
+  --tag-line: 1rem;
+  --tag-pad-block: 0.1rem;
+  --tag-pad-inline: 0.45rem;
+  --tags-gap: 0.25rem;
+
+  margin-top: 0.5rem;
 }
 
 /* Two rows, never three.
@@ -577,8 +596,10 @@ a:hover {
  * The pill's line-height is pinned above so a row is a known height, which is
  * what lets a clipped third row be hidden whole rather than sliced in half. */
 .tags--clamped {
-  --tag-row: calc(1.2rem + 0.3rem + 2px);
-  max-height: calc(2 * var(--tag-row) + 0.4rem);
+  /* Text, both paddings, both hairlines. Derived from the same variables the
+     pill is drawn with, so a size modifier moves the clamp with it. */
+  --tag-row: calc(var(--tag-line) + 2 * var(--tag-pad-block) + 2px);
+  max-height: calc(2 * var(--tag-row) + var(--tags-gap));
   overflow: hidden;
 }
 
@@ -736,6 +757,15 @@ a:hover {
     flex-basis: min(92%, 60rem);
     grid-template-columns: 65fr 35fr;
   }
+
+  /* Side by side, the artwork fills its half however tall the card turns out
+     to be. Its aspect ratio sets the card's height when the artwork is the
+     taller of the two, and gives way when the column beside it is: otherwise
+     a game with a long title leaves a strip of empty card under its picture.
+     The image inside is absolutely positioned and covers, so it follows. */
+  .slide__media {
+    height: 100%;
+  }
 }
 
 .slide__media {
@@ -877,8 +907,10 @@ a:hover {
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(2, 1fr);
+  /* Pushed to the foot of the column, so the thumbnails end where the artwork
+     beside them does. */
   margin-top: auto;
-  padding-top: 1.25rem;
+  padding-top: 0.9rem;
 }
 
 .thumb {

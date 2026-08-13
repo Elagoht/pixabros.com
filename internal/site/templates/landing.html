@@ -93,7 +93,7 @@
                   </p>
                 {{end}}
                 {{if .Tags}}
-                  <ul class="tags tags--clamped">
+                  <ul class="tags tags--tight tags--clamped">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
                     {{if .MoreTags}}
                       <li class="tag tag--count">+{{.MoreTags}}</li>
@@ -153,7 +153,7 @@
                 </p>
               {{end}}
               {{if .Tags}}
-                <ul class="tags tags--compact tags--clamped">
+                <ul class="tags tags--tight tags--clamped">
                   {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
                   {{if .MoreTags}}
                     <li class="tag tag--count">+{{.MoreTags}}</li>

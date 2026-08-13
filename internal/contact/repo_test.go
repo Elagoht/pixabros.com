@@ -224,6 +224,8 @@ func TestRepo_NameRoundTripsAndToleratesNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindByID(named) error = %v", err)
 	}
+	// The apostrophe is the point: it is both a Turkish name's own punctuation
+	// and the character that would break the insert if it were not escaped.
 	if named.Name != "Deneme'nin Büyücüsü" {
 		t.Errorf("Name = %q, want %q", named.Name, "Deneme'nin Büyücüsü")
 	}

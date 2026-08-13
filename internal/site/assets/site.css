@@ -414,6 +414,16 @@ a:hover {
   }
 }
 
+/* The site's one column. The banner keeps its own copy of these because it is
+   full width with a centred inner strip, and everything else is the strip. */
+.site-main,
+.site-footer__inner {
+  margin-inline: auto;
+  max-width: var(--width-content);
+  padding-inline: var(--space-page);
+  width: 100%;
+}
+
 .site-main {
   display: block;
   padding-block: 3rem 4rem;

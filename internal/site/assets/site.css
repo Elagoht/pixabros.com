@@ -1510,6 +1510,33 @@ a:hover {
   width: 100%;
 }
 
+/* The disc turns while the case is open, slowly, the way one does in a tray.
+   It only spins once the case is open: a shelf of turning discs would be
+   noise. */
+@keyframes disc-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.jewel--open .disc {
+  animation: disc-spin 16s linear infinite;
+}
+
+/* The highlight is a reflection, so it belongs to the room rather than to the
+   disc: turning it the other way at the same rate leaves it standing still
+   while the artwork goes past underneath. */
+.jewel--open .disc__sheen {
+  animation: disc-spin 16s linear infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jewel--open .disc,
+  .jewel--open .disc__sheen {
+    animation: none;
+  }
+}
+
 .disc__sheen {
   background: conic-gradient(
     from 210deg,

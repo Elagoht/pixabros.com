@@ -11,15 +11,32 @@
       <ul class="awards">
         {{range .Awards}}
           <li class="award">
-            <div class="award__picture">
-              {{if .PictureURL}}
+            {{if .PictureURL}}
+              {{/* A badge is worth looking at closely, so the picture opens
+                   full size. Without scripting it stays an ordinary image. */}}
+              <button
+                class="award__picture award__picture--zoomable"
+                type="button"
+                data-zoom-src="{{.PictureURL}}"
+                data-zoom-alt="{{.PictureAlt}}"
+                aria-label="View {{.Title}} full size"
+              >
                 <img src="{{.PictureURL}}" alt="{{.PictureAlt}}" loading="lazy" />
-              {{else}}
+                <span class="award__zoom" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <circle cx="11" cy="11" r="6.5" />
+                    <path d="M15.8 15.8 21 21M11 8.5v5M8.5 11h5" />
+                  </svg>
+                  View
+                </span>
+              </button>
+            {{else}}
+              <div class="award__picture">
                 <span class="award__picture-empty" aria-hidden="true">
                   {{.Issuer}}
                 </span>
-              {{end}}
-            </div>
+              </div>
+            {{end}}
 
             <div class="award__body">
               <p class="award__year">{{.Year}}</p>
@@ -39,4 +56,11 @@
       <p class="empty-note">No awards to show just yet.</p>
     {{end}}
   {{end}}
+
+  <dialog class="lightbox" data-zoom-dialog aria-label="Award picture">
+    <img class="lightbox__image" data-zoom-image src="" alt="" />
+    <button class="lightbox__close" type="button" data-zoom-close aria-label="Close">
+      &times;
+    </button>
+  </dialog>
 {{end}}

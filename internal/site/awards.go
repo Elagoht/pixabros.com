@@ -71,6 +71,7 @@ func (s *Site) renderAwards(pageKey string) ([]byte, []string, error) {
 		Title:       "Awards · " + chrome.Name,
 		Description: "Awards and recognition for games made by " + chrome.Name + ".",
 		Path:        "/" + PageAwards,
+		Scripts:     []string{s.renderer.bundle.URL("lightbox.js")},
 		Site:        chrome,
 		Data:        awardsPage{Awards: views},
 	})

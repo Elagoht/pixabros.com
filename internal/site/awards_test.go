@@ -190,3 +190,37 @@ func TestRenderAwards_MatchesGoldenFile(t *testing.T) {
 		t.Errorf("rendered output differs from the golden file.\n--- got ---\n%s\n--- want ---\n%s", html, want)
 	}
 }
+
+// A badge is worth looking at closely, so the picture opens full size. Without
+// scripting it must still be a plain image on the page.
+func TestRenderAwards_PicturesCanBeOpenedFullSize(t *testing.T) {
+	conn := setupTestDB(t)
+	mediaID := seedMedia(t, conn, "media/award/2026-badge.webp", "A golden trophy")
+	seedAward(t, conn, "Best Game", "A Jury", "2026-06-21", "", &mediaID)
+
+	html, _ := renderAwardsPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "data-zoom-src=/media/award/2026-badge.webp") {
+		t.Error("the picture carries no source for the preview to open")
+	}
+	if !strings.Contains(html, "data-zoom-dialog") {
+		t.Error("the page has no preview dialog")
+	}
+	// The image itself stays in the markup, so the page still shows the badge
+	// with scripting off.
+	if !strings.Contains(html, `<img src=/media/award/2026-badge.webp`) {
+		t.Error("the badge is only reachable through the preview")
+	}
+}
+
+// An award with no picture has nothing to enlarge, so it gets no control.
+func TestRenderAwards_NoZoomControlWithoutAPicture(t *testing.T) {
+	conn := setupTestDB(t)
+	seedAward(t, conn, "Best Game", "A Jury", "2026-06-21", "", nil)
+
+	html, _ := renderAwardsPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "data-zoom-src") {
+		t.Error("an award with no picture offers a preview anyway")
+	}
+}

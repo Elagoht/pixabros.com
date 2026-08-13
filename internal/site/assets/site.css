@@ -360,6 +360,107 @@ a:hover {
   width: 100%;
 }
 
+/* A picture worth opening says so on hover. */
+.award__picture--zoomable {
+  appearance: none;
+  background: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--color-accent) 12%, transparent),
+    transparent 70%
+  );
+  border: 0;
+  cursor: zoom-in;
+  padding: 0;
+  position: relative;
+}
+
+.award__zoom {
+  align-items: center;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 999px;
+  color: #f4f4f5;
+  display: flex;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  inset-inline-start: 50%;
+  opacity: 0;
+  padding: 0.35rem 0.8rem;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.award__zoom svg {
+  fill: none;
+  height: 0.95rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+  width: 0.95rem;
+}
+
+.award__picture--zoomable:hover .award__zoom,
+.award__picture--zoomable:focus-visible .award__zoom {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* The preview ------------------------------------------------------------- */
+
+.lightbox {
+  background: none;
+  border: 0;
+  /* The reset zeroes every margin, which takes away a dialog's centring. */
+  margin: auto;
+  max-height: none;
+  max-width: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.lightbox::backdrop {
+  background: rgb(0 0 0 / 0.8);
+}
+
+.lightbox__image {
+  /* Bounded by the viewport on both axes, so the picture is never cropped and
+     never overflows -- the ratio comes from the image itself. */
+  max-height: 90vh;
+  max-width: 90vw;
+  object-fit: contain;
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  width: auto;
+}
+
+.lightbox--open .lightbox__image {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.lightbox__close {
+  background: rgb(0 0 0 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 50%;
+  color: #f1f1f3;
+  cursor: pointer;
+  font-size: 1.5rem;
+  height: 2.4rem;
+  inset-block-start: 1.25rem;
+  inset-inline-end: 1.25rem;
+  line-height: 1;
+  position: fixed;
+  width: 2.4rem;
+}
+
+.lightbox__close:hover {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
 .award__year {
   color: var(--color-accent);
   font-size: 0.8125rem;
@@ -521,6 +622,16 @@ a:hover {
   display: none;
 }
 
+.carousel__arrow svg {
+  fill: none;
+  height: 1.15rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 1.15rem;
+}
+
 .carousel__track {
   display: flex;
   gap: 1.25rem;
@@ -604,6 +715,8 @@ a:hover {
   border-radius: 999px;
   /* Fixed, not themed: the chip behind it is dark in both themes. */
   color: #f4f4f5;
+  display: flex;
+  justify-content: center;
   display: flex;
   font-size: 1.5rem;
   height: 2.5rem;
@@ -1214,11 +1327,14 @@ a:hover {
 
 .jewel {
   --page: min(24rem, 42vw, 66vh);
-  /* The case's own plastic. Everything made of it reads from here -- the tray,
-     both faces, and the hole in the middle of the disc, which has to be the
-     same colour as the case behind it whatever the theme. */
-  --case: var(--color-surface);
-  --case-edge: var(--color-border);
+  /* The case is always dark: it is a physical object sitting over the page,
+     not a surface of it. Everything made of that plastic reads from here --
+     the tray, both faces, and the hole in the middle of the disc, which has to
+     be the same colour as the case behind it. */
+  --case: #191c22;
+  --case-edge: #2c313a;
+  --case-ink: #f1f1f3;
+  --case-ink-muted: #a2a8b4;
 
   background: none;
   border: 0;
@@ -1254,6 +1370,7 @@ a:hover {
 .jewel__tray {
   align-items: center;
   background: var(--case);
+  color: var(--case-ink);
   border: 1px solid var(--case-edge);
   border-radius: 0 0.4rem 0.4rem 0;
   display: flex;
@@ -1283,7 +1400,7 @@ a:hover {
   backface-visibility: hidden;
   border: 1px solid var(--case-edge);
   border-radius: 0.4rem;
-  box-shadow: 0 20px 45px rgb(0 0 0 / 0.6);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
   inset: 0;
   overflow: hidden;
   position: absolute;
@@ -1293,9 +1410,13 @@ a:hover {
   background: var(--case);
 }
 
+.jewel__face--inside a {
+  color: #f0abfc;
+}
+
 .jewel__face--inside {
   background: var(--case);
-  color: var(--color-text);
+  color: var(--case-ink);
   overflow-y: auto;
   padding: 1.5rem;
   transform: rotateY(180deg);
@@ -1309,7 +1430,7 @@ a:hover {
 
 .jewel__cover--empty {
   align-items: center;
-  color: var(--color-text-muted);
+  color: var(--case-ink-muted);
   display: flex;
   font-size: 1.25rem;
   font-weight: 700;
@@ -1324,8 +1445,14 @@ a:hover {
   margin-bottom: 0.5rem;
 }
 
+.jewel__face--inside .tag {
+  --tag-fill: rgb(240 171 252 / 0.14);
+  --tag-edge: rgb(240 171 252 / 0.4);
+  --tag-ink: #f0abfc;
+}
+
 .jewel__blurb {
-  color: var(--color-text-muted);
+  color: var(--case-ink-muted);
   margin-top: 0.9rem;
 }
 
@@ -1369,7 +1496,7 @@ a:hover {
 .disc {
   aspect-ratio: 1;
   border-radius: 50%;
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.35);
   display: block;
   overflow: hidden;
   position: relative;
@@ -1403,9 +1530,10 @@ a:hover {
 .disc__hole {
   background: var(--case, var(--color-surface));
   border-radius: 50%;
+  /* The clear plastic ring the hole sits in: a thin edge, not a halo. */
   box-shadow:
-    0 0 0 1.4rem color-mix(in srgb, var(--case, var(--color-surface)) 35%, transparent),
-    inset 0 0 0 1px rgb(0 0 0 / 0.25);
+    0 0 0 0.5rem color-mix(in srgb, var(--case) 55%, transparent),
+    inset 0 0 0 1px rgb(255 255 255 / 0.2);
   height: 15%;
   inset-inline-start: 50%;
   position: absolute;
@@ -1562,7 +1690,7 @@ a:hover {
      fill the row. */
   min-width: 0;
   object-fit: cover;
-  width: 6.5rem;
+  width: 11rem;
 }
 
 .post-row__thumb--empty {
@@ -1829,15 +1957,37 @@ a:hover {
   position: relative;
 }
 
+/* Closed by default: an empty machine shows a shut flap, not a hole. It lifts
+   on its hinge once a cartridge is in, which is what reveals the bay. */
 .nes__lid {
-  background: linear-gradient(180deg, #9a978f, #7e7b74);
-  border-bottom: 1px solid #6a6760;
-  border-radius: 0.25rem 0.25rem 0 0;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
-  height: 0.85rem;
-  inset-inline: 0;
+  background: linear-gradient(180deg, #a5a29a, #85827b 60%, #767369);
+  border: 1px solid #6a6760;
+  border-radius: 0.25rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 2px 6px rgb(0 0 0 / 0.35);
+  inset: 0;
   position: absolute;
-  top: 0;
+  transform-origin: top center;
+  transition: transform 0.4s ease;
+  z-index: 2;
+}
+
+/* The flap's finger notch, as on the real machine. */
+.nes__lid::after {
+  background: rgb(0 0 0 / 0.22);
+  border-radius: 0.2rem;
+  bottom: 12%;
+  content: "";
+  height: 0.35rem;
+  inset-inline-start: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 34%;
+}
+
+.nes__bay:has(.console__cartridge--loaded) .nes__lid {
+  transform: rotateX(-104deg);
 }
 
 /* Anchored to the top of the bay so what shows is the cartridge's top edge and
@@ -1845,6 +1995,7 @@ a:hover {
    in. The rest is clipped by the bay, which is the inside of the console. */
 .console__cartridge {
   display: block;
+  z-index: 1;
   inset-inline: 0;
   position: absolute;
   top: 1.05rem;

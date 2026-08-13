@@ -20,8 +20,9 @@ var templateFS embed.FS
 
 // markdown is built once and shared. WithUnsafe() is deliberately absent: raw
 // HTML in a post is dropped instead of passed through, which is what makes a
-// separate sanitiser unnecessary.
-var markdown = goldmark.New()
+// separate sanitiser unnecessary. videoEmbeds is how a post gets a player
+// anyway, without being able to write the tag itself.
+var markdown = goldmark.New(goldmark.WithExtensions(videoEmbeds{}))
 
 // navItem is one entry in the site header. Declaring them once here is what
 // lets every page mark its own link current without repeating the list.

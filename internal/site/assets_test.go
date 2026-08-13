@@ -3,6 +3,7 @@ package site
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -150,4 +151,88 @@ func TestBundle_URLOfUnknownAssetIsEmpty(t *testing.T) {
 	if got := bundle.URL("nope.css"); got != "" {
 		t.Errorf("URL(unknown) = %q, want empty", got)
 	}
+}
+
+// The site is one room with the lights on or off, and the tokens are how it
+// switches. What must never switch is the hardware: the banner, the machine
+// and the cases stay dark in both, so anything drawn on them reads from the
+// phosphor rather than from the room -- a pigment-dark amber on a black bezel
+// is invisible, which is exactly the bug a light theme invites.
+func TestStyles_LightRoomOverridesOnlyTokens(t *testing.T) {
+	css := string(siteCSS(t))
+
+	light := lightBlock(t, css)
+	// Every declaration in the override block is a custom property. A rule in
+	// there would be a second stylesheet nobody remembers to keep in step.
+	for _, line := range strings.Split(stripComments(light), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || line == ":root {" || line == "}" || strings.HasPrefix(line, "--") {
+			continue
+		}
+		t.Errorf("the light room declares something that is not a token: %q", line)
+	}
+
+	// The colours the dark surfaces use are declared once and never overridden.
+	for _, fixed := range []string{"--phosphor:", "--on-dark:"} {
+		if strings.Contains(light, fixed) {
+			t.Errorf("%s is overridden by the lit room, so a dark surface changes with it", fixed)
+		}
+		if !strings.Contains(css, fixed) {
+			t.Errorf("%s is never declared", fixed)
+		}
+	}
+
+	// And the surfaces that stay dark say so, by taking the phosphor locally.
+	for _, surface := range []string{".osd {", ".console {", ".jewel {", ".lightbox {"} {
+		block := blockAfter(t, css, surface)
+		if !strings.Contains(block, "--color-accent: var(--phosphor)") {
+			t.Errorf("%s does not pin its accent to the phosphor:\n%s", surface, block)
+		}
+	}
+}
+
+func siteCSS(t *testing.T) []byte {
+	t.Helper()
+	source, err := assetFS.ReadFile("assets/site.css")
+	if err != nil {
+		t.Fatalf("read site.css: %v", err)
+	}
+	return source
+}
+
+// lightBlock returns the body of the prefers-color-scheme: light rule.
+func lightBlock(t *testing.T, css string) string {
+	t.Helper()
+	const marker = "@media (prefers-color-scheme: light) {"
+	start := strings.Index(css, marker)
+	if start < 0 {
+		t.Fatal("there is no light room at all")
+	}
+	rest := css[start+len(marker):]
+	end := strings.Index(rest, "\n}")
+	if end < 0 {
+		t.Fatal("the light room is not closed")
+	}
+	return rest[:end]
+}
+
+func blockAfter(t *testing.T, css, selector string) string {
+	t.Helper()
+	start := strings.Index(css, selector)
+	if start < 0 {
+		t.Fatalf("no %s rule", selector)
+	}
+	rest := css[start:]
+	end := strings.Index(rest, "\n}")
+	if end < 0 {
+		t.Fatalf("%s is not closed", selector)
+	}
+	return rest[:end]
+}
+
+// commentPattern matches a CSS comment, including one spanning lines.
+var commentPattern = regexp.MustCompile(`(?s)/\*.*?\*/`)
+
+func stripComments(css string) string {
+	return commentPattern.ReplaceAllString(css, "")
 }

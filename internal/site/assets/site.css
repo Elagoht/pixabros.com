@@ -9,9 +9,15 @@
  * single red for the lamp on the machine, which is the one light in the room
  * that is not the screen.
  *
- * One world, deliberately: there is no light theme. A room lit by a screen
- * makes no sense with the lights on, and half a second world is worse than one
- * committed to.
+ * Dark is the room with the lights off, which is the brand's own look and so
+ * the default. Light is the same room with the lights on: the set is still
+ * there and still amber, you are just looking at it in daylight. Only the
+ * tokens change between them -- every rule reads through one, which is what
+ * makes a single block of overrides enough.
+ *
+ * What does not change is the hardware. The banner, the console, the tube and
+ * the cases are objects, and an object does not turn white because the room
+ * did.
  *
  * The rule that keeps it coherent: the interface is drawn by the television --
  * hard corners, monospace labels, phosphor -- and the objects on it are
@@ -26,6 +32,10 @@
 
   --color-text: #dfe5e0;
   --color-text-muted: #7f9187;
+  /* The ink written on a lit amber surface. */
+  --color-accent-ink: #180d00;
+  /* A field is a hole cut in the panel, so it is darker than the panel. */
+  --color-input-bg: #040705;
 
   /* Amber phosphor, and the red lamp on the machine. The lamp is the exact
      red the console further down the page already uses, so the two lights in
@@ -40,6 +50,23 @@
   --color-warning: #ffb642;
   --color-error: #ff6b5c;
 
+  /* The colour the screen actually glows with. Deliberately not overridden by
+     the lit room: the surfaces that use it -- the banner, the tube, an open
+     case -- stay dark whatever the room does, and a pigment-dark amber on them
+     would be unreadable. Everything drawn on one of those surfaces reads
+     through these instead of through --color-accent. */
+  --phosphor: #ffb642;
+  --phosphor-bright: #ffd694;
+  --phosphor-ink: #180d00;
+  --on-dark: #dfe5e0;
+  --on-dark-muted: #7f9187;
+
+  /* The room: the screen's light spilling down the page, and the fine stripe
+     of the tube's aperture grille. Both are tokens because the lit room needs
+     different ones -- a screen does not light a room with the lights on. */
+  --room-light: rgb(255 182 66 / 0.075);
+  --room-grille: rgb(255 214 148 / 0.018);
+
   /* Archivo carries a width axis as well as weight, which is what lets the
      headings be condensed like a broadcast caption without a second file.
      Public Sans reads quietly underneath it. VT323 is a terminal face and is
@@ -48,8 +75,9 @@
   --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
   --font-osd: "VT323", ui-monospace, SFMono-Regular, monospace;
 
-  /* No light theme to offer, so the browser is told plainly. */
-  color-scheme: dark;
+  /* Form controls and scrollbars follow the room rather than arriving as
+     white boxes on a dark page. */
+  color-scheme: dark light;
 
   --space-page: 1.5rem;
   /* The banner is sticky, so this is both its height and the room every scroll
@@ -57,6 +85,42 @@
   --header-height: 3.25rem;
   --width-content: 68rem;
   --radius: 0.625rem;
+}
+
+/* The lights on.
+ *
+ * The ground is a warm wall rather than white: this room has amber in it even
+ * in daylight. The bright phosphor is unreadable on it, so the accent takes the
+ * deep end of the same hue -- burnt amber is what that colour looks like when
+ * it is pigment rather than light. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #ddd8cc;
+    --color-surface: #eae5da;
+    --color-border: #c4bdad;
+
+    --color-text: #17140f;
+    --color-text-muted: #635c4e;
+    --color-accent-ink: #fff6e8;
+    --color-input-bg: #f4f1e9;
+
+    /* Burnt amber: the same hue as the phosphor, at the darkness a link needs
+       to clear 4.5:1 against the wall. A lighter one looked better and was not
+       readable, which is not a trade a link gets to make. */
+    --color-accent: #8a4d08;
+    --color-accent-strong: #6f3d04;
+    --color-lamp: #bd2a1f;
+
+    --color-success: #6f3d04;
+    --color-warning: #8a4d08;
+    --color-error: #b3271b;
+
+    /* No screen lights a lit room, so what was a glow becomes the faint
+       shading a wall has near the ceiling, and the grille darkens rather than
+       lightening. */
+    --room-light: rgb(23 20 15 / 0.05);
+    --room-grille: rgb(23 20 15 / 0.022);
+  }
 }
 
 @font-face {
@@ -116,16 +180,8 @@ html {
 body {
   background-color: var(--color-bg);
   background-image:
-    radial-gradient(
-      ellipse 90% 42% at 50% 0%,
-      rgb(255 182 66 / 0.075),
-      transparent 72%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgb(255 214 148 / 0.018) 0 1px,
-      transparent 1px 3px
-    );
+    radial-gradient(ellipse 90% 42% at 50% 0%, var(--room-light), transparent 72%),
+    repeating-linear-gradient(90deg, var(--room-grille) 0 1px, transparent 1px 3px);
   background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -216,8 +272,17 @@ a:hover {
  */
 
 .osd {
+  /* The banner is a piece of the set, not of the page: it stays dark with the
+     lights on, so it carries the screen's own colours rather than the room's.
+     Redefining the tokens here means every rule inside reads the right ones
+     without knowing anything about it. */
+  --color-text: var(--on-dark);
+  --color-text-muted: var(--on-dark-muted);
+  --color-accent: var(--phosphor);
+  --color-accent-strong: var(--phosphor-bright);
+
   backdrop-filter: blur(10px);
-  background-color: rgb(5 8 6 / 0.82);
+  background-color: rgb(5 8 6 / 0.88);
   border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
   position: sticky;
   top: 0;
@@ -667,6 +732,9 @@ a:hover {
 /* The preview ------------------------------------------------------------- */
 
 .lightbox {
+  /* A picture held up against a blacked-out room, whichever room it is. */
+  --color-accent: var(--phosphor);
+
   background: none;
   border: 0;
   /* The reset zeroes every margin, which takes away a dialog's centring. */
@@ -776,7 +844,7 @@ a:hover {
   border: 0;
   border-radius: 0;
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
-  color: #180d00;
+  color: var(--color-accent-ink);
   display: inline-block;
   font-family: var(--font-display);
   font-stretch: 86%;
@@ -794,7 +862,7 @@ a:hover {
 .button:focus-visible {
   background-color: var(--color-accent-strong);
   box-shadow: 0 0 22px -2px color-mix(in srgb, var(--color-accent) 55%, transparent);
-  color: #180d00;
+  color: var(--color-accent-ink);
 }
 
 /* Tags ------------------------------------------------------------------- */
@@ -1432,6 +1500,13 @@ a:hover {
  */
 
 .console {
+  /* Hardware: dark in either room, and lit by its own phosphor. */
+  --color-text: var(--on-dark);
+  --color-text-muted: var(--on-dark-muted);
+  --color-accent: var(--phosphor);
+  --color-accent-strong: var(--phosphor-bright);
+  --color-accent-ink: var(--phosphor-ink);
+
   /* 1280 for the screen itself plus the bezel's padding on either side. */
   --console-width: min(100vw - 2 * var(--space-page), 1328px);
   margin-inline: calc(50% - var(--console-width) / 2);
@@ -1831,6 +1906,9 @@ a:hover {
  */
 
 .jewel {
+  /* Dark plastic in either room, so the phosphor rather than the pigment. */
+  --color-accent: var(--phosphor);
+
   --page: min(24rem, 42vw, 66vh);
   /* The case is always dark: it is a physical object sitting over the page,
      not a surface of it. Everything made of that plastic reads from here --
@@ -2673,7 +2751,7 @@ a:hover {
 }
 
 .field__input {
-  background-color: #040705;
+  background-color: var(--color-input-bg);
   border: 1px solid var(--color-border);
   border-radius: 0;
   color: var(--color-text);

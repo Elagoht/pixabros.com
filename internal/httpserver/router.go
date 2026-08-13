@@ -182,7 +182,7 @@ func New(deps Dependencies) http.Handler {
 		// binary was built wrong -- not something a request can cause.
 		panic("admin panel is not embedded: " + err.Error())
 	}
-	mux.Handle("/I-am-a-pixabro/", http.StripPrefix("/I-am-a-pixabro/", serveAdminSPA(adminFS)))
+	mux.Handle(adminUIPrefix, http.StripPrefix(adminUIPrefix, serveAdminSPA(adminFS)))
 	mux.Handle("/play/", http.StripPrefix("/play/", noDirListing(deps.PlayDir)))
 	// Uploaded media is public site content (cartridge art, screenshots, OG
 	// images all appear on the public MPA), so it is served without a session.
@@ -205,7 +205,7 @@ func New(deps Dependencies) http.Handler {
 	}
 	mux.Handle("/", publicPages)
 
-	return mux
+	return withSecurityHeaders(mux)
 }
 
 // noDirListing wraps a directory-backed file server and refuses to serve

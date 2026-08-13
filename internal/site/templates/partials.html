@@ -2,7 +2,7 @@
      never drift apart. Fields: Interactive (arcade controls and an empty bay),
      Title, Cartridge (an imageView), Playable, PlayURL. */}}
 {{define "console"}}
-  <div class="console" data-console>
+  <div class="console" data-console data-console-drop>
     <div class="crt">
       <div class="crt__screen" data-console-stage>
         {{if .Playable}}
@@ -70,7 +70,7 @@
     </div>
 
     <div class="nes">
-      <div class="nes__bay">
+      <div class="nes__bay" data-console-bay>
         <span class="nes__lid" aria-hidden="true"></span>
         <span
           class="console__cartridge{{if and (not .Interactive) .Cartridge.URL}} console__cartridge--loaded{{end}}"

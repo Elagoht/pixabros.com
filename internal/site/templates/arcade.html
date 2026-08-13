@@ -15,9 +15,15 @@
       <ul class="cartridges">
         {{range .Data.Cartridges}}
           <li>
+            {{/* draggable is what an anchor already is; saying so keeps the
+                 cartridge's behaviour visible next to the class that styles
+                 the grab cursor. Dropping it on the machine loads it, and so
+                 does clicking, because a drag is not available on a touch
+                 screen. */}}
             <a
               class="cartridge"
               href="/games/{{.Slug}}"
+              draggable="true"
               data-play-url="{{.PlayURL}}"
               data-play-title="{{.Title}}"
             >

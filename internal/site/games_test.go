@@ -343,3 +343,35 @@ func TestRenderArcade_PlaybackControlsStartHidden(t *testing.T) {
 		}
 	}
 }
+
+// A cartridge can be dragged into the machine as well as clicked. The markup is
+// what the script hangs off, so it is pinned here.
+func TestRenderArcade_CartridgesAreDraggableIntoTheConsole(t *testing.T) {
+	conn := setupTestDB(t)
+	playable := seedGame(t, conn, "Playable", "playable", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET is_browser_playable = 1 WHERE id = ?;`, playable,
+	); err != nil {
+		t.Fatalf("mark playable: %v", err)
+	}
+
+	html, _ := renderArcadePage(t, newTestSite(t, conn))
+
+	for _, want := range []string{
+		"draggable=true",
+		"data-play-url=/play/playable/",
+		// The machine takes the drop, and the bay is what the visitor aims at.
+		"data-console-drop",
+		"data-console-bay",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the shelf is missing %q", want)
+		}
+	}
+
+	// Dragging needs a pointer, so clicking has to keep working: a touch screen
+	// has no drag at all.
+	if !strings.Contains(html, "href=/games/playable") {
+		t.Error("the cartridge stopped being a link")
+	}
+}

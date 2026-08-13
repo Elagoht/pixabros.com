@@ -1,9 +1,10 @@
 // Runs the console, on the games page and on a game's own page.
 //
-// Two ways in, one machine. On the shelf you slot a cartridge in; on a game's
-// own page the cartridge is already there and you press start. Either way the
-// frame gets its src here and nowhere else: a web build is tens of megabytes,
-// so nothing downloads until a visitor asks for it.
+// Two ways in, one machine. On the shelf you slot a cartridge in -- by clicking
+// it or by dragging it into the bay -- and on a game's own page the cartridge is
+// already there and you press start. Either way the frame gets its src here and
+// nowhere else: a web build is tens of megabytes, so nothing downloads until a
+// visitor asks for it.
 //
 // Without this the cartridges are ordinary links to each game's own page and
 // the start button is replaced by the "open the game on its own" link beneath
@@ -23,6 +24,7 @@
   var fullscreenButton = document.querySelector("[data-console-fullscreen]");
   var cartridges = document.querySelectorAll("[data-play-url]");
   var startButton = document.querySelector("[data-console-start]");
+  var dropZone = document.querySelector("[data-console-drop]");
 
   if (!(consoleEl && screen) || !(cartridges.length || startButton)) {
     return;
@@ -132,6 +134,89 @@
       run(startButton.getAttribute("data-console-start"));
     });
   }
+
+  // Dragging a cartridge into the bay.
+  //
+  // A drop can come from anywhere -- a link dragged in from another tab is a
+  // drop too -- so the address it carries is never used directly. It is looked
+  // up among this page's own cartridges, and a drop that matches none of them
+  // is ignored. That lookup is the whole reason an arbitrary dragged URL cannot
+  // reach the frame.
+  function cartridgeFor(url) {
+    var found = null;
+    Array.prototype.forEach.call(cartridges, function (cartridge) {
+      if (cartridge.getAttribute("data-play-url") === url) {
+        found = cartridge;
+      }
+    });
+    return found;
+  }
+
+  function setDropTarget(active) {
+    if (dropZone) {
+      dropZone.classList.toggle("console--drop-target", active);
+    }
+  }
+
+  Array.prototype.forEach.call(cartridges, function (cartridge) {
+    cartridge.addEventListener("dragstart", function (event) {
+      if (!event.dataTransfer) {
+        return;
+      }
+      event.dataTransfer.setData(
+        "text/plain",
+        cartridge.getAttribute("data-play-url"),
+      );
+      event.dataTransfer.effectAllowed = "copy";
+      cartridge.classList.add("cartridge--dragging");
+      // The machine says it will take one, before the visitor is over it.
+      if (dropZone) {
+        dropZone.classList.add("console--awaiting-drop");
+      }
+    });
+
+    cartridge.addEventListener("dragend", function () {
+      cartridge.classList.remove("cartridge--dragging");
+      setDropTarget(false);
+      if (dropZone) {
+        dropZone.classList.remove("console--awaiting-drop");
+      }
+    });
+  });
+
+  if (dropZone && cartridges.length) {
+    // preventDefault on dragover is what marks the machine as a valid target;
+    // without it the browser refuses the drop and navigates to the link
+    // instead.
+    dropZone.addEventListener("dragover", function (event) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "copy";
+      }
+      setDropTarget(true);
+    });
+
+    // dragleave also fires when the pointer crosses into a child, so a leave
+    // only counts if it left the machine altogether.
+    dropZone.addEventListener("dragleave", function (event) {
+      if (!dropZone.contains(event.relatedTarget)) {
+        setDropTarget(false);
+      }
+    });
+
+    dropZone.addEventListener("drop", function (event) {
+      event.preventDefault();
+      setDropTarget(false);
+      if (!event.dataTransfer) {
+        return;
+      }
+      var cartridge = cartridgeFor(event.dataTransfer.getData("text/plain"));
+      if (cartridge) {
+        load(cartridge);
+      }
+    });
+  }
+
 
   if (resetButton) {
     resetButton.addEventListener("click", function () {

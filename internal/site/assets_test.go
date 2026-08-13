@@ -85,18 +85,22 @@ func TestBuild_PublishesFontsUnderStableNames(t *testing.T) {
 		t.Fatalf("Build() error = %v", err)
 	}
 
-	// The stylesheet references this path literally, so it must not be hashed.
-	url := bundle.URL("fonts/inter.woff2")
-	if url != "/assets/build/fonts/inter.woff2" {
-		t.Errorf("font URL = %q, want an unhashed /assets/build/fonts/inter.woff2", url)
-	}
+	// The stylesheet references these paths literally, so they must not be
+	// hashed. Every face the site sets type in is checked, not just one:
+	// a face that failed to publish falls back silently in the browser.
+	for _, face := range []string{"archivo", "public-sans", "vt323"} {
+		name := "fonts/" + face + ".woff2"
+		if url := bundle.URL(name); url != "/assets/build/"+name {
+			t.Errorf("%s URL = %q, want an unhashed /assets/build/%s", face, url, name)
+		}
 
-	published, err := os.ReadFile(filepath.Join(dir, buildDirName, "fonts", "inter.woff2"))
-	if err != nil {
-		t.Fatalf("read published font: %v", err)
-	}
-	if len(published) < 4 || string(published[:4]) != "wOF2" {
-		t.Error("published font is not a woff2 file")
+		published, err := os.ReadFile(filepath.Join(dir, buildDirName, "fonts", face+".woff2"))
+		if err != nil {
+			t.Fatalf("read published %s: %v", face, err)
+		}
+		if len(published) < 4 || string(published[:4]) != "wOF2" {
+			t.Errorf("published %s is not a woff2 file", face)
+		}
 	}
 }
 
@@ -123,7 +127,12 @@ func TestBuild_MinifiesCSSWithoutBreakingIt(t *testing.T) {
 
 	// Minification must not eat the things that silently break a stylesheet:
 	// the design tokens themselves, and the font URL the CSS depends on.
-	for _, needle := range []string{"--color-accent", "/assets/build/fonts/inter.woff2"} {
+	for _, needle := range []string{
+		"--color-accent",
+		"/assets/build/fonts/archivo.woff2",
+		"/assets/build/fonts/public-sans.woff2",
+		"/assets/build/fonts/vt323.woff2",
+	} {
 		if !strings.Contains(string(published), needle) {
 			t.Errorf("minified CSS lost %q", needle)
 		}

@@ -41,22 +41,42 @@
     {{end}}
   </head>
   <body class="site-body">
-    <header class="site-header">
-      <div class="site-header__inner">
-        <a class="site-brand" href="/">{{.Site.Name}}</a>
-        <nav class="site-nav" aria-label="Main">
-          {{$path := .Path}}
+    {{$path := .Path}}
+    {{/* The channel banner: what a television draws over the picture when you
+         change channel, not a bar bolted to the top of a document. It shows
+         itself on load, retracts to the lit channel once you are reading, and
+         comes back the moment you scroll up or tab into it.
+
+         Without JavaScript it simply stays open, which is the state that has
+         every link in it. */}}
+    <header class="osd" data-osd>
+      <div class="osd__inner">
+        <a class="osd__set" href="/">
+          <span class="osd__lamp" aria-hidden="true"></span>
+          <span class="osd__name">{{.Site.Name}}</span>
+        </a>
+
+        <nav class="osd__channels" aria-label="Main">
           {{range .Nav}}
             <a
-              class="site-nav__link"
+              class="osd__channel"
               href="{{.Path}}"
               {{if eq .Path $path}}aria-current="page"{{end}}
-              >{{.Label}}</a
             >
+              <span class="osd__number" aria-hidden="true">CH{{.Channel}}</span>
+              <span class="osd__label">{{.Label}}</span>
+            </a>
           {{end}}
         </nav>
       </div>
     </header>
+
+    {{/* What is left once the banner has gone: the channel number, the way a
+         set leaves it in the corner after the banner fades. Decoration, since
+         the banner itself holds every link and comes back on the way up. */}}
+    <p class="osd-ghost" aria-hidden="true">
+      {{range .Nav}}{{if eq .Path $path}}CH{{.Channel}}{{end}}{{end}}
+    </p>
 
     <main class="site-main{{if .PageClass}} {{.PageClass}}{{end}}">
       {{block "main" .}}{{end}}
@@ -88,6 +108,7 @@
         {{end}}
       </div>
     </footer>
+    <script src="{{.ChromeScript}}" defer></script>
     {{range .Scripts}}<script src="{{.}}" defer></script>{{end}}
   </body>
 </html>

@@ -46,13 +46,17 @@ var markdown = goldmark.New(goldmark.WithExtensions(
 type navItem struct {
 	Label string
 	Path  string
+	// Channel is the number the banner shows beside the label. Written out
+	// rather than counted at render time so the numbers are visible here, next
+	// to the sections they belong to.
+	Channel string
 }
 
 var navItems = []navItem{
-	{Label: "Games", Path: "/games"},
-	{Label: "Devlog", Path: "/devlog"},
-	{Label: "Awards", Path: "/awards"},
-	{Label: "Contact", Path: "/contact"},
+	{Label: "Games", Path: "/games", Channel: "01"},
+	{Label: "Devlog", Path: "/devlog", Channel: "02"},
+	{Label: "Awards", Path: "/awards", Channel: "03"},
+	{Label: "Contact", Path: "/contact", Channel: "04"},
 }
 
 // SiteChrome is what the header and footer need, read from site_settings. It
@@ -118,13 +122,15 @@ type pageData struct {
 	// PageClass goes on <main>, for the few rules that belong to one page
 	// rather than to a component.
 	PageClass string
-	// Scripts are per-page: only the contact form needs one, and every other
-	// page ships none at all.
+	// Scripts are per-page: the contact form needs one, the console needs one.
 	Scripts []string
-	Nav     []navItem
-	Site    SiteChrome
-	Year    int
-	Data    interface{}
+	// ChromeScript runs the channel banner and so belongs to every page, which
+	// is why it is filled in by the renderer rather than listed page by page.
+	ChromeScript string
+	Nav          []navItem
+	Site         SiteChrome
+	Year         int
+	Data         interface{}
 }
 
 // renderer holds everything the page renderers share.
@@ -185,6 +191,7 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 	}
 
 	data.CSS = r.bundle.URL("site.css")
+	data.ChromeScript = r.bundle.URL("osd.js")
 	data.Nav = navItems
 	data.Year = r.now().UTC().Year()
 

@@ -1,0 +1,91 @@
+# The Pixabros server, as systemd runs it.
+#
+# This file is a template: install.sh fills in the placeholders and writes
+# the result to /etc/systemd/system. It lives in the repository so the unit is
+# reviewable rather than being conjured by a script nobody reads.
+#
+# Everything the process needs to vary lives in the environment file, so this
+# unit does not change between installations.
+
+[Unit]
+Description=Pixabros site and admin panel
+Documentation=https://github.com/pixabros
+# The site is useless before the network is up, and it opens a listening
+# socket, so it waits for the network to be configured rather than merely
+# present.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+WorkingDirectory=@DATA_DIR@
+ExecStart=@INSTALL_DIR@/pixabros
+EnvironmentFile=@ENV_FILE@
+
+# Always: the site should come back from a panic, an OOM kill or an operator
+# mistake without anyone being paged. The delay keeps a process that fails
+# instantly from spinning, and the burst limit stops systemd giving up on a
+# service that is merely waiting for a slow disk or a database lock.
+Restart=always
+RestartSec=2
+StartLimitBurst=10
+StartLimitIntervalSec=120
+
+# A crash and its reason belong in the journal together.
+StandardOutput=journal
+StandardError=journal
+
+# --- Privilege -------------------------------------------------------------
+#
+# The process starts unprivileged and cannot become privileged. NoNewPrivileges
+# is the one that matters: even a setuid binary reached from inside this unit
+# gains nothing, so a flaw in the server cannot be walked upwards.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+# Uploaded builds are extracted with the process umask, and nothing served has
+# any business being group or world writable.
+UMask=0077
+
+# --- The filesystem --------------------------------------------------------
+#
+# Everything is read-only except the one directory the site owns: the database,
+# the uploaded media, the extracted game builds and the rendered pages. An
+# upload handler that could be talked into writing elsewhere has nowhere to go.
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@DATA_DIR@
+PrivateTmp=true
+PrivateDevices=true
+
+# --- The kernel and the rest of the machine --------------------------------
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RemoveIPC=true
+
+# It speaks TCP and nothing else.
+RestrictAddressFamilies=AF_INET AF_INET6
+
+# The server is pure Go, which never asks for a page that is writable and
+# executable at once. If the service ever refuses to start on a new
+# architecture, this is the first line to try without.
+MemoryDenyWriteExecute=true
+
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

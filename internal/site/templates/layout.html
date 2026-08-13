@@ -65,10 +65,26 @@
     <footer class="site-footer">
       <div class="site-footer__inner">
         <p>&copy; {{.Year}} {{.Site.Name}}</p>
-        {{if .Site.Links}}
-          <div class="site-footer__links">
-            {{range .Site.Links}}<a href="{{.}}" rel="me noopener">{{linkLabel .}}</a>{{end}}
-          </div>
+        {{if .Site.LinkViews}}
+          {{/* A row of marks rather than a row of addresses: a footer full of
+               "github.com/Elagoht" is a wall of text nobody reads. A site we
+               have no mark for keeps its name beside the globe, since that is
+               all there is to identify it by. */}}
+          <ul class="site-social">
+            {{range .Site.LinkViews}}
+              <li>
+                <a
+                  class="site-social__link{{if eq .Brand "other"}} site-social__link--named{{end}}"
+                  href="{{.URL}}"
+                  rel="me noopener"
+                  {{if ne .Brand "other"}}aria-label="{{.Label}}" title="{{.Label}}"{{end}}
+                >
+                  {{template "brand-icon" .Brand}}
+                  {{if eq .Brand "other"}}<span>{{.Label}}</span>{{end}}
+                </a>
+              </li>
+            {{end}}
+          </ul>
         {{end}}
       </div>
     </footer>

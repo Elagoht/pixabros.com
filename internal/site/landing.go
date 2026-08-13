@@ -78,7 +78,7 @@ type memberView struct {
 	Avatar imageView
 	Bio    string
 	Tags   []string
-	Links  []gameLink
+	Links  []brandedLink
 }
 
 type landingPage struct {

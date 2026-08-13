@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"net/url"
 	"strings"
 
 	"pixabros/internal/games"
@@ -162,46 +161,14 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 	return html, []string{gameListTag, siteSettingsTag}, nil
 }
 
-type gameLink struct {
+// brandedLink is a link the site knows how to draw a mark for. Game stores and
+// the studio's own profiles are the same problem, so they are the same type.
+type brandedLink struct {
 	Label string
 	URL   string
 	// Brand picks the mark shown beside the label. The template knows how to
 	// draw each of these and nothing else.
 	Brand string
-}
-
-// The stores a game actually lives on get their own mark; everything else gets
-// a globe, which is honest rather than a guess at an unknown site's branding.
-const (
-	brandItch  = "itch"
-	brandSteam = "steam"
-	brandFiuby = "fiuby"
-	brandOther = "other"
-)
-
-// brandFor reads the store off a link's host.
-//
-// Matching on the registrable domain rather than the whole host is what makes
-// a creator's own subdomain work: an itch.io page lives at
-// elagoht.itch.io, not at itch.io.
-func brandFor(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return brandOther
-	}
-	host := strings.ToLower(parsed.Hostname())
-
-	switch {
-	case host == "itch.io" || strings.HasSuffix(host, ".itch.io"):
-		return brandItch
-	case host == "steampowered.com" || strings.HasSuffix(host, ".steampowered.com"),
-		host == "steamcommunity.com" || strings.HasSuffix(host, ".steamcommunity.com"):
-		return brandSteam
-	case host == "fiuby.com" || strings.HasSuffix(host, ".fiuby.com"):
-		return brandFiuby
-	default:
-		return brandOther
-	}
 }
 
 type gamePage struct {
@@ -224,7 +191,7 @@ type gamePage struct {
 	Playable    bool
 	PlayURL     string
 	Price       string
-	Links       []gameLink
+	Links       []brandedLink
 	HasSideInfo bool
 }
 
@@ -364,7 +331,7 @@ type externalLink struct {
 	URL   string `json:"url"`
 }
 
-func parseGameLinks(raw string) []gameLink {
+func parseGameLinks(raw string) []brandedLink {
 	if strings.TrimSpace(raw) == "" {
 		return nil
 	}
@@ -372,12 +339,12 @@ func parseGameLinks(raw string) []gameLink {
 	if err := json.Unmarshal([]byte(raw), &links); err != nil {
 		return nil
 	}
-	views := make([]gameLink, 0, len(links))
+	views := make([]brandedLink, 0, len(links))
 	for _, link := range links {
 		if link.URL == "" {
 			continue
 		}
-		views = append(views, gameLink{
+		views = append(views, brandedLink{
 			Label: fallback(link.Label, linkLabel(link.URL)),
 			URL:   link.URL,
 			Brand: brandFor(link.URL),

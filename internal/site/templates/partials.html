@@ -140,8 +140,10 @@
      The three brand paths are Tabler Icons (MIT), already a dependency of the
      admin panel, copied here because the public site ships no icon library. */}}
 {{define "brand-icon"}}
+  {{/* Unclassed on purpose: the mark is sized by whatever is showing it, so
+       one partial serves the store row and the footer without either of them
+       needing to know about the other. */}}
   <svg
-    class="store-link__mark"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -159,6 +161,18 @@
     {{else if eq . "steam"}}
       <path d="M16.5 5a4.5 4.5 0 1 1 -.653 8.953l-4.347 3.009l0 .038a3 3 0 0 1 -2.824 3l-.176 0a3 3 0 0 1 -2.94 -2.402l-2.56 -1.098v-3.5l3.51 1.755a2.989 2.989 0 0 1 2.834 -.635l2.727 -3.818a4.5 4.5 0 0 1 4.429 -5.302" />
       <path d="M15.5 9.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" fill="currentColor" />
+    {{else if eq . "x"}}
+      <path d="M4 4l11.733 16h4.267l-11.733 -16l-4.267 0" />
+      <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
+    {{else if eq . "instagram"}}
+      <path d="M4 8a4 4 0 0 1 4 -4h8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-8a4 4 0 0 1 -4 -4l0 -8" />
+      <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+      <path d="M16.5 7.5v.01" />
+    {{else if eq . "youtube"}}
+      <path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8" />
+      <path d="M10 9l5 3l-5 3l0 -6" />
+    {{else if eq . "github"}}
+      <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
     {{else if eq . "fiuby"}}
       {{/* Fiuby has no icon in any library we ship, so this is a lettermark
            rather than an invented logo: a wrong logo is worse than none. */}}

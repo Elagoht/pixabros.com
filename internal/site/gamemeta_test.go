@@ -332,9 +332,9 @@ func TestRenderGame_MarksTheStoreLinks(t *testing.T) {
 	}
 	body := string(html)
 
-	if strings.Count(body, "store-link__mark") != 3 {
-		t.Errorf("wanted a mark on each of the three links, got %d",
-			strings.Count(body, "store-link__mark"))
+	stores := body[strings.Index(body, "store-links__list"):]
+	if got := strings.Count(stores, "<svg"); got != 3 {
+		t.Errorf("wanted a mark on each of the three links, got %d", got)
 	}
 	for _, want := range []string{"itch.io", "Steam", "Our site"} {
 		if !strings.Contains(body, want) {
@@ -434,5 +434,76 @@ func TestRenderGame_PutsTheTrailerInsideTheDescription(t *testing.T) {
 	}
 	if player > words {
 		t.Error("the trailer comes after the description rather than heading it")
+	}
+}
+
+func TestBrandFor_RecognisesTheStudiosOwnPlaces(t *testing.T) {
+	cases := map[string]string{
+		"https://x.com/PixaBrosStudio":            brandX,
+		"https://twitter.com/PixaBrosStudio":      brandX,
+		"https://www.instagram.com/pixabros/":     brandInstagram,
+		"https://www.youtube.com/@pixabros":       brandYouTube,
+		"https://youtu.be/9mjjowHX1-g":            brandYouTube,
+		"https://github.com/Elagoht/":             brandGitHub,
+		"https://elagoht.github.io/thing":         brandGitHub,
+		"https://elagoht.itch.io/dungrid-tactics": brandItch,
+		"https://store.steampowered.com/app/1/":   brandSteam,
+		"https://fiuby.com/x":                     brandFiuby,
+		// A host that merely ends in a brand's name is not that brand.
+		"https://x.com.evil.test/a": brandOther,
+		"https://notgithub.com/a":   brandOther,
+		"https://example.com/a":     brandOther,
+	}
+	for rawURL, want := range cases {
+		if got := brandFor(rawURL); got != want {
+			t.Errorf("brandFor(%q) = %q, want %q", rawURL, got, want)
+		}
+	}
+}
+
+// A recognised site is named after itself, which is shorter and clearer than
+// its address. Anything else keeps the address, since that is all there is.
+func TestBrandLink_NamesWhatItRecognises(t *testing.T) {
+	if got := brandLink("https://github.com/Elagoht/"); got.Label != "GitHub" {
+		t.Errorf("label = %q, want GitHub", got.Label)
+	}
+	if got := brandLink("https://example.com/blog"); got.Label != "example.com/blog" {
+		t.Errorf("label = %q, want the address itself", got.Label)
+	}
+}
+
+// The footer shows marks, not a wall of addresses. An unrecognised site keeps
+// its name beside the globe, because a globe on its own means nothing.
+func TestFooter_ShowsTheStudiosLinksAsMarks(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{
+		"site_name": "Pixabros",
+		"org_sameas_json": `["https://x.com/PixaBrosStudio",` +
+			`"https://github.com/Elagoht/","https://example.com/blog"]`,
+	})
+
+	html, _, err := newTestSite(t, conn).renderAwards(PageAwards)
+	if err != nil {
+		t.Fatalf("renderAwards() error = %v", err)
+	}
+	body := string(html)
+
+	footer := body[strings.Index(body, "site-social"):]
+	if got := strings.Count(footer, "<svg"); got != 3 {
+		t.Errorf("wanted a mark on each of the three links, got %d", got)
+	}
+	// A mark with no words needs a name a screen reader can read out.
+	for _, want := range []string{`aria-label=X`, `aria-label=GitHub`} {
+		if !strings.Contains(footer, want) {
+			t.Errorf("the footer is missing %q", want)
+		}
+	}
+	// The unrecognised one keeps its name on screen instead.
+	if !strings.Contains(footer, "example.com/blog") {
+		t.Error("an unrecognised link lost the only thing identifying it")
+	}
+	// And the addresses are still there to click.
+	if !strings.Contains(footer, "https://x.com/PixaBrosStudio") {
+		t.Error("the footer lost a link's address")
 	}
 }

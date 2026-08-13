@@ -148,10 +148,17 @@ func (s *Site) chrome() (SiteChrome, error) {
 		ogImage = imageURL("org_logo")
 	}
 
+	links := parseLinks(values["org_sameas_json"])
+	views := make([]brandedLink, 0, len(links))
+	for _, link := range links {
+		views = append(views, brandLink(link))
+	}
+
 	return SiteChrome{
-		Name:    name,
-		Twitter: values["twitter_handle"],
-		Links:   parseLinks(values["org_sameas_json"]),
+		Name:      name,
+		Twitter:   values["twitter_handle"],
+		Links:     links,
+		LinkViews: views,
 
 		// Trailing slashes are trimmed once, here, so nothing downstream has to
 		// wonder whether the configured address ends in one.

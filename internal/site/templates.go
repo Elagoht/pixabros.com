@@ -72,6 +72,11 @@ type SiteChrome struct {
 	URL     string
 	Tagline string
 
+	// LinkViews are Links with a mark and a name each, for the footer. The
+	// bare Links above stay as they are: structured data wants addresses, not
+	// labels.
+	LinkViews []brandedLink
+
 	LegalName        string
 	Description      string
 	Email            string

@@ -74,17 +74,31 @@
            own page, which says everything this dialog does. */}}
       {{range .Data.Cases}}
         <dialog class="jewel" id="case-{{.Slug}}" aria-label="{{.Title}}">
+          {{/* A jewel case is two panels: the tray holding the disc, and the
+               lid hinged on its left edge. Closed, the lid covers the tray and
+               shows the cover art; open, it lies to the left showing its inside,
+               which is where the game's details are printed. */}}
           <div class="jewel__box">
-            <div class="jewel__lid">
-              {{if .Art.URL}}
-                <img class="jewel__cover" src="{{.Art.URL}}" alt="{{.Art.Alt}}" />
-              {{else}}
-                <span class="jewel__cover jewel__cover--empty">{{.Title}}</span>
-              {{end}}
+            <div class="jewel__tray">
+              <span class="disc">
+                {{if .Art.URL}}
+                  <img class="disc__art" src="{{.Art.URL}}" alt="" />
+                {{end}}
+                <span class="disc__sheen" aria-hidden="true"></span>
+                <span class="disc__hole" aria-hidden="true"></span>
+              </span>
             </div>
 
-            <div class="jewel__pages">
-              <div class="jewel__page jewel__page--info">
+            <div class="jewel__lid">
+              <div class="jewel__face jewel__face--front">
+                {{if .Art.URL}}
+                  <img class="jewel__cover" src="{{.Art.URL}}" alt="{{.Art.Alt}}" />
+                {{else}}
+                  <span class="jewel__cover jewel__cover--empty">{{.Title}}</span>
+                {{end}}
+              </div>
+
+              <div class="jewel__face jewel__face--inside">
                 <h3 class="jewel__title">{{.Title}}</h3>
                 {{if .Tags}}
                   <ul class="tags tags--compact">
@@ -102,18 +116,6 @@
                     <li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>
                   {{end}}
                 </ul>
-              </div>
-
-              <div class="jewel__page jewel__page--disc">
-                {{/* The artwork is clipped to the disc, so it reads as printed
-                     on it rather than sitting behind it. */}}
-                <span class="disc">
-                  {{if .Art.URL}}
-                    <img class="disc__art" src="{{.Art.URL}}" alt="" />
-                  {{end}}
-                  <span class="disc__sheen" aria-hidden="true"></span>
-                  <span class="disc__hole" aria-hidden="true"></span>
-                </span>
               </div>
             </div>
           </div>

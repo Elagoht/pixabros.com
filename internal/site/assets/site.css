@@ -1217,11 +1217,22 @@ a:hover {
   text-align: start;
 }
 
-/* The open case ------------------------------------------------------------ */
+/* The open case ------------------------------------------------------------
+ *
+ * Modelled on the real thing: two square panels, the tray and the lid hinged
+ * along its left edge. Closed, the lid lies over the tray and the case is one
+ * square in the middle of the screen. Open, the lid swings a full half turn to
+ * the left and the pair sits centred, its inside facing you.
+ */
 
 .jewel {
+  --page: min(24rem, 42vw, 66vh);
+
   background: none;
   border: 0;
+  /* The reset in this file sets margin to 0 on everything, which takes away
+     the auto margin a dialog centres itself with. */
+  margin: auto;
   max-height: none;
   max-width: none;
   overflow: visible;
@@ -1234,60 +1245,67 @@ a:hover {
 }
 
 .jewel__box {
-  display: grid;
-  grid-template-columns: repeat(2, min(22rem, 42vw));
-  perspective: 2200px;
+  aspect-ratio: 1;
+  perspective: 2400px;
   position: relative;
-  /* Closed, the box is nudged so the lid, which covers its left half, is what
-     sits in the middle of the screen. Open, it returns to centre with both
-     pages showing. */
-  transform: translateX(25%);
-  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  width: var(--page);
+  /* The lid opens leftward, so the pair spans a square either side of the
+     tray's left edge. Shifting the tray right by half its width puts that edge
+     in the middle of the screen, which centres the open case. */
+  transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .jewel--open .jewel__box {
-  transform: translateX(0);
+  transform: translateX(50%);
 }
 
-.jewel__page {
-  background: linear-gradient(160deg, #1c1f26, #14161b);
-  border: 1px solid #2c2f38;
-  min-height: min(26rem, 70vh);
-  padding: 1.5rem;
-}
-
-.jewel__page--info {
-  border-radius: 0.4rem 0 0 0.4rem;
-  overflow-y: auto;
-}
-
-.jewel__page--disc {
+.jewel__tray {
   align-items: center;
   background: linear-gradient(160deg, #171a20, #0e1014);
+  border: 1px solid #2c2f38;
   border-radius: 0 0.4rem 0.4rem 0;
   display: flex;
+  height: 100%;
   justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
 }
 
-/* The lid: hinged on its left edge, closed over the first page. */
 .jewel__lid {
-  background: linear-gradient(160deg, #23262e, #14161b);
-  border: 1px solid #2c2f38;
-  border-radius: 0.4rem;
-  box-shadow: 0 20px 45px rgb(0 0 0 / 0.6);
-  inset-block: 0;
-  inset-inline-start: 0;
-  overflow: hidden;
+  height: 100%;
+  inset: 0;
   position: absolute;
   transform-origin: left center;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
-  width: 50%;
+  transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  width: 100%;
   z-index: 2;
 }
 
 .jewel--open .jewel__lid {
-  transform: rotateY(-158deg);
+  transform: rotateY(-180deg);
+}
+
+/* One face is showing at a time; the other is turned away from you. */
+.jewel__face {
+  backface-visibility: hidden;
+  border: 1px solid #2c2f38;
+  border-radius: 0.4rem;
+  box-shadow: 0 20px 45px rgb(0 0 0 / 0.6);
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+.jewel__face--front {
+  background: linear-gradient(160deg, #23262e, #14161b);
+}
+
+.jewel__face--inside {
+  background: linear-gradient(160deg, #1c1f26, #14161b);
+  overflow-y: auto;
+  padding: 1.5rem;
+  transform: rotateY(180deg);
 }
 
 .jewel__cover {
@@ -1302,6 +1320,7 @@ a:hover {
   display: flex;
   font-size: 1.25rem;
   font-weight: 700;
+  height: 100%;
   justify-content: center;
   padding: 1.5rem;
   text-align: center;
@@ -1361,7 +1380,7 @@ a:hover {
   display: block;
   overflow: hidden;
   position: relative;
-  width: min(17rem, 60vw);
+  width: 100%;
 }
 
 /* Clipped to the disc, so the artwork reads as printed on it. */
@@ -1392,46 +1411,47 @@ a:hover {
   background: var(--color-bg);
   border-radius: 50%;
   box-shadow:
-    0 0 0 1.6rem rgb(255 255 255 / 0.08),
+    0 0 0 1.4rem rgb(255 255 255 / 0.08),
     inset 0 0 0 1px rgb(255 255 255 / 0.25);
-  height: 18%;
+  height: 15%;
   inset-inline-start: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 18%;
+  width: 15%;
 }
 
-/* Narrow screens open upward instead, where there is room. */
-@media (max-width: 46rem) {
+/* Only when the screen is too narrow for two squares does it open upward. */
+@media (max-width: 52rem) {
+  .jewel {
+    --page: min(20rem, 84vw, 40vh);
+  }
+
+  /* The same idea as sideways, along the other axis: the lid opens upward, so
+     shifting the tray down by half its height when open puts the pair's centre
+     on the middle of the screen. */
   .jewel__box {
-    grid-template-columns: min(22rem, 86vw);
-    grid-template-rows: repeat(2, auto);
-    transform: translateY(25%);
+    transform: none;
   }
 
   .jewel--open .jewel__box {
-    transform: translateY(0);
+    transform: translateY(50%);
   }
 
-  .jewel__page--info {
-    border-radius: 0.4rem 0.4rem 0 0;
-  }
-
-  .jewel__page--disc {
+  .jewel__tray {
     border-radius: 0 0 0.4rem 0.4rem;
   }
 
   .jewel__lid {
-    height: 50%;
-    inset-block-start: 0;
-    inset-inline: 0;
     transform-origin: center top;
-    width: 100%;
   }
 
   .jewel--open .jewel__lid {
-    transform: rotateX(158deg);
+    transform: rotateX(180deg);
+  }
+
+  .jewel__face--inside {
+    transform: rotateX(180deg);
   }
 }
 

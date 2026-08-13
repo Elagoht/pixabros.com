@@ -114,9 +114,10 @@ func TestRenderArcade_OpenCaseHasBothPages(t *testing.T) {
 
 	dialog := html[strings.Index(html, "id=case-shelf-game"):]
 	for _, want := range []string{
-		"jewel__page--info", // the details page
-		"jewel__page--disc", // the disc page
-		"disc__hole",        // which is a disc, not a square
+		"jewel__face--front",  // the cover, seen while closed
+		"jewel__face--inside", // the details, printed inside the lid
+		"jewel__tray",         // the tray the disc sits in
+		"disc__hole",          // which is a disc, not a square
 		"A short blurb.",
 		"itch.io",
 	} {

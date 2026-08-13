@@ -1956,9 +1956,11 @@ a:hover {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* Stores, at the foot of the page and side by side. */
+/* Stores, at the end of the description and side by side. The gap is larger
+   than the flow between paragraphs: this is a different kind of thing from the
+   words above it. */
 .store-links {
-  margin-top: 3rem;
+  margin-top: 2.5rem;
 }
 
 .store-links__title {
@@ -2176,6 +2178,56 @@ a:hover {
   border-radius: var(--radius);
   overflow-x: auto;
   padding: 1rem 1.25rem;
+}
+
+/* A wide table scrolls inside itself rather than making the whole page scroll
+   sideways. That needs the table to be a scroll container, which a table box
+   cannot be -- hence display: block, with max-content so it is only as wide as
+   its columns need and no wider than the column it sits in. */
+.prose table {
+  border-collapse: collapse;
+  display: block;
+  /* Figures in a column line up. */
+  font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow-x: auto;
+  width: max-content;
+}
+
+.prose th,
+.prose td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 0.85rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.prose th {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prose thead th {
+  border-bottom-color: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+}
+
+.prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* An alignment a table's own syntax asked for beats the default above. */
+.prose th[align="center"],
+.prose td[align="center"] {
+  text-align: center;
+}
+
+.prose th[align="right"],
+.prose td[align="right"] {
+  text-align: end;
 }
 
 .prose pre code {

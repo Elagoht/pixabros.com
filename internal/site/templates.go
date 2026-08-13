@@ -13,6 +13,7 @@ import (
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/html"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 //go:embed templates
@@ -22,7 +23,23 @@ var templateFS embed.FS
 // HTML in a post is dropped instead of passed through, which is what makes a
 // separate sanitiser unnecessary. videoEmbeds is how a post gets a player
 // anyway, without being able to write the tag itself.
-var markdown = goldmark.New(goldmark.WithExtensions(videoEmbeds{}))
+//
+// Tables are the one GFM extension turned on. The rest of GFM is left off on
+// purpose: linkify in particular would rewrite every bare URL in every post
+// already written, which is a change to existing content rather than a new
+// thing an author can reach for.
+//
+// The table extension is configured to write an align attribute rather than its
+// default inline style: the site's content policy has no style-src
+// 'unsafe-inline', so an inline style would be blocked and a right-aligned
+// column would silently come out left-aligned. The stylesheet reads the
+// attribute instead.
+var markdown = goldmark.New(goldmark.WithExtensions(
+	extension.NewTable(
+		extension.WithTableCellAlignMethod(extension.TableCellAlignAttribute),
+	),
+	videoEmbeds{},
+))
 
 // navItem is one entry in the site header. Declaring them once here is what
 // lets every page mark its own link current without repeating the list.

@@ -130,7 +130,7 @@
       "unreadMessages": "Unread messages",
       "totalMessages": "{{count}} in total",
       "games": "Games",
-      "gamesHint": "{{published}} published · {{playable}} playable",
+      "gamesHint": "{{published}} published · {{playable}} browser playable",
       "devlog": "Devlog posts",
       "publishedCount": "{{count}} published",
       "awards": "Awards",
@@ -270,7 +270,8 @@
       "kind": "Type",
       "kindHelp": "A jam entry is marked as one on the public site.",
       "videoUrl": "Trailer",
-      "videoUrlHelp": "A YouTube link. It plays on the game's page."
+      "videoUrlHelp": "A YouTube link. It plays on the game's page.",
+      "fullDescriptionPlaceholder": "## Key features\n\n- One\n- Two"
     },
     "create": {
       "title": "New game",

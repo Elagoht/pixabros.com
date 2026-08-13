@@ -8,6 +8,7 @@ import {
   Input,
   Keywords,
   LinkListField,
+  MarkdownEditor,
   Select,
   SubmitButton,
   Switch,
@@ -119,10 +120,13 @@ const GameForm: FC<GameFormProps> = ({
                 rows={2}
               />
 
-              <Textarea
+              {/* The public page renders this as markdown, the same pipeline
+                  a devlog post goes through, so it is written the same way. */}
+              <MarkdownEditor
                 name="full_description"
                 label={t("games.form.fullDescription")}
-                rows={6}
+                rows={12}
+                placeholder={t("games.form.fullDescriptionPlaceholder")}
               />
 
               <Keywords

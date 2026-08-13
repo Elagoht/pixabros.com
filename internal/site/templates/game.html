@@ -29,7 +29,7 @@
 
   <div class="game-body">
     <div class="game-body__main">
-      {{if or .Data.Video .Data.Full}}
+      {{if or .Data.Video .Data.Full .Data.Links}}
         <div class="prose">
           {{if .Data.Video}}
             <div class="embed embed--video">
@@ -44,6 +44,25 @@
             </div>
           {{end}}
           {{.Data.Full}}
+
+          {{if .Data.Links}}
+            {{/* Where you go once you have read about the game. Side by side,
+                 at the end of the description rather than in a block of its
+                 own after the page's columns. */}}
+            <div class="store-links">
+              <h2 class="store-links__title">Where to get it</h2>
+              <ul class="store-links__list">
+                {{range .Data.Links}}
+                  <li>
+                    <a class="store-link" href="{{.URL}}" rel="noopener">
+                      {{template "brand-icon" .Brand}}
+                      <span>{{.Label}}</span>
+                    </a>
+                  </li>
+                {{end}}
+              </ul>
+            </div>
+          {{end}}
         </div>
       {{end}}
     </div>
@@ -110,22 +129,4 @@
       &times;
     </button>
   </dialog>
-
-  {{if .Data.Links}}
-    {{/* The stores sit at the foot of the page, side by side: they are where
-         you go once you have read about the game, not while you are reading. */}}
-    <div class="store-links">
-      <h2 class="store-links__title">Where to get it</h2>
-      <ul class="store-links__list">
-        {{range .Data.Links}}
-          <li>
-            <a class="store-link" href="{{.URL}}" rel="noopener">
-              {{template "brand-icon" .Brand}}
-              <span>{{.Label}}</span>
-            </a>
-          </li>
-        {{end}}
-      </ul>
-    </div>
-  {{end}}
 {{end}}

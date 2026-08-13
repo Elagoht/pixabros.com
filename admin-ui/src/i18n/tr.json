@@ -130,7 +130,7 @@
       "unreadMessages": "Okunmamış mesaj",
       "totalMessages": "Toplam {{count}} mesaj",
       "games": "Oyunlar",
-      "gamesHint": "{{published}} yayında · {{playable}} oynanabilir",
+      "gamesHint": "{{published}} yayında · {{playable}} tarayıcıda oynanabilir",
       "devlog": "Devlog yazıları",
       "publishedCount": "{{count}} yayında",
       "awards": "Ödüller",
@@ -270,7 +270,8 @@
       "kind": "Yapım türü",
       "kindHelp": "Game jam oyunları sitede rozetle işaretlenir.",
       "videoUrl": "Tanıtım videosu",
-      "videoUrlHelp": "YouTube bağlantısı. Oyunun sayfasında oynatılır."
+      "videoUrlHelp": "YouTube bağlantısı. Oyunun sayfasında oynatılır.",
+      "fullDescriptionPlaceholder": "## Öne çıkanlar\n\n- Bir\n- İki"
     },
     "create": {
       "title": "Yeni oyun",

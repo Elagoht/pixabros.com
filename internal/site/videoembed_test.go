@@ -102,3 +102,59 @@ func TestRenderMarkdown_LeavesAnOrdinaryLinkAlone(t *testing.T) {
 		t.Errorf("a link to another site became a player: %s", html)
 	}
 }
+
+// Tables are the one GFM extension the site turns on, so a description or a
+// post can lay figures out in columns.
+func TestRenderMarkdown_RendersATable(t *testing.T) {
+	html, err := renderMarkdown(
+		"| Mode | Players |\n" +
+			"| --- | ---: |\n" +
+			"| Endless | 1 |\n" +
+			"| Local PvP | 2 |\n",
+	)
+	if err != nil {
+		t.Fatalf("renderMarkdown() error = %v", err)
+	}
+	body := string(html)
+
+	for _, want := range []string{"<table>", "<thead>", "<th", "Mode", "<tbody>", "<td", "Local PvP"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the table did not render: missing %q\ngot: %s", want, body)
+		}
+	}
+	// The column asked to be right-aligned, and that has to survive into the
+	// markup for the stylesheet to honour it.
+	if !strings.Contains(body, `align="right"`) {
+		t.Errorf("the column alignment was lost: %s", body)
+	}
+}
+
+// Linkify is deliberately off: turning it on would rewrite every bare URL in
+// every post already written, which is a change to existing content rather than
+// a new thing an author can reach for.
+func TestRenderMarkdown_LeavesABareURLAsText(t *testing.T) {
+	html, err := renderMarkdown("Read more at https://example.com/docs for details.\n")
+	if err != nil {
+		t.Fatalf("renderMarkdown() error = %v", err)
+	}
+	if strings.Contains(string(html), "<a href") {
+		t.Errorf("a bare URL became a link: %s", html)
+	}
+}
+
+// The site's content policy has no style-src 'unsafe-inline', so an inline
+// style on a table cell would be blocked and the alignment lost. Nothing the
+// markdown pipeline produces may carry one.
+func TestRenderMarkdown_NeverEmitsAnInlineStyle(t *testing.T) {
+	html, err := renderMarkdown(
+		"| Left | Middle | Right |\n" +
+			"| :--- | :----: | ----: |\n" +
+			"| a | b | c |\n",
+	)
+	if err != nil {
+		t.Fatalf("renderMarkdown() error = %v", err)
+	}
+	if strings.Contains(string(html), "style=") {
+		t.Errorf("the content policy would block this: %s", html)
+	}
+}

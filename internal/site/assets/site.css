@@ -1431,13 +1431,11 @@ a:hover {
      rather than the viewport. */
   container-type: inline-size;
   background: #16171b;
-  border-radius: 0.15rem;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
   display: flex;
   inset-inline: 46% 7%;
   overflow: hidden;
   position: absolute;
-  top: 8%;
 }
 
 .cartridge__label img {

@@ -744,11 +744,11 @@ a:hover {
 }
 
 .carousel__arrow--prev {
-  inset-inline-start: -0.5rem;
+  inset-inline-start: -1.75rem;
 }
 
 .carousel__arrow--next {
-  inset-inline-end: -0.5rem;
+  inset-inline-end: -1.75rem;
 }
 
 @media (max-width: 48rem) {
@@ -844,7 +844,12 @@ a:hover {
 
 .carousel__dot:hover {
   background-color: var(--color-accent);
-  width: 1.25rem;
+}
+
+/* Which slide you are on. The script sets this as the track scrolls. */
+.carousel__dot[aria-current="true"] {
+  background-color: var(--color-accent);
+  width: 1.5rem;
 }
 
 /* Games on sale ---------------------------------------------------------- */
@@ -863,6 +868,22 @@ a:hover {
   border-radius: var(--radius);
   overflow: hidden;
   position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sale-card:hover {
+  box-shadow: 0 14px 26px rgb(0 0 0 / 0.35);
+  transform: translateY(-3px);
+}
+
+/* The artwork drifts in a little under the overlay, so the whole card feels
+   like one object rather than a picture with a label on top. */
+.sale-card__art {
+  transition: transform 0.35s ease;
+}
+
+.sale-card:hover .sale-card__art {
+  transform: scale(1.04);
 }
 
 .sale-card__art {
@@ -949,6 +970,17 @@ a:hover {
 
 .member__name {
   margin-top: 1rem;
+}
+
+.member__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: center;
+  list-style: none;
+  margin-top: 0.75rem;
+  padding: 0;
+  font-size: 0.9375rem;
 }
 
 .member__bio {
@@ -1879,6 +1911,10 @@ a:hover {
   font: inherit;
   padding: 0.6rem 0.75rem;
   width: 100%;
+}
+
+.field__input::placeholder {
+  color: color-mix(in srgb, var(--color-text-muted) 75%, transparent);
 }
 
 .field__input:focus-visible {

@@ -114,7 +114,7 @@
                 class="carousel__dot"
                 href="#{{.ID}}"
                 data-carousel-target="{{.ID}}"
-                aria-label="Game {{.Index}}"
+                aria-label="{{.Title}}"
               ></a>
             {{end}}
           </nav>
@@ -179,6 +179,13 @@
               </ul>
             {{end}}
             {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
+            {{if .Links}}
+              <ul class="member__links">
+                {{range .Links}}
+                  <li><a href="{{.URL}}" rel="me noopener">{{.Label}}</a></li>
+                {{end}}
+              </ul>
+            {{end}}
           </li>
         {{end}}
       </ul>

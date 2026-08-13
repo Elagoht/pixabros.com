@@ -12,7 +12,7 @@ func TestLookupTarget_KnownAndUnknown(t *testing.T) {
 		{"cartridge_art", 400, 560},
 		{"og_image", 1200, 630},
 		{"screenshot", 1280, 720},
-		{"award_picture", 320, 320},
+		{"award_picture", 1280, 1280},
 		{"org_logo", 512, 512},
 	}
 	for _, c := range cases {
@@ -28,5 +28,16 @@ func TestLookupTarget_KnownAndUnknown(t *testing.T) {
 
 	if _, ok := LookupTarget("does_not_exist"); ok {
 		t.Error("LookupTarget() should return ok=false for an unknown name")
+	}
+}
+
+// Which targets crop and which merely cap is a product decision, so it is
+// pinned here rather than left to whoever edits the table next.
+func TestTargets_OnlyAwardPicturesKeepTheirOwnShape(t *testing.T) {
+	for name, target := range Targets {
+		wantFit := name == "award_picture"
+		if target.Fit != wantFit {
+			t.Errorf("Targets[%q].Fit = %v, want %v", name, target.Fit, wantFit)
+		}
 	}
 }

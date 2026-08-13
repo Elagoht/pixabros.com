@@ -15,22 +15,46 @@
     <form class="form" method="post" action="/api/contact">
       <label class="field">
         <span class="field__label">Your name</span>
-        <input class="field__input" type="text" name="name" autocomplete="name" />
+        <input
+          class="field__input"
+          type="text"
+          name="name"
+          autocomplete="name"
+          placeholder="Ada Lovelace"
+        />
       </label>
 
       <label class="field">
         <span class="field__label">Subject <span class="field__required">*</span></span>
-        <input class="field__input" type="text" name="subject" required />
+        <input
+          class="field__input"
+          type="text"
+          name="subject"
+          required
+          placeholder="What is this about?"
+        />
       </label>
 
       <div class="field-row">
         <label class="field">
           <span class="field__label">Phone</span>
-          <input class="field__input" type="tel" name="phone" autocomplete="tel" />
+          <input
+            class="field__input"
+            type="tel"
+            name="phone"
+            autocomplete="tel"
+            placeholder="+90 555 000 00 00"
+          />
         </label>
         <label class="field">
           <span class="field__label">Email</span>
-          <input class="field__input" type="email" name="email" autocomplete="email" />
+          <input
+            class="field__input"
+            type="email"
+            name="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
         </label>
       </div>
 
@@ -44,6 +68,7 @@
           rows="8"
           required
           minlength="{{.Data.MinMessageLength}}"
+          placeholder="Tell us what you need. The more you write, the better we can answer."
         ></textarea>
         <span class="field__hint">
           At least {{.Data.MinMessageLength}} characters, so we know what you need.

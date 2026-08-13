@@ -54,6 +54,7 @@ type memberView struct {
 	Avatar imageView
 	Bio    string
 	Tags   []string
+	Links  []gameLink
 }
 
 type landingPage struct {
@@ -248,6 +249,7 @@ func buildMembers(list []members.Member, images map[string]media.Media) []member
 			Name:   member.Name,
 			Avatar: lookupImage(images, member.AvatarID, member.Name),
 			Bio:    member.Description,
+			Links:  parseGameLinks(member.LinksJSON),
 			// There is no separate role column; the tags field is what the
 			// admin panel collects roles into.
 			Tags: splitTags(member.Tags),

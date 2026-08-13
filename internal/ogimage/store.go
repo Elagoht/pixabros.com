@@ -3,11 +3,14 @@ package ogimage
 import (
 	"bytes"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"image"
 	"strings"
 	"time"
 
+	"pixabros/internal/imaging"
 	"pixabros/internal/media"
 	"pixabros/internal/storage"
 )
@@ -22,10 +25,43 @@ const generatedPrefix = "media/og_generated/"
 type Store struct {
 	repo  *media.Repo
 	files storage.Storage
+	// db is read for the studio's logo, which the card is built around.
+	db *sql.DB
 }
 
-func NewStore(repo *media.Repo, files storage.Storage) *Store {
-	return &Store{repo: repo, files: files}
+func NewStore(repo *media.Repo, files storage.Storage, db *sql.DB) *Store {
+	return &Store{repo: repo, files: files, db: db}
+}
+
+// logo loads the studio's mark. A card without it is still a card, so a
+// missing or unreadable logo is not an error -- it just leaves the band bare.
+func (s *Store) logo() image.Image {
+	if s.db == nil {
+		return nil
+	}
+
+	var mediaID string
+	if err := s.db.QueryRow(
+		`SELECT value FROM site_settings WHERE key = 'org_logo' AND value != '';`,
+	).Scan(&mediaID); err != nil {
+		return nil
+	}
+
+	image, err := s.repo.FindByID(mediaID)
+	if err != nil {
+		return nil
+	}
+	file, err := s.files.Get(image.Path)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	decoded, err := imaging.Decode(file)
+	if err != nil {
+		return nil
+	}
+	return decoded
 }
 
 // IsGenerated reports whether a stored path is one of ours.
@@ -35,7 +71,7 @@ func IsGenerated(path string) bool {
 
 // Create draws the title and stores the result.
 func (s *Store) Create(title string) (media.Media, error) {
-	encoded, err := GenerateWebP(title)
+	encoded, err := GenerateWebP(title, s.logo())
 	if err != nil {
 		return media.Media{}, fmt.Errorf("draw og image: %w", err)
 	}

@@ -150,3 +150,40 @@ func TestProcessUpload_EndToEnd(t *testing.T) {
 		t.Error("ProcessUpload() returned no bytes")
 	}
 }
+
+// An award can be a trophy, a certificate or a rosette. Cropping those to a
+// square cuts the award in half, so the picture keeps its own shape and is
+// only capped in size.
+func TestResizeFit_KeepsTheSourceAspectRatio(t *testing.T) {
+	wide := image.NewRGBA(image.Rect(0, 0, 3000, 1000))
+	got := ResizeFit(wide, 1280, 1280)
+
+	if got.Bounds().Dx() != 1280 {
+		t.Errorf("width = %d, want it capped at 1280", got.Bounds().Dx())
+	}
+	if h := got.Bounds().Dy(); h < 420 || h > 430 {
+		t.Errorf("height = %d, want about 427 so the 3:1 shape survives", h)
+	}
+}
+
+func TestResizeFit_CapsTheTallerSideToo(t *testing.T) {
+	tall := image.NewRGBA(image.Rect(0, 0, 1000, 4000))
+	got := ResizeFit(tall, 1280, 1280)
+
+	if got.Bounds().Dy() != 1280 {
+		t.Errorf("height = %d, want it capped at 1280", got.Bounds().Dy())
+	}
+	if w := got.Bounds().Dx(); w < 315 || w > 325 {
+		t.Errorf("width = %d, want about 320", w)
+	}
+}
+
+// Scaling a small picture up would only invent detail.
+func TestResizeFit_LeavesSmallImagesAlone(t *testing.T) {
+	small := image.NewRGBA(image.Rect(0, 0, 300, 200))
+	got := ResizeFit(small, 1280, 1280)
+
+	if got.Bounds().Dx() != 300 || got.Bounds().Dy() != 200 {
+		t.Errorf("size = %dx%d, want it untouched", got.Bounds().Dx(), got.Bounds().Dy())
+	}
+}

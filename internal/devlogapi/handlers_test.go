@@ -32,7 +32,7 @@ func setup(t *testing.T) (*Handlers, *devlog.Repo, *sql.DB) {
 	// A real image store, writing into a temporary directory: the generated
 	// preview is part of what creating a post does, so stubbing it out would
 	// test a code path that never runs in production.
-	og := ogimage.NewStore(media.NewRepo(conn), storage.NewLocalDisk(t.TempDir(), ""))
+	og := ogimage.NewStore(media.NewRepo(conn), storage.NewLocalDisk(t.TempDir(), ""), conn)
 	return NewHandlers(repo, conn, og), repo, conn
 }
 

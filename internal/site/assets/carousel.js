@@ -14,6 +14,7 @@
   var prev = carousel.querySelector("[data-carousel-prev]");
   var next = carousel.querySelector("[data-carousel-next]");
   var slides = track ? track.querySelectorAll(".slide") : [];
+  var dots = carousel.querySelectorAll(".carousel__dot");
 
   if (!(track && slides.length > 1)) {
     return;
@@ -50,6 +51,19 @@
     return best;
   }
 
+  // The dots say which slide you are on. aria-current carries it, so the
+  // styling and what a screen reader announces come from the same attribute.
+  function markCurrent() {
+    var index = currentIndex();
+    Array.prototype.forEach.call(dots, function (dot, i) {
+      if (i === index) {
+        dot.setAttribute("aria-current", "true");
+      } else {
+        dot.removeAttribute("aria-current");
+      }
+    });
+  }
+
   function go(step) {
     // Wraps, so the last card's next arrow returns to the first.
     var index = (currentIndex() + step + slides.length) % slides.length;
@@ -66,6 +80,18 @@
       go(1);
     });
   }
+
+  markCurrent();
+
+  // Following the scroll rather than only the clicks, so dragging or swiping
+  // the track updates the dots too.
+  var pending = null;
+  track.addEventListener("scroll", function () {
+    if (pending) {
+      window.clearTimeout(pending);
+    }
+    pending = window.setTimeout(markCurrent, 90);
+  });
 
   // The dots are anchors, so following one would scroll the page vertically to
   // bring the slide into view. Scrolling the track instead keeps the page put.

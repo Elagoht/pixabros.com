@@ -94,10 +94,49 @@ func EncodeWebP(img image.Image) ([]byte, error) {
 // returns the resulting WebP bytes. This is the single entry point the
 // upload handler calls.
 func ProcessUpload(r io.Reader, targetW, targetH int) ([]byte, error) {
+	return ProcessUploadFor(r, Target{Width: targetW, Height: targetH})
+}
+
+// ProcessUploadFor decodes an upload and resizes it the way its target asks.
+func ProcessUploadFor(r io.Reader, target Target) ([]byte, error) {
 	src, err := Decode(r)
 	if err != nil {
 		return nil, err
 	}
-	resized := ResizeCropFill(src, targetW, targetH)
+
+	var resized image.Image
+	if target.Fit {
+		resized = ResizeFit(src, target.Width, target.Height)
+	} else {
+		resized = ResizeCropFill(src, target.Width, target.Height)
+	}
 	return EncodeWebP(resized)
+}
+
+// ResizeFit scales src down to sit inside maxW by maxH, keeping its own aspect
+// ratio. An image already smaller than the bounds is left as it is: scaling it
+// up would only invent detail.
+func ResizeFit(src image.Image, maxW, maxH int) image.Image {
+	bounds := src.Bounds()
+	srcW, srcH := bounds.Dx(), bounds.Dy()
+	if srcW == 0 || srcH == 0 {
+		return src
+	}
+
+	scale := 1.0
+	if srcW > maxW {
+		scale = float64(maxW) / float64(srcW)
+	}
+	if h := float64(srcH) * scale; maxH > 0 && h > float64(maxH) {
+		scale = float64(maxH) / float64(srcH)
+	}
+	if scale >= 1 {
+		return src
+	}
+
+	dstW := int(float64(srcW)*scale + 0.5)
+	dstH := int(float64(srcH)*scale + 0.5)
+	dst := image.NewRGBA(image.Rect(0, 0, dstW, dstH))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
+	return dst
 }

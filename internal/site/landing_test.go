@@ -339,3 +339,36 @@ func TestRenderLanding_PortfolioCardsLinkToTheGame(t *testing.T) {
 		t.Error("the card's artwork and its title should both lead to the game")
 	}
 }
+
+// Members' own links come from the panel, so they belong on the card.
+func TestRenderLanding_ShowsMemberLinks(t *testing.T) {
+	conn := setupTestDB(t)
+	memberID := seedMember(t, conn, "Someone", "Code", "A bio.", true)
+	if _, err := conn.Exec(
+		`UPDATE members SET links_json = '[{"label":"itch.io","url":"https://itch.io/someone"}]' WHERE id = ?;`,
+		memberID,
+	); err != nil {
+		t.Fatalf("set links: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "https://itch.io/someone") {
+		t.Error("the member's link is missing")
+	}
+	if !strings.Contains(html, "itch.io<") {
+		t.Error("the link has no label")
+	}
+}
+
+// A member with no links gets no empty list.
+func TestRenderLanding_OmitsAnEmptyMemberLinkList(t *testing.T) {
+	conn := setupTestDB(t)
+	seedMember(t, conn, "Someone", "Code", "A bio.", true)
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "member__links") {
+		t.Error("an empty link list rendered anyway")
+	}
+}

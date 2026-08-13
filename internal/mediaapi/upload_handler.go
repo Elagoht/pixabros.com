@@ -58,7 +58,9 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	webpBytes, err := imaging.ProcessUpload(file, target.Width, target.Height)
+	// The target decides whether the upload is cropped to a fixed shape or
+	// merely capped in size -- an award's picture keeps its own proportions.
+	webpBytes, err := imaging.ProcessUploadFor(file, target)
 	if err != nil {
 		httpapi.WriteError(w, http.StatusBadRequest, "invalid_image", "could not decode or process the uploaded image")
 		return

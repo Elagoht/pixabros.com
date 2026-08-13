@@ -31,7 +31,15 @@
               </span>
               <span class="cartridge__notch" aria-hidden="true"></span>
             </a>
-            <p class="cartridge__caption">{{.Title}}</p>
+            <p class="cartridge__caption">
+              {{.Title}}
+              {{if or .Genre .Year}}
+                <span class="shelf-meta">
+                  {{if .Genre}}{{.Genre}}{{end}}{{if and .Genre .Year}} &middot; {{end}}{{if .Year}}{{.Year}}{{end}}
+                </span>
+              {{end}}
+              {{if .IsGameJam}}<span class="jam-badge">Jam</span>{{end}}
+            </p>
           </li>
         {{end}}
       </ul>
@@ -100,6 +108,12 @@
 
               <div class="jewel__face jewel__face--inside">
                 <h3 class="jewel__title">{{.Title}}</h3>
+                {{if or .Genre .Released .IsGameJam}}
+                  <p class="jewel__meta">
+                    {{if .Genre}}{{.Genre}}{{end}}{{if and .Genre .Released}} &middot; {{end}}{{if .Released}}{{.Released}}{{end}}
+                    {{if .IsGameJam}}<span class="jam-badge">Game jam</span>{{end}}
+                  </p>
+                {{end}}
                 {{if .Tags}}
                   <ul class="tags tags--compact">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}

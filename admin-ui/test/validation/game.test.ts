@@ -10,6 +10,9 @@ const valid: GameFormValues = {
   short_description: "",
   full_description: "",
   tags: "",
+  genre: "",
+  release_date: "",
+  kind: "production",
   is_for_sale: false,
   price_display: "",
   external_links: [],
@@ -104,5 +107,38 @@ describe("parseExternalLinks", () => {
 
   it("skips entries that are not objects", () => {
     expect(parseExternalLinks('["nope", null, 3]')).toEqual([]);
+  });
+});
+
+describe("release date and kind", () => {
+  it("accepts a game with neither filled in", async () => {
+    await expect(
+      schema.isValid({ ...valid, release_date: "", kind: "production" }),
+    ).resolves.toBe(true);
+  });
+
+  it("accepts a date the picker produces", async () => {
+    await expect(
+      schema.isValid({ ...valid, release_date: "2026-07-31" }),
+    ).resolves.toBe(true);
+  });
+
+  // The API stores and sorts the date as text, so a date of another shape
+  // would sort into the wrong place rather than fail loudly.
+  it.each([
+    "31-07-2026",
+    "2026/07/31",
+    "July 2026",
+    "2026-7-31",
+  ])("rejects %s", async (release_date) => {
+    await expect(schema.isValid({ ...valid, release_date })).resolves.toBe(
+      false,
+    );
+  });
+
+  it("rejects a kind the public site has no badge for", async () => {
+    await expect(
+      schema.isValid({ ...valid, kind: "prototype" as GameKind }),
+    ).resolves.toBe(false);
   });
 });

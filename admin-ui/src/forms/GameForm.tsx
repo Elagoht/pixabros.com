@@ -3,10 +3,12 @@ import { Form, Formik } from "formik";
 import type { FC, ReactNode } from "react";
 import {
   Card,
+  DatePicker,
   FieldSet,
   Input,
   Keywords,
   LinkListField,
+  Select,
   SubmitButton,
   Switch,
   Textarea,
@@ -19,6 +21,9 @@ export const emptyGameFormValues: GameFormValues = {
   short_description: "",
   full_description: "",
   tags: "",
+  genre: "",
+  release_date: "",
+  kind: "production",
   is_for_sale: false,
   price_display: "",
   external_links: [],
@@ -55,6 +60,9 @@ export const toGameFormValues = (game: ResponseGame): GameFormValues => ({
   short_description: game.short_description,
   full_description: game.full_description,
   tags: game.tags,
+  genre: game.genre,
+  release_date: game.release_date,
+  kind: game.kind,
   is_for_sale: game.is_for_sale,
   price_display: game.price_display,
   external_links: parseExternalLinks(game.external_links_json),
@@ -121,6 +129,32 @@ const GameForm: FC<GameFormProps> = ({
                 placeholder={t("games.form.tagsPlaceholder")}
                 output="string"
               />
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  name="genre"
+                  label={t("games.form.genre")}
+                  placeholder={t("games.form.genrePlaceholder")}
+                />
+                <DatePicker
+                  name="release_date"
+                  label={t("games.form.releaseDate")}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Select
+                  name="kind"
+                  label={t("games.form.kind")}
+                  options={[
+                    { label: t("games.kind.production"), value: "production" },
+                    { label: t("games.kind.gamejam"), value: "gamejam" },
+                  ]}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t("games.form.kindHelp")}
+                </p>
+              </div>
             </Card.Body>
           </Card>
 

@@ -234,7 +234,8 @@
       "title": "Başlık",
       "status": "Durum",
       "distribution": "Dağıtım",
-      "order": "Sıra"
+      "order": "Sıra",
+      "kind": "Tür"
     },
     "status": {
       "published": "Yayında",
@@ -262,7 +263,12 @@
       "linkLabelPlaceholder": "itch.io",
       "linkUrlPlaceholder": "https://ornek.itch.io/oyun",
       "addLink": "Bağlantı ekle",
-      "noLinks": "Henüz bağlantı yok."
+      "noLinks": "Henüz bağlantı yok.",
+      "genre": "Tür",
+      "genrePlaceholder": "Sıra tabanlı taktik",
+      "releaseDate": "Çıkış tarihi",
+      "kind": "Yapım türü",
+      "kindHelp": "Game jam oyunları sitede rozetle işaretlenir."
     },
     "create": {
       "title": "Yeni oyun",
@@ -332,10 +338,15 @@
       "titleRequired": "Başlık zorunludur.",
       "externalLinksJson": "Dış bağlantılar geçerli bir JSON dizisi olmalı, örneğin [].",
       "linkLabel": "Etiket zorunludur.",
-      "linkUrl": "https:// dahil tam bir adres girin"
+      "linkUrl": "https:// dahil tam bir adres girin",
+      "releaseDate": "Tarih seçiciyi kullan ya da tarihi YYYY-AA-GG biçiminde yaz."
     },
     "actions": {
       "viewOnSite": "Sitede görüntüle"
+    },
+    "kind": {
+      "production": "Yapım",
+      "gamejam": "Game jam"
     }
   },
   "members": {

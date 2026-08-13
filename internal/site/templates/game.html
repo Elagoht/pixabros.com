@@ -7,6 +7,11 @@
 
   <div class="page-header">
     <h1>{{.Data.Title}}</h1>
+    {{if .Data.IsGameJam}}
+      {{/* A jam entry was built against a clock, and saying so is fairer to
+           it than letting it be read as a full production. */}}
+      <p class="jam-badge jam-badge--standalone">Game jam entry</p>
+    {{end}}
     {{if .Data.Short}}<p class="page-header__lead">{{.Data.Short}}</p>{{end}}
   </div>
 
@@ -40,6 +45,18 @@
       <aside class="game-body__side">
         {{if .Data.Price}}
           <p class="game-price">{{.Data.Price}}</p>
+        {{end}}
+        {{if or .Data.Released .Data.Genre}}
+          <dl class="game-facts">
+            {{if .Data.Released}}
+              <dt>Released</dt>
+              <dd>{{.Data.Released}}</dd>
+            {{end}}
+            {{if .Data.Genre}}
+              <dt>Genre</dt>
+              <dd>{{.Data.Genre}}</dd>
+            {{end}}
+          </dl>
         {{end}}
         {{if .Data.Tags}}
           <ul class="tags">

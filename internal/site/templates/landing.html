@@ -86,6 +86,12 @@
                 <h3 class="slide__title">
                   <a class="slide__link" href="/games/{{.Slug}}">{{.Title}}</a>
                 </h3>
+                {{if or .Genre .Year .IsGameJam}}
+                  <p class="shelf-meta shelf-meta--slide">
+                    {{if .Genre}}{{.Genre}}{{end}}{{if and .Genre .Year}} &middot; {{end}}{{if .Year}}{{.Year}}{{end}}
+                    {{if .IsGameJam}}<span class="jam-badge">Game jam</span>{{end}}
+                  </p>
+                {{end}}
                 {{if .Tags}}
                   <ul class="tags">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
@@ -137,6 +143,12 @@
             {{end}}
             <div class="sale-card__overlay">
               <h3 class="sale-card__title">{{.Title}}</h3>
+              {{if or .Genre .Year .IsGameJam}}
+                <p class="shelf-meta shelf-meta--overlay">
+                  {{if .Genre}}{{.Genre}}{{end}}{{if and .Genre .Year}} &middot; {{end}}{{if .Year}}{{.Year}}{{end}}
+                  {{if .IsGameJam}}<span class="jam-badge">Jam</span>{{end}}
+                </p>
+              {{end}}
               {{if .Tags}}
                 <ul class="tags tags--compact">
                   {{range .Tags}}<li class="tag">{{.}}</li>{{end}}

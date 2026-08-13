@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -37,6 +38,9 @@ type gameResponse struct {
 	ShortDescription  string  `json:"short_description"`
 	FullDescription   string  `json:"full_description"`
 	Tags              string  `json:"tags"`
+	Genre             string  `json:"genre"`
+	ReleaseDate       string  `json:"release_date"`
+	Kind              string  `json:"kind"`
 	IsBrowserPlayable bool    `json:"is_browser_playable"`
 	IsDownloadable    bool    `json:"is_downloadable"`
 	IsForSale         bool    `json:"is_for_sale"`
@@ -60,6 +64,9 @@ func toGameResponse(g games.Game) gameResponse {
 		ShortDescription:  g.ShortDescription,
 		FullDescription:   g.FullDescription,
 		Tags:              g.Tags,
+		Genre:             g.Genre,
+		ReleaseDate:       g.ReleaseDate,
+		Kind:              g.Kind,
 		IsBrowserPlayable: g.IsBrowserPlayable,
 		IsForSale:         g.IsForSale,
 		PriceDisplay:      g.PriceDisplay,
@@ -114,6 +121,9 @@ type createRequest struct {
 	ShortDescription  string `json:"short_description"`
 	FullDescription   string `json:"full_description"`
 	Tags              string `json:"tags"`
+	Genre             string `json:"genre"`
+	ReleaseDate       string `json:"release_date"`
+	Kind              string `json:"kind"`
 	IsBrowserPlayable bool   `json:"is_browser_playable"`
 	IsForSale         bool   `json:"is_for_sale"`
 	PriceDisplay      string `json:"price_display"`
@@ -132,12 +142,18 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "title is required")
 		return
 	}
+	if !checkReleaseAndKind(w, req.ReleaseDate, req.Kind) {
+		return
+	}
 
 	game, err := h.repo.Create(games.CreateInput{
 		Title:             req.Title,
 		ShortDescription:  req.ShortDescription,
 		FullDescription:   req.FullDescription,
 		Tags:              req.Tags,
+		Genre:             req.Genre,
+		ReleaseDate:       req.ReleaseDate,
+		Kind:              req.Kind,
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -192,6 +208,9 @@ type updateRequest struct {
 	ShortDescription  string  `json:"short_description"`
 	FullDescription   string  `json:"full_description"`
 	Tags              string  `json:"tags"`
+	Genre             string  `json:"genre"`
+	ReleaseDate       string  `json:"release_date"`
+	Kind              string  `json:"kind"`
 	IsBrowserPlayable bool    `json:"is_browser_playable"`
 	IsDownloadable    bool    `json:"is_downloadable"`
 	IsForSale         bool    `json:"is_for_sale"`
@@ -228,12 +247,18 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusBadRequest, "missing_fields", "title is required")
 		return
 	}
+	if !checkReleaseAndKind(w, req.ReleaseDate, req.Kind) {
+		return
+	}
 
 	game, err := h.repo.Update(oldGame.ID, games.UpdateInput{
 		Title:             req.Title,
 		ShortDescription:  req.ShortDescription,
 		FullDescription:   req.FullDescription,
 		Tags:              req.Tags,
+		Genre:             req.Genre,
+		ReleaseDate:       req.ReleaseDate,
+		Kind:              req.Kind,
 		IsForSale:         req.IsForSale,
 		PriceDisplay:      req.PriceDisplay,
 		ExternalLinksJSON: req.ExternalLinksJSON,
@@ -383,4 +408,30 @@ func (h *Handlers) DeleteBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// isoDate matches the YYYY-MM-DD the date picker submits. release_date is
+// stored and sorted as text, so a differently shaped date would sort into the
+// wrong place rather than failing loudly.
+var isoDate = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// checkReleaseAndKind validates the two constrained fields, returning false
+// once it has written the error response.
+//
+// Both are optional: a game with no release date yet is normal, and an empty
+// kind means a caller that predates the field, which the repo reads as a
+// production game. What is rejected is a value that is present and wrong,
+// because the database's CHECK would otherwise turn it into a 500.
+func checkReleaseAndKind(w http.ResponseWriter, releaseDate, kind string) bool {
+	if releaseDate != "" && !isoDate.MatchString(releaseDate) {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_date",
+			"release_date must be formatted YYYY-MM-DD")
+		return false
+	}
+	if kind != "" && !games.IsValidKind(kind) {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_kind",
+			`kind must be "`+games.KindProduction+`" or "`+games.KindGameJam+`"`)
+		return false
+	}
+	return true
 }

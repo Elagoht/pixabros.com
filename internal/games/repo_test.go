@@ -476,3 +476,72 @@ func TestRepo_ListSorting(t *testing.T) {
 		}
 	})
 }
+
+// A game that predates the fields, or one an admin has not filled in yet, is a
+// production game with no date and no genre -- not a broken row.
+func TestRepo_CreateDefaultsAGameToAProduction(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	game, err := repo.Create(CreateInput{Title: "Untyped"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if game.Kind != KindProduction {
+		t.Errorf("Kind = %q, want %q", game.Kind, KindProduction)
+	}
+	if game.Genre != "" || game.ReleaseDate != "" {
+		t.Errorf("Genre = %q, ReleaseDate = %q, want both empty", game.Genre, game.ReleaseDate)
+	}
+}
+
+func TestRepo_RoundTripsTheReleaseGenreAndKind(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	created, err := repo.Create(CreateInput{
+		Title:       "Dungrid Tactics",
+		Genre:       "Turn-based tactics",
+		ReleaseDate: "2026-07-31",
+		Kind:        KindGameJam,
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if created.Genre != "Turn-based tactics" || created.ReleaseDate != "2026-07-31" || created.Kind != KindGameJam {
+		t.Fatalf("Create() stored %+v", created)
+	}
+
+	updated, err := repo.Update(created.ID, UpdateInput{
+		Title:       "Dungrid Tactics",
+		Genre:       "Tactics",
+		ReleaseDate: "2026-08-01",
+		Kind:        KindProduction,
+	})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if updated.Genre != "Tactics" || updated.ReleaseDate != "2026-08-01" || updated.Kind != KindProduction {
+		t.Errorf("Update() stored %+v", updated)
+	}
+}
+
+// The column is constrained so a value the site cannot draw never reaches the
+// public badge. The API rejects one first; this is the layer underneath.
+func TestRepo_RefusesAKindTheSiteCannotDraw(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+
+	if _, err := repo.Create(CreateInput{Title: "Odd", Kind: "prototype"}); err == nil {
+		t.Error("Create() accepted a kind outside the two the site knows")
+	}
+}
+
+// An update that leaves the kind out must not silently demote a jam entry, so
+// the caller is expected to send it back. What it must not do is store an
+// empty string the templates would then have to guard against.
+func TestNormaliseKind_FillsInTheDefault(t *testing.T) {
+	if got := NormaliseKind(""); got != KindProduction {
+		t.Errorf("NormaliseKind(\"\") = %q, want %q", got, KindProduction)
+	}
+	if got := NormaliseKind(KindGameJam); got != KindGameJam {
+		t.Errorf("NormaliseKind(%q) = %q, want it unchanged", KindGameJam, got)
+	}
+}

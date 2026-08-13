@@ -41,6 +41,10 @@ interface ResponseGame {
   short_description: string;
   full_description: string;
   tags: string;
+  genre: string;
+  // YYYY-MM-DD, or empty for a game with no date yet.
+  release_date: string;
+  kind: GameKind;
   // Derived server-side from whether a playable build exists; read-only.
   is_browser_playable: boolean;
   is_for_sale: boolean;
@@ -62,6 +66,9 @@ interface RequestCreateGame {
   short_description: string;
   full_description: string;
   tags: string;
+  genre: string;
+  release_date: string;
+  kind: GameKind;
   is_for_sale: boolean;
   price_display: string;
   external_links_json: string;
@@ -108,6 +115,9 @@ interface GameFormValues {
   short_description: string;
   full_description: string;
   tags: string;
+  genre: string;
+  release_date: string;
+  kind: GameKind;
   is_for_sale: boolean;
   price_display: string;
   // Edited as a real list and serialised to external_links_json on submit;
@@ -116,10 +126,16 @@ interface GameFormValues {
   is_published: boolean;
 }
 
+// A jam entry is built against a clock; everything else is one of the studio's
+// own productions. Mirrors the CHECK on games.kind, so widening this means
+// widening the column and giving the public site something to draw.
+type GameKind = "production" | "gamejam";
+
 // Mirrors the sortable columns whitelisted by games.sortableColumns in Go.
 type GameSortField =
   | "title"
   | "slug"
+  | "release_date"
   | "is_published"
   | "display_order"
   | "created_at"

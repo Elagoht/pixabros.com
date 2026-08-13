@@ -15,7 +15,42 @@ const (
 	GamePagePrefix = "games/"
 )
 
+// gameMeta is the shelf information a game carries wherever it appears: what
+// kind of thing it is, what genre, and when it came out. It is embedded rather
+// than repeated so a cartridge, a case, a carousel slide and the detail page
+// all say the same things in the same words.
+//
+// Year is the compact form a card has room for; Released is the long one the
+// detail page uses. Both are empty when the game has no date, and a template
+// that guards on one is guarding on the other.
+type gameMeta struct {
+	Genre     string
+	Released  string
+	Year      string
+	IsGameJam bool
+}
+
+func metaFor(game games.Game) gameMeta {
+	return gameMeta{
+		Genre:     strings.TrimSpace(game.Genre),
+		Released:  formatDate(game.ReleaseDate),
+		Year:      releaseYear(game.ReleaseDate),
+		IsGameJam: game.Kind == games.KindGameJam,
+	}
+}
+
+// releaseYear takes the year off a stored date. The API pins the shape, so
+// anything else here is a row written before that check existed and is left
+// out rather than guessed at.
+func releaseYear(date string) string {
+	if !isoDate.MatchString(date) {
+		return ""
+	}
+	return date[:4]
+}
+
 type cartridgeView struct {
+	gameMeta
 	Title string
 	Slug  string
 	Art   imageView
@@ -26,6 +61,7 @@ type cartridgeView struct {
 }
 
 type caseView struct {
+	gameMeta
 	Title       string
 	Slug        string
 	Art         imageView
@@ -82,16 +118,18 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 	for _, game := range published {
 		if game.IsBrowserPlayable {
 			page.Cartridges = append(page.Cartridges, cartridgeView{
-				Title:   game.Title,
-				Slug:    game.Slug,
-				Art:     lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
-				Tags:    splitTags(game.Tags),
-				PlayURL: "/play/" + game.Slug + "/",
+				gameMeta: metaFor(game),
+				Title:    game.Title,
+				Slug:     game.Slug,
+				Art:      lookupImage(images, firstNonNil(game.CartridgeArtID, game.CDCoverArtID), game.Title),
+				Tags:     splitTags(game.Tags),
+				PlayURL:  "/play/" + game.Slug + "/",
 			})
 		}
 		// The shelf holds the whole catalogue, playable games included: the
 		// cartridge is how you start one, the case is how you read about it.
 		page.Cases = append(page.Cases, caseView{
+			gameMeta:    metaFor(game),
 			Title:       game.Title,
 			Slug:        game.Slug,
 			Art:         lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
@@ -125,6 +163,7 @@ type gameLink struct {
 }
 
 type gamePage struct {
+	gameMeta
 	Console     consoleView
 	Title       string
 	Slug        string
@@ -185,6 +224,7 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 	}
 
 	page := gamePage{
+		gameMeta: metaFor(game),
 		Console: consoleView{
 			SiteName:  chrome.Name,
 			Title:     game.Title,
@@ -206,7 +246,8 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 		Price:   priceFor(game),
 		Links:   parseGameLinks(game.ExternalLinksJSON),
 	}
-	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" || len(page.Links) > 0
+	page.HasSideInfo = len(page.Tags) > 0 || page.Price != "" || len(page.Links) > 0 ||
+		page.Released != "" || page.Genre != ""
 
 	html, err := s.renderer.render("game.html", pageData{
 		Title:       game.Title + " · " + chrome.Name,

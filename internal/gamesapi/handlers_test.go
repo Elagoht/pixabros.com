@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"pixabros/internal/db"
@@ -483,5 +484,85 @@ func TestList_RejectsUnknownSort(t *testing.T) {
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("%s: status = %d, want %d", query, rec.Code, http.StatusBadRequest)
 		}
+	}
+}
+
+// createGame posts a body and returns the response, so the validation tests
+// below read as the requests they are.
+func createGame(t *testing.T, handlers *Handlers, body map[string]interface{}) *httptest.ResponseRecorder {
+	t.Helper()
+	raw, _ := json.Marshal(body)
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/games", bytes.NewReader(raw))
+	rec := httptest.NewRecorder()
+	handlers.Create(rec, req)
+	return rec
+}
+
+func TestCreate_StoresTheReleaseGenreAndKind(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	rec := createGame(t, handlers, map[string]interface{}{
+		"title":        "Dungrid Tactics",
+		"genre":        "Turn-based tactics",
+		"release_date": "2026-07-31",
+		"kind":         "gamejam",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	var got gameResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Genre != "Turn-based tactics" || got.ReleaseDate != "2026-07-31" || got.Kind != "gamejam" {
+		t.Errorf("Create() returned %+v", got)
+	}
+}
+
+// The date is stored as text and sorted as text, so a date of another shape
+// would sort into the wrong place instead of failing. Rejecting it here is
+// what keeps the ordering meaningful.
+func TestCreate_RejectsAMisshapenReleaseDate(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	for _, date := range []string{"31-07-2026", "2026/07/31", "July 2026", "2026-7-31"} {
+		rec := createGame(t, handlers, map[string]interface{}{"title": "X", "release_date": date})
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("release_date %q got status %d, want %d", date, rec.Code, http.StatusBadRequest)
+		}
+	}
+}
+
+// A kind the site has no badge for must fail as a caller mistake rather than
+// reaching the database's CHECK and coming back as a 500.
+func TestCreate_RejectsAnUnknownKind(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	rec := createGame(t, handlers, map[string]interface{}{"title": "X", "kind": "prototype"})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "invalid_kind") {
+		t.Errorf("body = %s, want an invalid_kind error", rec.Body.String())
+	}
+}
+
+// Both fields are optional: a game with no date and no genre is a normal one.
+func TestCreate_AcceptsAGameWithNoReleaseDateOrKind(t *testing.T) {
+	conn := setupTestDB(t)
+	handlers := NewHandlers(games.NewRepo(conn), conn, t.TempDir())
+
+	rec := createGame(t, handlers, map[string]interface{}{"title": "Untyped"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var got gameResponse
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if got.Kind != "production" {
+		t.Errorf("Kind = %q, want production", got.Kind)
 	}
 }

@@ -564,6 +564,54 @@ a:hover {
   font-size: 0.7rem;
 }
 
+/* A game's genre and year, on whatever card is showing it. Quieter than a
+   tag on purpose: this is the line you read after the title, not something
+   to click. */
+.shelf-meta {
+  color: var(--meta-ink, var(--color-text-muted));
+  display: block;
+  font-size: 0.8rem;
+}
+
+.shelf-meta--slide {
+  margin-top: 0.25rem;
+}
+
+/* On the sale card the line sits over artwork, which stays dark in both
+   themes, so its colour cannot come from the theme. */
+.shelf-meta--overlay {
+  --meta-ink: rgb(255 255 255 / 0.72);
+  margin-top: 0.15rem;
+}
+
+/* A jam entry was made against a clock. The badge says so rather than letting
+   the game be read as a full production, and it is deliberately plainer than
+   an accent-coloured tag: it is a fact about the game, not a highlight. */
+.jam-badge {
+  background-color: color-mix(in srgb, var(--color-text-muted) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text-muted) 32%, transparent);
+  border-radius: 999px;
+  color: var(--badge-ink, var(--color-text-muted));
+  display: inline-block;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.5rem;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.shelf-meta--overlay .jam-badge {
+  --badge-ink: rgb(255 255 255 / 0.85);
+  background-color: rgb(255 255 255 / 0.14);
+  border-color: rgb(255 255 255 / 0.28);
+}
+
+/* On the detail page the badge is a line of its own under the title. */
+.jam-badge--standalone {
+  margin-top: 0.75rem;
+}
+
 /* Sections --------------------------------------------------------------- */
 
 .section {
@@ -1268,7 +1316,10 @@ a:hover {
 }
 
 .cartridge__caption {
+  display: grid;
   font-size: 0.875rem;
+  gap: 0.2rem;
+  justify-items: center;
   margin-top: 0.7rem;
   text-align: center;
 }
@@ -1488,6 +1539,24 @@ a:hover {
   margin-top: 0.9rem;
 }
 
+/* The case is dark in both themes, so its meta line and badge take the case's
+   own ink rather than the page's. */
+.jewel__meta {
+  align-items: center;
+  color: var(--case-ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.jewel__meta .jam-badge {
+  --badge-ink: var(--case-ink);
+  background-color: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.22);
+}
+
 .jewel__price {
   font-size: 1.1rem;
   font-weight: 700;
@@ -1686,6 +1755,23 @@ a:hover {
 .game-price {
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+/* Release date and genre in the detail page's side column. A description list
+   because that is what these are: a label and its value. */
+.game-facts {
+  display: grid;
+  gap: 0.15rem 0.75rem;
+  grid-template-columns: max-content 1fr;
+}
+
+.game-facts dt {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.game-facts dd {
+  font-size: 0.9rem;
 }
 
 .game-links {

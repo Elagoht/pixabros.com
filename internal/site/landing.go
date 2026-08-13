@@ -28,6 +28,7 @@ type heroView struct {
 
 // slideView is one game in the portfolio carousel.
 type slideView struct {
+	gameMeta
 	Title string
 	Slug  string
 	Tags  []string
@@ -42,6 +43,7 @@ type slideView struct {
 }
 
 type saleView struct {
+	gameMeta
 	Title string
 	Slug  string
 	Tags  []string
@@ -199,9 +201,10 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 		}
 
 		slides = append(slides, slideView{
-			Title: game.Title,
-			Slug:  game.Slug,
-			Tags:  splitTags(game.Tags),
+			gameMeta: metaFor(game),
+			Title:    game.Title,
+			Slug:     game.Slug,
+			Tags:     splitTags(game.Tags),
 			// The OG image comes first here: it is the wide 1200x630 one, and
 			// the carousel's media area is 16:9. Cover art is portrait, so it
 			// would be cropped to a strip.
@@ -229,11 +232,12 @@ func buildSales(published []games.Game, images map[string]media.Media) []saleVie
 			continue
 		}
 		sales = append(sales, saleView{
-			Title: game.Title,
-			Slug:  game.Slug,
-			Tags:  splitTags(game.Tags),
-			Cover: lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
-			Price: game.PriceDisplay,
+			gameMeta: metaFor(game),
+			Title:    game.Title,
+			Slug:     game.Slug,
+			Tags:     splitTags(game.Tags),
+			Cover:    lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
+			Price:    game.PriceDisplay,
 		})
 	}
 	return sales

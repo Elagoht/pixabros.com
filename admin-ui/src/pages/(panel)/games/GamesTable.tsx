@@ -80,6 +80,22 @@ const GamesTable: FC<GamesTableProps> = ({
       },
     },
     {
+      // Only a jam entry is worth a badge: it is the exception, and a column
+      // that badged every row would just be noise down the whole table.
+      id: "kind",
+      header: t("games.columns.kind"),
+      accessor: "kind",
+      sortable: true,
+      cell: (value) =>
+        value === "gamejam" ? (
+          <Badge variant="outline">{t("games.kind.gamejam")}</Badge>
+        ) : (
+          <span className="text-gray-500 dark:text-gray-400">
+            {t("games.kind.production")}
+          </span>
+        ),
+    },
+    {
       id: "display_order",
       header: t("games.columns.order"),
       accessor: "display_order",

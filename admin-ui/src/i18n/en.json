@@ -234,7 +234,8 @@
       "title": "Title",
       "status": "Status",
       "distribution": "Distribution",
-      "order": "Order"
+      "order": "Order",
+      "kind": "Type"
     },
     "status": {
       "published": "Published",
@@ -262,7 +263,12 @@
       "linkLabelPlaceholder": "itch.io",
       "linkUrlPlaceholder": "https://example.itch.io/game",
       "addLink": "Add link",
-      "noLinks": "No links yet."
+      "noLinks": "No links yet.",
+      "genre": "Genre",
+      "genrePlaceholder": "Turn-based tactics",
+      "releaseDate": "Release date",
+      "kind": "Type",
+      "kindHelp": "A jam entry is marked as one on the public site."
     },
     "create": {
       "title": "New game",
@@ -332,10 +338,15 @@
       "titleRequired": "Title is required.",
       "externalLinksJson": "External links must be a valid JSON array, for example [].",
       "linkLabel": "A label is required.",
-      "linkUrl": "Enter a full URL, including https://"
+      "linkUrl": "Enter a full URL, including https://",
+      "releaseDate": "Use the date picker, or write the date as YYYY-MM-DD."
     },
     "actions": {
       "viewOnSite": "View on the site"
+    },
+    "kind": {
+      "production": "Production",
+      "gamejam": "Game jam"
     }
   },
   "members": {

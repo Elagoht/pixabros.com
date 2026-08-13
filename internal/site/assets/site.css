@@ -556,12 +556,38 @@ a:hover {
   border-radius: 999px;
   color: var(--tag-ink, var(--color-accent));
   font-size: 0.75rem;
+  /* Pinned rather than inherited: .tags--clamped counts rows, so a pill has to
+     be a known height whatever the surrounding text does. */
+  line-height: 1.2rem;
   padding: 0.15rem 0.6rem;
   white-space: nowrap;
 }
 
 .tags--compact .tag {
   font-size: 0.7rem;
+}
+
+/* Two rows, never three.
+ *
+ * A game with ten tags pushed its own artwork off the card, so the renderer
+ * caps how many pills a card gets and turns the rest into a "+4". That cap is
+ * a count, though, and counts do not know how wide a word is: six long tags
+ * would still reach a third row. This is the guarantee underneath it.
+ *
+ * The pill's line-height is pinned above so a row is a known height, which is
+ * what lets a clipped third row be hidden whole rather than sliced in half. */
+.tags--clamped {
+  --tag-row: calc(1.2rem + 0.3rem + 2px);
+  max-height: calc(2 * var(--tag-row) + 0.4rem);
+  overflow: hidden;
+}
+
+/* The pill that stands for the tags a card left out. Quieter than a real tag:
+   it is a count, not something the game is tagged with. */
+.tag--count {
+  --tag-fill: transparent;
+  --tag-edge: color-mix(in srgb, currentColor 30%, transparent);
+  color: var(--tag-ink, var(--color-text-muted));
 }
 
 /* A game's genre and year, on whatever card is showing it. Quieter than a

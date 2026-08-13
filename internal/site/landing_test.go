@@ -372,3 +372,76 @@ func TestRenderLanding_OmitsAnEmptyMemberLinkList(t *testing.T) {
 		t.Error("an empty link list rendered anyway")
 	}
 }
+
+func TestCardTags_KeepsTheFirstFewAndCountsTheRest(t *testing.T) {
+	shown, hidden := cardTags("a, b, c, d, e, f, g, h", 6)
+	if len(shown) != 6 || hidden != 2 {
+		t.Errorf("cardTags() = %v, %d, want 6 shown and 2 hidden", shown, hidden)
+	}
+	if shown[0] != "a" || shown[5] != "f" {
+		t.Errorf("cardTags() kept %v, want the first six in order", shown)
+	}
+}
+
+// Under the limit nothing is hidden, so no counter is drawn.
+func TestCardTags_HidesNothingWhenTheyFit(t *testing.T) {
+	for _, raw := range []string{"", "a", "a, b, c, d"} {
+		shown, hidden := cardTags(raw, 4)
+		if hidden != 0 {
+			t.Errorf("cardTags(%q) hid %d, want none (shown: %v)", raw, hidden, shown)
+		}
+	}
+}
+
+// The real complaint: a game with ten tags covered its own artwork. The cap is
+// per surface because a carousel slide and a sale card are different widths.
+func TestRenderLanding_CapsTheTagsOnACard(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedGame(t, conn, "Overtagged", "overtagged", true, true,
+		"turn based, strategy, tactics, unit management, dungeon, pvp, pve, 2d, pixel art, metal music")
+
+	html, _, err := newTestSite(t, conn).renderLanding("index.html")
+	if err != nil {
+		t.Fatalf("renderLanding() error = %v", err)
+	}
+	body := string(html)
+
+	// Ten tags, so both surfaces leave some out and say how many.
+	if !strings.Contains(body, "+4") {
+		t.Error("the carousel slide does not say how many tags it left out")
+	}
+	if !strings.Contains(body, "+6") {
+		t.Error("the sale card does not say how many tags it left out")
+	}
+	// The last tag alphabetically late in the list must not be on either card.
+	if strings.Contains(body, ">metal music<") {
+		t.Error("a tag past the cap still reached a card")
+	}
+	// Both lists are clamped, which is the guarantee a count alone cannot make.
+	if strings.Count(body, "tags--clamped") != 2 {
+		t.Errorf("wanted both card tag lists clamped, got %d",
+			strings.Count(body, "tags--clamped"))
+	}
+}
+
+// The detail page has room for the whole list, so it is not capped: that is
+// where a reader goes for everything about the game.
+func TestRenderGame_ShowsEveryTag(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedGame(t, conn, "Overtagged", "overtagged", true, false,
+		"turn based, strategy, tactics, unit management, dungeon, pvp, pve, 2d, pixel art, metal music")
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "overtagged")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+	if !strings.Contains(body, ">metal music<") {
+		t.Error("the detail page dropped a tag")
+	}
+	if strings.Contains(body, "tags--clamped") {
+		t.Error("the detail page clamped its tag list")
+	}
+}

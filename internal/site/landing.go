@@ -26,14 +26,35 @@ type heroView struct {
 	CTALink     string
 }
 
+// Tag budgets. A card shows this many pills and turns the rest into a count,
+// because a game with ten tags otherwise pushed its own artwork off the card.
+// The two numbers differ because the surfaces do: a carousel slide has a wide
+// column beside the screenshot, a sale card has the width of a cover.
+const (
+	slideTagLimit = 6
+	saleTagLimit  = 4
+)
+
+// cardTags splits a tag string into the pills a card shows and how many it left
+// out. Zero hidden means no counter is drawn.
+func cardTags(raw string, limit int) ([]string, int) {
+	tags := splitTags(raw)
+	if len(tags) <= limit {
+		return tags, 0
+	}
+	return tags[:limit], len(tags) - limit
+}
+
 // slideView is one game in the portfolio carousel.
 type slideView struct {
 	gameMeta
 	Title string
 	Slug  string
 	Tags  []string
-	Cover imageView
-	Shots []imageView
+	// MoreTags is how many tags did not fit, drawn as a "+3" pill.
+	MoreTags int
+	Cover    imageView
+	Shots    []imageView
 	// ID and its neighbours drive the arrows and dots. Computing them at
 	// render time is what lets the carousel work without any JavaScript.
 	ID     string
@@ -44,11 +65,12 @@ type slideView struct {
 
 type saleView struct {
 	gameMeta
-	Title string
-	Slug  string
-	Tags  []string
-	Cover imageView
-	Price string
+	Title    string
+	Slug     string
+	Tags     []string
+	MoreTags int
+	Cover    imageView
+	Price    string
 }
 
 type memberView struct {
@@ -200,11 +222,13 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 			}
 		}
 
+		slideTags, slideMore := cardTags(game.Tags, slideTagLimit)
 		slides = append(slides, slideView{
 			gameMeta: metaFor(game),
 			Title:    game.Title,
 			Slug:     game.Slug,
-			Tags:     splitTags(game.Tags),
+			Tags:     slideTags,
+			MoreTags: slideMore,
 			// The OG image comes first here: it is the wide 1200x630 one, and
 			// the carousel's media area is 16:9. Cover art is portrait, so it
 			// would be cropped to a strip.
@@ -231,11 +255,13 @@ func buildSales(published []games.Game, images map[string]media.Media) []saleVie
 		if !game.IsForSale {
 			continue
 		}
+		saleTags, saleMore := cardTags(game.Tags, saleTagLimit)
 		sales = append(sales, saleView{
 			gameMeta: metaFor(game),
 			Title:    game.Title,
 			Slug:     game.Slug,
-			Tags:     splitTags(game.Tags),
+			Tags:     saleTags,
+			MoreTags: saleMore,
 			Cover:    lookupImage(images, firstNonNil(game.CDCoverArtID, game.CartridgeArtID), game.Title),
 			Price:    game.PriceDisplay,
 		})

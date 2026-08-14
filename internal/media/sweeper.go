@@ -71,6 +71,15 @@ func NewSweeper(
 // sweep immediately on start: a restart is exactly when an operator is least
 // likely to want an unattended delete, and the first tick comes soon enough.
 func (s *Sweeper) Run(ctx context.Context) {
+	// Once on the way in, then on the tick.
+	//
+	// Waiting a full interval before the first sweep meant that for six hours
+	// after every restart there was no evidence the sweeper existed at all --
+	// and a restart is exactly when someone is watching the log to see whether
+	// it does. Sweeping now also reclaims sooner on a machine that restarts
+	// more often than it ticks.
+	s.SweepOnce()
+
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 
@@ -91,7 +100,10 @@ func (s *Sweeper) SweepOnce() {
 	if err != nil {
 		s.onError(err)
 	}
-	if deleted > 0 {
+	// Reported even when nothing was found. A sweeper that only speaks when it
+	// deletes something is indistinguishable from one that is not running,
+	// which is the failure that goes unnoticed for weeks.
+	if err == nil {
 		s.onSweep(deleted)
 	}
 }

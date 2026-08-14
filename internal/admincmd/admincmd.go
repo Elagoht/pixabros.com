@@ -22,7 +22,8 @@ const usage = `usage:
   pixabros                                        start the server
   pixabros create-admin   -username <u> -password <p>
   pixabros reset-password -username <u> -password <p>
-  pixabros redraw-og-images                       redraw the generated devlog cards`
+  pixabros redraw-og-images                       redraw the generated devlog cards
+  pixabros status                                 is the background work keeping up?`
 
 // Run executes an operator command.
 //
@@ -52,6 +53,11 @@ func Run(args []string) (handled bool) {
 		fmt.Println("password reset:", username)
 	case "redraw-og-images":
 		if err := redrawOGImages(); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+	case "status":
+		if err := reportStatus(); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}

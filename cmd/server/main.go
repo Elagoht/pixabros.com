@@ -135,6 +135,10 @@ func main() {
 		worker.Run(ctx)
 		close(workerDone)
 	}()
+	// Named at startup so a restart leaves proof in the journal that the
+	// background work was wired up at all. Work that only speaks when it has
+	// something to say is indistinguishable from work that never started.
+	log.Printf("render worker: started, polling every %s", 2*time.Second)
 
 	// Nothing reclaimed orphaned media before this: images left behind by a
 	// deleted game or replaced artwork accumulated on disk forever. The lookup
@@ -156,6 +160,8 @@ func main() {
 		sweeper.Run(ctx)
 		close(sweeperDone)
 	}()
+	log.Printf("media sweep: started, every %s, sparing anything newer than %s",
+		6*time.Hour, media.OrphanGrace)
 
 	handler := httpserver.New(httpserver.Dependencies{
 		NotFoundBody: notFoundBody,

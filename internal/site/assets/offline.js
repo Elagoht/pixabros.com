@@ -49,6 +49,26 @@
       return GAME_PREFIX + slug + "-" + version;
     },
 
+    // Mirrors SWLogic.parseGameCache in sw.js: the version is taken from the
+    // last hyphen, because slugs carry hyphens ("dungrid-tactics") and the
+    // version never does.
+    //
+    // Selecting this game's caches by prefix instead would be wrong in a way
+    // that destroys data: "game-har-" also prefixes "game-har-2-<version>", and
+    // har's marker is not in har-2's cache, so the interrupted-download cleanup
+    // below would delete another game's finished 90 MB download.
+    parseGameCache: function (name) {
+      if (name.indexOf(GAME_PREFIX) !== 0) {
+        return null;
+      }
+      var rest = name.slice(GAME_PREFIX.length);
+      var split = rest.lastIndexOf("-");
+      if (split <= 0 || split === rest.length - 1) {
+        return null;
+      }
+      return { slug: rest.slice(0, split), version: rest.slice(split + 1) };
+    },
+
     // Mirrors SWLogic.completeKey in sw.js: the worker refuses to hand this
     // key out as a file, and the download writes it last.
     completeKey: function (slug) {
@@ -96,7 +116,8 @@
   function heldVersion() {
     return window.caches.keys().then(function (names) {
       var mine = names.filter(function (name) {
-        return name.indexOf(GAME_PREFIX + slug + "-") === 0;
+        var parsed = window.OfflineLogic.parseGameCache(name);
+        return parsed !== null && parsed.slug === slug;
       });
       return mine.reduce(function (chain, name) {
         return chain.then(function (found) {
@@ -170,9 +191,29 @@
   }
 
   function download() {
+    // A 93 MB download on mobile data with no way out but leaving the page is
+    // not a download the visitor is in charge of. The signal is threaded into
+    // every file fetch rather than checked between them: a Godot export is a
+    // handful of very large files, so between-file granularity would mean
+    // waiting out the very file you asked to stop.
+    var attempt = new AbortController();
+    var cancelled = false;
+
     control.textContent = "";
     var status = say("Downloading… 0%");
+    // Without these a screen-reader user gets silence from the click until the
+    // control repaints, which on a 93 MB build is minutes of nothing.
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    status.setAttribute("aria-busy", "true");
     control.appendChild(status);
+    control.appendChild(
+      button("Cancel", function () {
+        cancelled = true;
+        status.textContent = "Cancelling…";
+        attempt.abort();
+      })
+    );
 
     navigator.storage
       .estimate()
@@ -195,8 +236,20 @@
         return manifest.files
           .reduce(function (chain, file) {
             return chain.then(function () {
-              var url = "/play/" + slug + "/" + file.path;
-              return fetch(url).then(function (response) {
+              // A build is free to hold a name with a space or a "#" in it --
+              // Godot does not produce one and the extractor does not forbid
+              // one -- and an unencoded name would be cached under a key the
+              // game never asks for.
+              var url =
+                "/play/" + slug + "/" + file.path.split("/").map(encodeURIComponent).join("/");
+              // X-Offline-Copy tells the worker to stand aside. Without it an
+              // update is served its own old build out of the old cache, copies
+              // those bytes into the new version's cache, and reports the
+              // visitor current on a build they never downloaded.
+              return fetch(url, {
+                headers: { "X-Offline-Copy": "1" },
+                signal: attempt.signal,
+              }).then(function (response) {
                 if (!response.ok) {
                   throw new Error("could not fetch " + file.path);
                 }
@@ -227,12 +280,26 @@
           // Reached only when the marker never landed, i.e. everything above
           // this .then. The copy is incomplete and was never the visitor's,
           // so discarding it costs them nothing they had.
-          window.caches.delete(gameCacheName(manifest.version));
-          control.textContent = "";
-          control.appendChild(say("Could not save this game for offline play: " + err.message));
-          control.appendChild(
-            button("Try again — " + window.OfflineLogic.formatBytes(manifest.bytes), download)
-          );
+          //
+          // The repaint waits on the discard so the control never offers a
+          // download while the half of one it is replacing is still on disk.
+          window.caches
+            .delete(gameCacheName(manifest.version))
+            .catch(function () {})
+            .then(function () {
+              if (cancelled) {
+                // Stopping a download you started is an ordinary thing to do,
+                // not a failure, and it must not read like one. The control
+                // simply goes back to offering the download again.
+                render();
+                return;
+              }
+              control.textContent = "";
+              control.appendChild(say("Could not save this game for offline play: " + err.message));
+              control.appendChild(
+                button("Try again — " + window.OfflineLogic.formatBytes(manifest.bytes), download)
+              );
+            });
         }
       );
 

@@ -9,3 +9,6 @@
 # `make build` output: the server binary with the panel embedded.
 /pixabros
 dist/
+
+# The public site's test runner. The directory already existed empty.
+/node_modules/

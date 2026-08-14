@@ -50,4 +50,5 @@ dev:
 
 test:
 	go test ./...
+	npm test
 	npm --prefix admin-ui run test

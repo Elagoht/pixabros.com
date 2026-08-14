@@ -202,7 +202,16 @@ func TestUpdate_SuccessBySlugAndMovesExtractedBuild(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(oldBuildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := repo.SetBuild(game.ID, oldBuildDir, games.BuildInfo{}); err != nil {
+	// Non-zero and distinct in all three fields: a rename that swapped Version
+	// and FilesJSON, dropped a field, or reverted to the zero value would all
+	// pass undetected if this seed were the zero BuildInfo{} the rename branch
+	// starts from.
+	seededInfo := games.BuildInfo{
+		Version:   "a1b2c3d4e5f60718",
+		Bytes:     46137344,
+		FilesJSON: `[{"path":"index.html","bytes":12873}]`,
+	}
+	if err := repo.SetBuild(game.ID, oldBuildDir, seededInfo); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, playDir)
@@ -231,6 +240,22 @@ func TestUpdate_SuccessBySlugAndMovesExtractedBuild(t *testing.T) {
 	}
 	if got.WebExportPath != newBuildDir {
 		t.Errorf("WebExportPath = %q, want %q", got.WebExportPath, newBuildDir)
+	}
+
+	// The rename only moves the directory; it must not touch the manifest
+	// already recorded for the build that lives in it.
+	stored, err := repo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if stored.BuildVersion != seededInfo.Version {
+		t.Errorf("BuildVersion = %q, want %q (seeded value lost on rename)", stored.BuildVersion, seededInfo.Version)
+	}
+	if stored.BuildBytes != seededInfo.Bytes {
+		t.Errorf("BuildBytes = %d, want %d (seeded value lost on rename)", stored.BuildBytes, seededInfo.Bytes)
+	}
+	if stored.BuildFilesJSON != seededInfo.FilesJSON {
+		t.Errorf("BuildFilesJSON = %q, want %q (seeded value lost on rename)", stored.BuildFilesJSON, seededInfo.FilesJSON)
 	}
 }
 

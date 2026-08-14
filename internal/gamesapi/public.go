@@ -39,6 +39,12 @@ type buildFile struct {
 // A draft and a game with no build are both 404: advertising a download that
 // cannot be completed is worse than admitting there is nothing to download.
 func (h *PublicHandlers) Build(w http.ResponseWriter, r *http.Request) {
+	// The version in this answer is what decides whether a held download is
+	// stale. A heuristically cached copy -- there is no validator here to make
+	// no-cache enough -- would report the old version after a deploy, and the
+	// visitor would go on playing a build the site has replaced.
+	w.Header().Set("Cache-Control", "no-store")
+
 	game, err := h.repo.FindBySlug(r.PathValue("slug"))
 	if errors.Is(err, games.ErrGameNotFound) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "no such game")

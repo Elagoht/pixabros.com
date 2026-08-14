@@ -17,8 +17,17 @@ import (
 	"github.com/tdewolff/minify/v2/svg"
 )
 
+// The pattern takes the whole directory because go:embed has no way to exclude
+// a file. The *.test.js files that sit beside the scripts they test come along
+// with it and are embedded in the binary; Build refuses to publish them.
+//
 //go:embed assets
 var assetFS embed.FS
+
+// testSuffix marks a file that belongs to the repository rather than to the
+// site. They live beside the scripts they cover so a test reads the exact bytes
+// that ship, which also puts them in the path of this walk.
+const testSuffix = ".test.js"
 
 // buildDirName is the subdirectory generated files live in. It is separate
 // because the parent assets directory also holds hand-placed files -- the
@@ -80,6 +89,13 @@ func Build(dir string) (*Bundle, error) {
 			return err
 		}
 		if entry.IsDir() {
+			return nil
+		}
+		// A test file is not a site asset. Published, it would serve the
+		// repository's own layout -- readFileSync("internal/site/assets/...") --
+		// to every visitor under an immutable cache, and every test file written
+		// afterwards would follow it there without anyone deciding to.
+		if strings.HasSuffix(entry.Name(), testSuffix) {
 			return nil
 		}
 

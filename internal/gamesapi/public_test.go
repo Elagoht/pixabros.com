@@ -60,6 +60,13 @@ func TestPublicBuild_ServesTheManifest(t *testing.T) {
 	if len(body.Files) != 1 || body.Files[0].Path != "index.html" || body.Files[0].Bytes != 12873 {
 		t.Errorf("files = %+v", body.Files)
 	}
+
+	// The version in here decides whether a held download is stale. A copy the
+	// browser kept on its own would report the old version after a deploy, and
+	// the visitor would go on playing a build the site has replaced.
+	if got := response.Header.Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, want %q", got, "no-store")
+	}
 }
 
 // A draft's build is not public, and neither is a published game that has no

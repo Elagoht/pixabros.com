@@ -3,6 +3,7 @@ package site
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -224,6 +225,67 @@ func TestBuild_PublishesIconsByteForByte(t *testing.T) {
 
 	if !bytes.Equal(source, published) {
 		t.Errorf("published icon is %d bytes, source is %d -- something rewrote it", len(published), len(source))
+	}
+}
+
+// The vitest files live beside the scripts they cover, which puts them inside
+// the embedded asset tree. Published, they would hand every visitor the
+// repository's own paths under a cache that never expires -- and every test
+// file added later would join them without anyone choosing to.
+func TestBuild_NeverPublishesATestFile(t *testing.T) {
+	dir := t.TempDir()
+
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	// The tests this is protecting against must actually exist, or the check
+	// below passes by describing nothing.
+	if _, err := assetFS.ReadFile("assets/sw" + testSuffix); err != nil {
+		t.Fatalf("there is no test file beside the worker to exclude: %v", err)
+	}
+
+	for name, url := range bundle.urls {
+		if strings.HasSuffix(name, testSuffix) {
+			t.Errorf("Build published %q as %q", name, url)
+		}
+	}
+
+	err = filepath.WalkDir(filepath.Join(dir, buildDirName), func(p string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), testSuffix) {
+			t.Errorf("a test file reached the published assets: %s", p)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk build dir: %v", err)
+	}
+}
+
+// A test file published by an earlier build has to go, not merely stop being
+// written: /assets is immutable-cached, so a copy left on disk goes on being
+// served for a year.
+func TestBuild_PrunesATestFileAnEarlierBuildPublished(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Build(dir); err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	stale := filepath.Join(dir, buildDirName, "sw.deadbeef"+testSuffix)
+	if err := os.WriteFile(stale, []byte("// from a build that still published these"), 0o644); err != nil {
+		t.Fatalf("seed stale test file: %v", err)
+	}
+
+	if _, err := Build(dir); err != nil {
+		t.Fatalf("second Build() error = %v", err)
+	}
+
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("the stale test file survived the rebuild (err = %v)", err)
 	}
 }
 

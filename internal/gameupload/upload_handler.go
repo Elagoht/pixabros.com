@@ -76,7 +76,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := gamearchive.Extract(file, header.Filename, stagingDir); err != nil {
+	if _, err := gamearchive.Extract(file, header.Filename, stagingDir); err != nil {
 		// The raw error can be an *os.PathError carrying an absolute server
 		// path, so it is logged rather than returned to the client.
 		os.RemoveAll(stagingDir)

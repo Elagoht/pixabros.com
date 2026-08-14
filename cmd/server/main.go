@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -16,6 +19,7 @@ import (
 	"pixabros/internal/contact"
 	"pixabros/internal/db"
 	"pixabros/internal/devlog"
+	"pixabros/internal/gamearchive"
 	"pixabros/internal/games"
 	"pixabros/internal/httpserver"
 	"pixabros/internal/media"
@@ -70,8 +74,20 @@ func main() {
 	devlogRepo := devlog.NewRepo(conn)
 	contactRepo := contact.NewRepo(conn)
 	settingsRepo := settings.NewRepo(conn)
+	gamesRepo := games.NewRepo(conn)
 	store := render.NewStore(conn, renderedFiles)
 	registry := render.NewRegistry()
+
+	// A build only gets a manifest when it is uploaded, so every build that
+	// predates the offline feature has none -- and a game with no manifest
+	// draws no offline control at all, which looks exactly like one whose
+	// control is working. The builds are already on this disk, so recovering
+	// the manifests is cheaper and more reliable than re-uploading each one.
+	if filled, err := backfillBuildManifests(gamesRepo, cfg.DataDir+"/games"); err != nil {
+		log.Printf("build manifest backfill: %v", err)
+	} else if filled > 0 {
+		log.Printf("build manifest backfill: recovered %d manifest(s)", filled)
+	}
 
 	// The public site: publish its stylesheet, register a renderer per page,
 	// and render the 404 body once. All three are startup misconfigurations if
@@ -175,7 +191,7 @@ func main() {
 		Store:         store,
 		Files:         renderedFiles,
 		DB:            conn,
-		Games:         games.NewRepo(conn),
+		Games:         gamesRepo,
 		Members:       membersRepo,
 		Awards:        awardsRepo,
 		Devlog:        devlogRepo,
@@ -218,4 +234,50 @@ func main() {
 	// letting it be cut off mid-sweep is exactly what should not happen.
 	<-workerDone
 	<-sweeperDone
+}
+
+// backfillBuildManifests gives a manifest to every game that has a build on
+// disk but no record of what it contains.
+//
+// A single game's failure is logged and skipped rather than aborting: one
+// unreadable build directory is not a reason to refuse to serve the site.
+func backfillBuildManifests(repo *games.Repo, playDir string) (int, error) {
+	all, err := repo.List("display_order", false)
+	if err != nil {
+		return 0, fmt.Errorf("list games: %w", err)
+	}
+
+	filled := 0
+	for _, game := range all {
+		if game.WebExportPath == "" || game.BuildVersion != "" {
+			continue
+		}
+
+		// Scanned and recorded as the same path. The stored one can be stale --
+		// it is absolute, so moving the data directory outlives it -- and
+		// writing back the path the files were actually read from is what keeps
+		// the manifest describing the build the site will serve.
+		dir := filepath.Join(playDir, game.Slug)
+
+		build, err := gamearchive.Scan(dir)
+		if err != nil {
+			log.Printf("build manifest backfill: %s: %v", game.Slug, err)
+			continue
+		}
+		files, err := json.Marshal(build.Files)
+		if err != nil {
+			log.Printf("build manifest backfill: %s: %v", game.Slug, err)
+			continue
+		}
+		if err := repo.SetBuild(game.ID, dir, games.BuildInfo{
+			Version:   build.Version,
+			Bytes:     build.Bytes,
+			FilesJSON: string(files),
+		}); err != nil {
+			log.Printf("build manifest backfill: %s: %v", game.Slug, err)
+			continue
+		}
+		filled++
+	}
+	return filled, nil
 }

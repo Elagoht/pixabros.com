@@ -233,7 +233,23 @@ function networkFirst(request, cacheName, limit) {
           return cached;
         }
         if (request.mode === "navigate") {
-          return caches.match("/offline");
+          return caches.match("/offline").then(function (offline) {
+            // The offline page is precached on install, but install swallows a
+            // failed shell fetch rather than leaving the visitor with no worker
+            // at all -- so it can genuinely be missing, and precisely when it is
+            // most needed. respondWith(undefined) throws, which would replace a
+            // plain sentence with the browser's own error page.
+            return (
+              offline ||
+              new Response(
+                "You are offline, and this page has not been opened on this device before.",
+                {
+                  status: 503,
+                  headers: { "Content-Type": "text/plain; charset=utf-8" },
+                }
+              )
+            );
+          });
         }
         return Response.error();
       });

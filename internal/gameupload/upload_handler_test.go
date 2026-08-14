@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"pixabros/internal/gamearchive"
 )
 
 func zipWithIndex(t *testing.T) []byte {
@@ -56,7 +58,7 @@ func httpFileExists(path string) (os.FileInfo, error) {
 func TestUpload_ExtractsAndCallsCallback(t *testing.T) {
 	gamesDir := t.TempDir()
 	var calledWithSlug string
-	handler := NewHandler(gamesDir, func(slug string) error {
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error {
 		calledWithSlug = slug
 		return nil
 	})
@@ -107,7 +109,7 @@ func zipWithFiles(t *testing.T, extra map[string]string) []byte {
 // its replacement silently breaks the published game.
 func TestUpload_ReplacingBuildDropsStaleFiles(t *testing.T) {
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	firstReq := uploadRequest(t, "pixel-quest", zipWithFiles(t, map[string]string{"old-build.wasm": "stale"}))
 	firstRec := httptest.NewRecorder()
@@ -147,7 +149,7 @@ func TestUpload_ReplacingBuildDropsStaleFiles(t *testing.T) {
 // a corrupt archive can no longer wipe out a live, working game.
 func TestUpload_FailedUploadLeavesPreviousBuildIntact(t *testing.T) {
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	firstReq := uploadRequest(t, "pixel-quest", zipWithFiles(t, map[string]string{"game.wasm": "working build"}))
 	firstRec := httptest.NewRecorder()
@@ -180,7 +182,7 @@ func TestUpload_FailedUploadLeavesPreviousBuildIntact(t *testing.T) {
 
 func TestUpload_InvalidArchiveReturnsBadRequest(t *testing.T) {
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	req := uploadRequest(t, "pixel-quest", []byte("not a real archive"))
 	rec := httptest.NewRecorder()
@@ -197,7 +199,7 @@ func TestUpload_OversizedBodyRejected(t *testing.T) {
 	maxUploadBodyBytes = 64 // far smaller than any real multipart upload
 
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	req := uploadRequest(t, "pixel-quest", zipWithIndex(t))
 	rec := httptest.NewRecorder()
@@ -211,7 +213,7 @@ func TestUpload_OversizedBodyRejected(t *testing.T) {
 func TestUpload_InvalidArchiveLogsErrorWithoutLeakingPaths(t *testing.T) {
 	gamesDir := t.TempDir()
 	var captured error
-	handler := NewHandler(gamesDir, func(slug string) error { return nil }, WithErrorLogger(func(err error) {
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil }, WithErrorLogger(func(err error) {
 		captured = err
 	}))
 
@@ -240,7 +242,7 @@ func TestUpload_InvalidArchiveLogsErrorWithoutLeakingPaths(t *testing.T) {
 
 func TestUpload_PathTraversalSlugRejected(t *testing.T) {
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	req := uploadRequest(t, "../../etc", zipWithIndex(t))
 	rec := httptest.NewRecorder()
@@ -262,7 +264,7 @@ func TestUpload_PathTraversalSlugRejected(t *testing.T) {
 
 func TestUpload_SlugWithSlashRejected(t *testing.T) {
 	gamesDir := t.TempDir()
-	handler := NewHandler(gamesDir, func(slug string) error { return nil })
+	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })
 
 	req := uploadRequest(t, "foo/bar", zipWithIndex(t))
 	rec := httptest.NewRecorder()

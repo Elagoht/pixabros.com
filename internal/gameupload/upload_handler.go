@@ -13,7 +13,7 @@ import (
 
 type Handler struct {
 	gamesDir    string
-	onExtracted func(slug string) error
+	onExtracted func(slug string, build gamearchive.Build) error
 	onError     func(error)
 }
 
@@ -26,7 +26,7 @@ func WithErrorLogger(onError func(error)) HandlerOption {
 	return func(h *Handler) { h.onError = onError }
 }
 
-func NewHandler(gamesDir string, onExtracted func(slug string) error, opts ...HandlerOption) *Handler {
+func NewHandler(gamesDir string, onExtracted func(slug string, build gamearchive.Build) error, opts ...HandlerOption) *Handler {
 	h := &Handler{gamesDir: gamesDir, onExtracted: onExtracted, onError: func(error) {}}
 	for _, opt := range opts {
 		opt(h)
@@ -76,7 +76,8 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := gamearchive.Extract(file, header.Filename, stagingDir); err != nil {
+	build, err := gamearchive.Extract(file, header.Filename, stagingDir)
+	if err != nil {
 		// The raw error can be an *os.PathError carrying an absolute server
 		// path, so it is logged rather than returned to the client.
 		os.RemoveAll(stagingDir)
@@ -100,7 +101,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.onExtracted != nil {
-		if err := h.onExtracted(slug); err != nil {
+		if err := h.onExtracted(slug, build); err != nil {
 			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "extracted but could not finish processing")
 			return
 		}

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,6 +22,7 @@ import (
 	"pixabros/internal/contactapi"
 	"pixabros/internal/devlog"
 	"pixabros/internal/devlogapi"
+	"pixabros/internal/gamearchive"
 	"pixabros/internal/games"
 	"pixabros/internal/gamesapi"
 	"pixabros/internal/gameupload"
@@ -121,6 +123,9 @@ func New(deps Dependencies) http.Handler {
 	publicContact := contactapi.NewPublicHandlers(deps.Contact)
 	mux.HandleFunc("POST /api/contact", publicContact.Submit)
 
+	publicGames := gamesapi.NewPublicHandlers(deps.Games)
+	mux.HandleFunc("GET /api/games/{slug}/build", publicGames.Build)
+
 	mux.HandleFunc("GET /api/admin/stats", adminapi.RequireSession(deps.Sessions, statsHandlers.Get))
 
 	mux.HandleFunc("GET /api/admin/contact", adminapi.RequireSession(deps.Sessions, contactHandlers.List))
@@ -142,14 +147,20 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("PUT /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/media/{id}", adminapi.RequireSession(deps.Sessions, mediaHandlers.Delete))
 
-	onGameArchiveExtracted := func(slug string) error {
+	onGameArchiveExtracted := func(slug string, build gamearchive.Build) error {
 		game, err := deps.Games.FindBySlug(slug)
 		if err != nil {
 			return err
 		}
-		// gamearchive.Extract's Build (file list, size, content version) is not
-		// threaded through this callback yet, so no manifest is recorded here.
-		if err := deps.Games.SetBuild(game.ID, filepath.Join(deps.PlayDir, slug), games.BuildInfo{}); err != nil {
+		files, err := json.Marshal(build.Files)
+		if err != nil {
+			return err
+		}
+		if err := deps.Games.SetBuild(game.ID, filepath.Join(deps.PlayDir, slug), games.BuildInfo{
+			Version:   build.Version,
+			Bytes:     build.Bytes,
+			FilesJSON: string(files),
+		}); err != nil {
 			return err
 		}
 		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%s", game.ID))

@@ -215,7 +215,7 @@ func TestRepo_SetBuildDerivesBrowserPlayable(t *testing.T) {
 		t.Error("a new game with no build should not be browser playable")
 	}
 
-	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest", BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 
@@ -240,11 +240,11 @@ func TestRepo_SetBuildWithEmptyPathClearsBrowserPlayable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest", BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 
-	if err := repo.SetBuild(game.ID, ""); err != nil {
+	if err := repo.SetBuild(game.ID, "", BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild(\"\") error = %v", err)
 	}
 
@@ -271,7 +271,7 @@ func TestRepo_UpdateLeavesBrowserPlayableAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := repo.SetBuild(game.ID, "data/games/pixel-quest"); err != nil {
+	if err := repo.SetBuild(game.ID, "data/games/pixel-quest", BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 
@@ -543,6 +543,76 @@ func TestNormaliseKind_FillsInTheDefault(t *testing.T) {
 	}
 	if got := NormaliseKind(KindGameJam); got != KindGameJam {
 		t.Errorf("NormaliseKind(%q) = %q, want it unchanged", KindGameJam, got)
+	}
+}
+
+// The offline download reads all three, so a build that recorded its path but
+// not its manifest would be a build nobody can be told the size of.
+func TestSetBuild_RecordsTheManifest(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+	game, err := repo.Create(CreateInput{Title: "Covered", Kind: KindProduction})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	info := BuildInfo{
+		Version:   "a1b2c3d4e5f60718",
+		Bytes:     46137344,
+		FilesJSON: `[{"path":"index.html","bytes":12873}]`,
+	}
+	if err := repo.SetBuild(game.ID, "/data/games/covered", info); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
+	}
+
+	stored, err := repo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if stored.BuildVersion != info.Version {
+		t.Errorf("BuildVersion = %q, want %q", stored.BuildVersion, info.Version)
+	}
+	if stored.BuildBytes != info.Bytes {
+		t.Errorf("BuildBytes = %d, want %d", stored.BuildBytes, info.Bytes)
+	}
+	if stored.BuildFilesJSON != info.FilesJSON {
+		t.Errorf("BuildFilesJSON = %q, want %q", stored.BuildFilesJSON, info.FilesJSON)
+	}
+}
+
+// Deleting a build clears the manifest with it. A game still advertising a
+// 46 MB download it no longer has would hand visitors a 404 per file.
+func TestSetBuild_ClearingAlsoClearsTheManifest(t *testing.T) {
+	conn := setupTestDB(t)
+	repo := NewRepo(conn)
+	game, err := repo.Create(CreateInput{Title: "Covered", Kind: KindProduction})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := repo.SetBuild(game.ID, "/data/games/covered", BuildInfo{
+		Version: "a1b2c3d4e5f60718", Bytes: 1, FilesJSON: `[{"path":"index.html","bytes":1}]`,
+	}); err != nil {
+		t.Fatalf("SetBuild() error = %v", err)
+	}
+
+	if err := repo.SetBuild(game.ID, "", BuildInfo{}); err != nil {
+		t.Fatalf("clearing SetBuild() error = %v", err)
+	}
+
+	stored, err := repo.FindByID(game.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if stored.BuildVersion != "" || stored.BuildBytes != 0 {
+		t.Errorf("build left behind: version %q, bytes %d", stored.BuildVersion, stored.BuildBytes)
+	}
+	// An empty manifest must be valid JSON, not an empty string: it is served
+	// straight to the browser.
+	if stored.BuildFilesJSON != "[]" {
+		t.Errorf("BuildFilesJSON = %q, want []", stored.BuildFilesJSON)
+	}
+	if stored.IsBrowserPlayable {
+		t.Error("a game with no build is still marked browser playable")
 	}
 }
 

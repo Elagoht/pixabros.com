@@ -147,7 +147,9 @@ func New(deps Dependencies) http.Handler {
 		if err != nil {
 			return err
 		}
-		if err := deps.Games.SetBuild(game.ID, filepath.Join(deps.PlayDir, slug)); err != nil {
+		// gamearchive.Extract's Build (file list, size, content version) is not
+		// threaded through this callback yet, so no manifest is recorded here.
+		if err := deps.Games.SetBuild(game.ID, filepath.Join(deps.PlayDir, slug), games.BuildInfo{}); err != nil {
 			return err
 		}
 		return render.EnqueueRegen(deps.DB, fmt.Sprintf("game:%s", game.ID))

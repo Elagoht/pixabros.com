@@ -289,7 +289,13 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		if _, statErr := os.Stat(oldDir); statErr == nil {
 			newDir := filepath.Join(h.playDir, game.Slug)
 			if err := os.Rename(oldDir, newDir); err == nil {
-				if err := h.repo.SetBuild(game.ID, newDir); err == nil {
+				// The rename only moves the directory; the manifest already on
+				// the row still describes exactly what is inside it.
+				if err := h.repo.SetBuild(game.ID, newDir, games.BuildInfo{
+					Version:   game.BuildVersion,
+					Bytes:     game.BuildBytes,
+					FilesJSON: game.BuildFilesJSON,
+				}); err == nil {
 					game.WebExportPath = newDir
 				}
 			}
@@ -400,7 +406,7 @@ func (h *Handlers) DeleteBuild(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.repo.SetBuild(game.ID, ""); err != nil {
+	if err := h.repo.SetBuild(game.ID, "", games.BuildInfo{}); err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not clear the build")
 		return
 	}

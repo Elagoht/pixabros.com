@@ -36,10 +36,28 @@ type Game struct {
 	CDCoverArtID      *string
 	OGImageID         *string
 	WebExportPath     string
-	DisplayOrder      int
-	IsPublished       bool
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	// BuildVersion, BuildBytes and BuildFilesJSON describe the extracted
+	// build. The offline download reads all three: the version tells a
+	// returning visitor whether the copy they hold is still current, and the
+	// rest is what they would be spending.
+	BuildVersion   string
+	BuildBytes     int64
+	BuildFilesJSON string
+	DisplayOrder   int
+	IsPublished    bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// BuildInfo is a build's manifest as the repository stores it. The zero value
+// clears a build, which is what deleting one passes.
+type BuildInfo struct {
+	Version string
+	Bytes   int64
+	// FilesJSON is a JSON array of {"path","bytes"} objects. Empty is stored
+	// as "[]" -- it is served straight to the browser, so it must always be
+	// valid JSON.
+	FilesJSON string
 }
 
 type CreateInput struct {
@@ -90,7 +108,8 @@ const gameColumns = `id, slug, title, short_description, full_description, tags,
 	is_browser_playable, is_for_sale,
 	price_display, external_links_json,
 	cartridge_art_id, cd_cover_art_id, og_image_id,
-	web_export_path, display_order, is_published, created_at, updated_at`
+	web_export_path, build_version, build_bytes, build_files_json,
+	display_order, is_published, created_at, updated_at`
 
 type rowScanner interface {
 	Scan(dest ...interface{}) error
@@ -108,7 +127,8 @@ func scanGame(row rowScanner) (Game, error) {
 		&g.IsBrowserPlayable, &g.IsForSale,
 		&priceDisplay, &g.ExternalLinksJSON,
 		&cartridgeArtID, &cdCoverArtID, &ogImageID,
-		&webExportPath, &g.DisplayOrder, &g.IsPublished,
+		&webExportPath, &g.BuildVersion, &g.BuildBytes, &g.BuildFilesJSON,
+		&g.DisplayOrder, &g.IsPublished,
 		&createdAtStr, &updatedAtStr,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -258,16 +278,19 @@ func (r *Repo) Delete(id string) error {
 	return requireRowsAffected(res)
 }
 
-// SetBuild records where a game's playable build was extracted to, and
-// derives is_browser_playable from it: a game is playable in the browser
-// exactly when a build exists. Passing an empty path clears both, which is
-// what removing a build does. Nothing else may write is_browser_playable --
-// the admin form does not offer it as a field.
-func (r *Repo) SetBuild(id string, path string) error {
+// SetBuild records where a game's playable build was extracted to and what it
+// is made of, and derives is_browser_playable from whether there is one.
+func (r *Repo) SetBuild(id string, path string, info BuildInfo) error {
+	filesJSON := info.FilesJSON
+	if filesJSON == "" {
+		filesJSON = "[]"
+	}
 	res, err := r.db.Exec(
 		`UPDATE games SET web_export_path = ?, is_browser_playable = ?,
+			build_version = ?, build_bytes = ?, build_files_json = ?,
 			updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?;`,
-		nullableString(path), path != "", id,
+		nullableString(path), path != "",
+		info.Version, info.Bytes, filesJSON, id,
 	)
 	if err != nil {
 		return err

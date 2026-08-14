@@ -202,7 +202,7 @@ func TestUpdate_SuccessBySlugAndMovesExtractedBuild(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(oldBuildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := repo.SetBuild(game.ID, oldBuildDir); err != nil {
+	if err := repo.SetBuild(game.ID, oldBuildDir, games.BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 	handlers := NewHandlers(repo, conn, playDir)
@@ -387,7 +387,7 @@ func TestDeleteBuild_RemovesFilesAndClearsBrowserPlayable(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(buildDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
 		t.Fatalf("seed index.html: %v", err)
 	}
-	if err := repo.SetBuild(game.ID, buildDir); err != nil {
+	if err := repo.SetBuild(game.ID, buildDir, games.BuildInfo{}); err != nil {
 		t.Fatalf("SetBuild() error = %v", err)
 	}
 

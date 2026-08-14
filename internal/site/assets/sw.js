@@ -213,18 +213,24 @@ function trim(cache, limit) {
 // networkFirst is what freshness-sensitive things get. The whole site is
 // pre-rendered and served with an ETag; serving a cached copy in preference to
 // the network would undo that.
-function networkFirst(request, cacheName, limit) {
+function networkFirst(event, request, cacheName, limit) {
   return fetch(request)
     .then(function (response) {
       if (!response.ok) {
         return response;
       }
       var copy = response.clone();
-      caches.open(cacheName).then(function (cache) {
-        return cache.put(request, copy).then(function () {
-          return trim(cache, limit);
-        });
-      });
+      // The page gets the response the moment it arrives, which ends the
+      // event's extended lifetime -- and a browser may reclaim the worker
+      // right then, dropping the write. waitUntil keeps the worker alive
+      // until the copy has actually landed, without making the page wait.
+      event.waitUntil(
+        caches.open(cacheName).then(function (cache) {
+          return cache.put(request, copy).then(function () {
+            return trim(cache, limit);
+          });
+        })
+      );
       return response;
     })
     .catch(function () {
@@ -258,7 +264,7 @@ function networkFirst(request, cacheName, limit) {
 
 // cacheFirst is for content-hashed assets: their URL changes when their bytes
 // do, so a hit is never stale.
-function cacheFirst(request, cacheName) {
+function cacheFirst(event, request, cacheName) {
   return caches.match(request).then(function (cached) {
     if (cached) {
       return cached;
@@ -266,9 +272,15 @@ function cacheFirst(request, cacheName) {
     return fetch(request).then(function (response) {
       if (response.ok) {
         var copy = response.clone();
-        caches.open(cacheName).then(function (cache) {
-          return cache.put(request, copy);
-        });
+        // Same reason as networkFirst: the response resolves and ends the
+        // event's extended lifetime before an un-awaited write finishes,
+        // so the worker may be torn down mid-write. waitUntil keeps it
+        // alive for the write without delaying the response.
+        event.waitUntil(
+          caches.open(cacheName).then(function (cache) {
+            return cache.put(request, copy);
+          })
+        );
       }
       return response;
     });
@@ -303,11 +315,11 @@ self.addEventListener("fetch", function (event) {
     return;
   }
   if (kind === "asset") {
-    event.respondWith(cacheFirst(request, SHELL_PREFIX + currentShellVersion));
+    event.respondWith(cacheFirst(event, request, SHELL_PREFIX + currentShellVersion));
     return;
   }
   if (kind === "media") {
-    event.respondWith(networkFirst(request, MEDIA_CACHE, MEDIA_LIMIT));
+    event.respondWith(networkFirst(event, request, MEDIA_CACHE, MEDIA_LIMIT));
     return;
   }
   if (kind === "play") {
@@ -315,7 +327,7 @@ self.addEventListener("fetch", function (event) {
     return;
   }
   event.respondWith(
-    networkFirst(request, PAGES_CACHE, PAGES_LIMIT).then(function (response) {
+    networkFirst(event, request, PAGES_CACHE, PAGES_LIMIT).then(function (response) {
       // Only a navigation that actually reached the network proves we are
       // online, which is the moment worth spending a shell check on.
       if (request.mode === "navigate" && response && response.ok) {

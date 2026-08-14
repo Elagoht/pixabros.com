@@ -214,26 +214,49 @@
             return cache.put(completeKey(), new Response(manifest.version));
           });
       })
-      .then(cacheThisPage)
-      .then(function () {
-        var previous = held;
-        held = manifest.version;
-        // The old copy goes only now, so an interrupted update never costs a
-        // visitor the game they already had.
-        if (previous && previous !== held) {
-          return window.caches.delete(gameCacheName(previous));
+      .then(
+        function () {
+          // The marker above landed: this copy is complete and, from this
+          // instant, belongs to the visitor. It is not ours to revoke, so
+          // finish() runs detached from this chain -- nothing it does, or
+          // fails to do, is allowed to reach the failure branch below and be
+          // mistaken for a download that never completed.
+          finish();
+        },
+        function (err) {
+          // Reached only when the marker never landed, i.e. everything above
+          // this .then. The copy is incomplete and was never the visitor's,
+          // so discarding it costs them nothing they had.
+          window.caches.delete(gameCacheName(manifest.version));
+          control.textContent = "";
+          control.appendChild(say("Could not save this game for offline play: " + err.message));
+          control.appendChild(
+            button("Try again — " + window.OfflineLogic.formatBytes(manifest.bytes), download)
+          );
         }
-        return null;
-      })
-      .then(render)
-      .catch(function (err) {
-        window.caches.delete(gameCacheName(manifest.version));
-        control.textContent = "";
-        control.appendChild(say("Could not save this game for offline play: " + err.message));
-        control.appendChild(
-          button("Try again — " + window.OfflineLogic.formatBytes(manifest.bytes), download)
-        );
-      });
+      );
+
+    // finish runs everything that happens once the copy is already the
+    // visitor's: caching the page it launches from, dropping the previous
+    // version, and repainting the control. None of that is worth losing the
+    // build over, so its own failures are absorbed rather than surfaced --
+    // render() always runs, and always reports "Playable offline", because
+    // that is the truth regardless of what finish() otherwise managed.
+    function finish() {
+      cacheThisPage()
+        .then(function () {
+          var previous = held;
+          held = manifest.version;
+          // The old copy goes only now, so an interrupted update never costs a
+          // visitor the game they already had.
+          if (previous && previous !== held) {
+            return window.caches.delete(gameCacheName(previous));
+          }
+          return null;
+        })
+        .catch(function () {})
+        .then(render);
+    }
   }
 
   // cacheThisPage stores the game's own page and the images on it alongside the

@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
 	"pixabros/internal/db"
+	"pixabros/internal/id"
 	"pixabros/internal/media"
 	"pixabros/internal/storage"
 )
@@ -266,4 +268,118 @@ func TestDelete_UnknownImageIsNotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+}
+
+// Changing an image's alt text changes what every page showing it says, so
+// those pages have to be rebuilt. Nothing else notices: a page is only rebuilt
+// when its tag is enqueued.
+func TestUpdate_RebuildsEveryPageShowingTheImage(t *testing.T) {
+	handlers, repo, conn := setupMediaHandlers(t)
+
+	mediaID := seedImage(t, repo, "media/cd_cover_art/2026-cover.webp")
+	gameID := id.New()
+	if _, err := conn.Exec(
+		`INSERT INTO games (id, slug, title, cd_cover_art_id) VALUES (?, 'a-game', 'A Game', ?);`,
+		gameID, mediaID,
+	); err != nil {
+		t.Fatalf("seed game: %v", err)
+	}
+
+	if rec := putAltText(t, handlers, mediaID, "A cover"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	queued := pendingTags(t, conn)
+	// The listing shows the cover on a card; the game's own page shows it in
+	// full. Both are now wrong.
+	for _, want := range []string{"game:list", "game:" + gameID} {
+		if !queued[want] {
+			t.Errorf("no rebuild queued for %q, queued: %v", want, keysOf(queued))
+		}
+	}
+}
+
+// An image nothing points at yet -- just uploaded, not attached -- appears on
+// no page, so editing it must not queue work for pages it is not on.
+func TestUpdate_QueuesNothingForAnUnusedImage(t *testing.T) {
+	handlers, repo, conn := setupMediaHandlers(t)
+
+	mediaID := seedImage(t, repo, "media/og_image/2026-loose.webp")
+	if rec := putAltText(t, handlers, mediaID, "Nowhere yet"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	if queued := pendingTags(t, conn); len(queued) != 0 {
+		t.Errorf("queued %v for an image on no page", keysOf(queued))
+	}
+}
+
+// The team is on the homepage and members have no pages of their own, so a
+// member's avatar rebuilds the listing and nothing else.
+func TestUpdate_RebuildsTheListingForAMemberAvatar(t *testing.T) {
+	handlers, repo, conn := setupMediaHandlers(t)
+
+	mediaID := seedImage(t, repo, "media/avatar/2026-face.webp")
+	if _, err := conn.Exec(
+		`INSERT INTO members (id, name, links_json, avatar_id) VALUES (?, 'Someone', '[]', ?);`,
+		id.New(), mediaID,
+	); err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+
+	if rec := putAltText(t, handlers, mediaID, "A face"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	queued := pendingTags(t, conn)
+	if !queued["member:list"] {
+		t.Errorf("no rebuild queued for member:list, queued: %v", keysOf(queued))
+	}
+}
+
+func putAltText(t *testing.T, h *Handlers, mediaID, alt string) *httptest.ResponseRecorder {
+	t.Helper()
+	body, _ := json.Marshal(map[string]string{"alt_text": alt})
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/media/"+mediaID, bytes.NewReader(body))
+	req.SetPathValue("id", mediaID)
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+	return rec
+}
+
+func pendingTags(t *testing.T, conn *sql.DB) map[string]bool {
+	t.Helper()
+	rows, err := conn.Query(`SELECT tag FROM regen_jobs WHERE status = 'pending';`)
+	if err != nil {
+		t.Fatalf("read the queue: %v", err)
+	}
+	defer rows.Close()
+
+	tags := map[string]bool{}
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			t.Fatalf("scan tag: %v", err)
+		}
+		tags[tag] = true
+	}
+	return tags
+}
+
+func keysOf(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func seedImage(t *testing.T, repo *media.Repo, path string) string {
+	t.Helper()
+	saved, err := repo.Create(path, 400, 400)
+	if err != nil {
+		t.Fatalf("seed image: %v", err)
+	}
+	return saved.ID
 }

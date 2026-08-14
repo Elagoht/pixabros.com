@@ -10,6 +10,7 @@ import (
 	"pixabros/internal/httpapi"
 	"pixabros/internal/media"
 	"pixabros/internal/mediarefs"
+	"pixabros/internal/render"
 	"pixabros/internal/storage"
 )
 
@@ -135,13 +136,23 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := h.repo.SetAltText(r.PathValue("id"), *req.AltText)
+	mediaID := r.PathValue("id")
+	m, err := h.repo.SetAltText(mediaID, *req.AltText)
 	if errors.Is(err, media.ErrMediaNotFound) {
 		httpapi.WriteError(w, http.StatusNotFound, "not_found", "media not found")
 		return
 	}
 	if err != nil {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not update media")
+		return
+	}
+
+	// The alt text is rendered into every page showing this image, so those
+	// pages are now stale. Nothing else was going to notice: a page is only
+	// rebuilt when something enqueues its tag, and until now editing an image
+	// enqueued nothing at all.
+	if err := h.enqueueRegenFor(mediaID); err != nil {
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
 
@@ -194,4 +205,62 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// enqueueRegenFor asks for a rebuild of every page that shows an image.
+//
+// Which pages those are comes from mediarefs, the one place that knows every
+// column pointing at media -- so an image used somewhere new is covered here
+// the moment it is listed there, rather than being forgotten.
+func (h *Handlers) enqueueRegenFor(mediaID string) error {
+	usages, err := mediarefs.Lookup(h.db)
+	if err != nil {
+		return err
+	}
+
+	for _, tag := range regenTagsFor(usages[mediaID]) {
+		if err := render.EnqueueRegen(h.db, tag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// regenTagsFor turns the places an image is used into the tags that rebuild
+// them, without repeating a tag.
+//
+// A module with pages of its own gets two: the listing, which shows the image
+// in a card, and the one page that shows it in full. A module without its own
+// pages gets only the listing it appears on.
+func regenTagsFor(usages []mediarefs.Usage) []string {
+	seen := map[string]bool{}
+	var tags []string
+	add := func(tag string) {
+		if tag != "" && !seen[tag] {
+			seen[tag] = true
+			tags = append(tags, tag)
+		}
+	}
+
+	for _, usage := range usages {
+		switch usage.Module {
+		case "games":
+			add("game:list")
+			add("game:" + usage.RowID)
+		case "devlog":
+			add("devlog:list")
+			add("devlog:" + usage.RowID)
+		case "members":
+			// A member has no page of their own; they appear on the homepage.
+			add("member:list")
+		case "awards":
+			add("award:list")
+		case "site-settings":
+			// The chrome is on every page, which the tag already means.
+			add("site_settings")
+		case "homepage":
+			add("homepage")
+		}
+	}
+	return tags
 }

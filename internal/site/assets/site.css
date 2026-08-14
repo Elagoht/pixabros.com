@@ -3125,3 +3125,35 @@ a:hover {
     display: none;
   }
 }
+
+/* The offline control. It is injected by script, so it never exists for a
+   visitor without JavaScript and needs no no-JS state of its own. */
+.offline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.offline__status {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.offline__action {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.offline__action:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

@@ -21,6 +21,7 @@
       <a href="{{.Data.PlayURL}}">Open the game on its own</a> if it does not
       fit here.
     </p>
+    <div data-offline-game="{{.Data.Slug}}"></div>
   {{else if .Data.Cover.URL}}
     <div class="game-cover">
       <img src="{{.Data.Cover.URL}}" alt="{{.Data.Cover.Alt}}" />

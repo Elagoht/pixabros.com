@@ -50,7 +50,7 @@ Sürüm, dosyalar akarken hesaplanan içerik hash'lerinin yola göre sıralanmı
 
 `__MACOSX/` ve `._*` girdileri manifestten dışlanır **ve diske hiç yazılmaz.** Bugünkü davranışı değiştiriyor; bilinçli, ayrıca onaylandı. Çevrimdışı kopyaya kaynak çatalı indirmek anlamsız, herkese açık servis etmek de zaten istenmeyen bir şeydi.
 
-**Saklama** `external_links_json` konvansiyonunu izler — `games` tablosuna üç sütun, migration 0021:
+**Saklama** `external_links_json` konvansiyonunu izler — `games` tablosuna üç sütun, migration 0024 (mevcut son migration 0023):
 
 - `build_version TEXT NOT NULL DEFAULT ''`
 - `build_bytes INTEGER NOT NULL DEFAULT 0`
@@ -61,10 +61,17 @@ Liste her zaman bütün olarak okunduğu için ayrı bir tabloya değmez. Build 
 **Uç nokta:** `GET /api/games/{slug}/build` — oturumsuz, `apiCSP` altında.
 
 ```json
-{"version": "a1b2c3d4", "bytes": 46137344, "files": ["index.html", "tetrabros.wasm", "..."]}
+{
+  "version": "a1b2c3d4e5f60718",
+  "bytes": 46137344,
+  "files": [
+    {"path": "index.html", "bytes": 12873},
+    {"path": "tetrabros.wasm", "bytes": 38104972}
+  ]
+}
 ```
 
-Yalnızca yayınlanmış (`is_published`) ve tarayıcıda oynanabilir (`is_browser_playable`) oyunlar için cevap verir; build'i olmayan oyun 404. Yollar görelidir, istemci başına `/play/{slug}/` ekler.
+Yalnızca yayınlanmış (`is_published`) ve tarayıcıda oynanabilir (`is_browser_playable`) oyunlar için cevap verir; build'i olmayan oyun 404. Yollar görelidir, istemci başına `/play/{slug}/` ekler. Dosya başına bayt taşınıyor, çünkü indirme ilerlemesi bu sayılardan okunuyor.
 
 ## Service Worker
 
@@ -152,7 +159,7 @@ Bir oyunu indirmek **sayfasını ve üzerindeki görselleri de** cache'ler; yoks
 **Public sitenin JavaScript'inin bugün hiç testi yok** — `arcade.js`, `carousel.js`, `cases.js`, `contact.js`, `lightbox.js`, `osd.js`; vitest yalnızca `admin-ui` tarafında kurulu. Service worker bu repodaki en durumlu bileşen olacak, testsiz göndermek hata olur.
 
 - **JS:** Public site betikleri için repo kökünde küçük bir npm projesi (`package.json` + vitest) kurulur ve `Makefile`'ın `test` hedefine `admin-ui`'nınkinin yanına eklenir. `admin-ui`'nin vitest'ini paket sınırının dışına doğrultmak yerine ayrı proje: ikisinin bağımlılıkları ve tsconfig'i ortak değil. Kökte bugün boş bir `node_modules` duruyor ve `.gitignore`'da **yok** — proje kurulurken ignore edilmeli. Worker'ın karar veren kısımları — rota sınıflandırma, cache adı ayrıştırma, kabuk farkı, indirme durum makinesi — tarayıcı gerektirmeyen saf fonksiyonlara ayrılıp test edilir. `install`/`activate`/`fetch` kancaları ince tutkal kalır ve elle kontrol listesiyle doğrulanır.
-- **Go:** extractor manifesti ve çöp dışlama; sürümün aynı arşiv için değişmediği; migration 0021; build uç noktası (yayınlanmamış, build'siz, var olmayan slug); shell uç noktası; `/sw.js` rotası ve başlıkları; `publicCSP`'de `worker-src`.
+- **Go:** extractor manifesti ve çöp dışlama; sürümün aynı arşiv için değişmediği; migration 0024; build uç noktası (yayınlanmamış, build'siz, var olmayan slug); shell uç noktası; `/sw.js` rotası ve başlıkları; `publicCSP`'de `worker-src`.
 
 ## Kapsam Dışı
 

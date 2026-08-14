@@ -134,10 +134,14 @@ type pageData struct {
 	// ChromeScript runs the channel banner and so belongs to every page, which
 	// is why it is filled in by the renderer rather than listed page by page.
 	ChromeScript string
-	Nav          []navItem
-	Site         SiteChrome
-	Year         int
-	Data         interface{}
+	// OfflineScript registers the service worker and drives the offline
+	// download control. It is on every page for the same reason ChromeScript
+	// is: the worker has to be registered wherever a visitor lands.
+	OfflineScript string
+	Nav           []navItem
+	Site          SiteChrome
+	Year          int
+	Data          interface{}
 }
 
 // renderer holds everything the page renderers share.
@@ -159,7 +163,7 @@ type renderer struct {
 var pageTemplates = []string{
 	"landing.html", "arcade.html", "game.html",
 	"devlog.html", "devlog-post.html", "awards.html",
-	"contact.html", "contact-sent.html", "404.html",
+	"contact.html", "contact-sent.html", "404.html", "offline.html",
 }
 
 func newRenderer(bundle *Bundle) (*renderer, error) {
@@ -199,6 +203,7 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 
 	data.CSS = r.bundle.URL("site.css")
 	data.ChromeScript = r.bundle.URL("osd.js")
+	data.OfflineScript = r.bundle.URL("offline.js")
 	data.Nav = navItems
 	data.Year = r.now().UTC().Year()
 

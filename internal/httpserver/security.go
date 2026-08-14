@@ -31,6 +31,10 @@ const publicCSP = "default-src 'none'; " +
 	// deny the site its own manifest -- and a blocked manifest fails silently:
 	// the page renders, and the site simply cannot be installed.
 	"manifest-src 'self'; " +
+	// worker-src falls back to child-src and then to default-src, which is
+	// 'none'. Without it the service worker never starts and offline support
+	// disappears with no visible error.
+	"worker-src 'self'; " +
 	"form-action 'self'; " +
 	"base-uri 'none'; " +
 	"frame-ancestors 'none'"

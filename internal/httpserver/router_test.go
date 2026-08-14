@@ -1041,3 +1041,52 @@ func TestNew_ServesTheManifest(t *testing.T) {
 		t.Errorf("the manifest is served under a policy that blocks it: %q", got)
 	}
 }
+
+// The worker must be reachable at the root: a script served from /assets could
+// only ever claim /assets as its scope.
+func TestNew_ServesTheServiceWorkerFromTheRoot(t *testing.T) {
+	deps := publicDeps(t)
+	deps.ServiceWorker = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write([]byte("self.addEventListener('install', function () {});"))
+	})
+	srv := httptest.NewServer(New(deps))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/sw.js")
+	if err != nil {
+		t.Fatalf("GET /sw.js: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "application/javascript" {
+		t.Errorf("Content-Type = %q, want application/javascript", got)
+	}
+	// A cached worker is a worker that never updates.
+	if got := resp.Header.Get("Cache-Control"); got != "no-cache" {
+		t.Errorf("Cache-Control = %q, want no-cache", got)
+	}
+	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "worker-src 'self'") {
+		t.Errorf("the worker is served under a policy that blocks it: %q", got)
+	}
+}
+
+// Tests and any deployment that never built the assets leave it unset.
+func TestNew_WithoutAServiceWorkerLeavesThePathAlone(t *testing.T) {
+	srv := httptest.NewServer(New(publicDeps(t)))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/sw.js")
+	if err != nil {
+		t.Fatalf("GET /sw.js: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", resp.StatusCode)
+	}
+}

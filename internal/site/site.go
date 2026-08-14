@@ -25,6 +25,11 @@ import (
 const (
 	PageLanding = "index.html"
 	PageAwards  = "awards"
+
+	// PageOffline is what a visitor gets when they ask for a page this device
+	// has never held. It is a real page so that the worker has something to
+	// precache rather than a string built into the worker itself.
+	PageOffline = "offline"
 )
 
 // siteSettingsTag is on every page, because the header and footer read from
@@ -79,6 +84,7 @@ func (s *Site) pages() []pageDef {
 		{Key: PageAwards, Render: s.renderAwards},
 		{Key: PageContact, Render: s.renderContact},
 		{Key: PageContactSent, Render: s.renderContactSent},
+		{Key: PageOffline, Render: s.renderOffline},
 	}
 }
 

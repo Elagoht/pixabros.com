@@ -73,6 +73,15 @@ func TestPublicCSP_AllowsItsOwnManifest(t *testing.T) {
 	}
 }
 
+// worker-src falls back to child-src and then to default-src, which is 'none'.
+// A policy that does not name it refuses to start the service worker, and the
+// site loses offline support without a single visible error.
+func TestPublicCSP_AllowsItsOwnServiceWorker(t *testing.T) {
+	if got := directives(publicCSP)["worker-src"]; got != "'self'" {
+		t.Errorf("public worker-src = %q, want 'self'", got)
+	}
+}
+
 // Anything the policy forgets to name falls through to default-src, so
 // default-src 'none' is what makes the rest of the policy a whitelist rather
 // than a suggestion.

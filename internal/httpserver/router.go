@@ -65,6 +65,10 @@ type Dependencies struct {
 	// Manifest serves the web app manifest. Nil leaves the route unmounted,
 	// which is what tests that do not build a public site get.
 	Manifest http.Handler
+	// ServiceWorker serves the offline worker at the root, and Shell answers
+	// with what it should precache. Nil leaves each route unmounted.
+	ServiceWorker http.Handler
+	Shell         http.Handler
 	// FaviconURL is where the published studio mark landed. Empty leaves
 	// /favicon.ico a 404, which beats redirecting to nothing.
 	FaviconURL string
@@ -222,6 +226,12 @@ func New(deps Dependencies) http.Handler {
 
 	if deps.Manifest != nil {
 		mux.Handle("GET "+site.ManifestPath, deps.Manifest)
+	}
+	if deps.ServiceWorker != nil {
+		mux.Handle("GET "+site.ServiceWorkerPath, deps.ServiceWorker)
+	}
+	if deps.Shell != nil {
+		mux.Handle("GET "+site.ShellPath, deps.Shell)
 	}
 	// Every page of the site links its own icon, so this is for the surfaces
 	// that never read one: an uploaded game build under /play, a bookmark, a

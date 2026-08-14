@@ -87,6 +87,11 @@ func main() {
 	}
 	publicSite.Register(registry)
 
+	serviceWorker, err := site.ServiceWorkerHandler(assets, cfg.DataDir+"/assets")
+	if err != nil {
+		log.Fatalf("build service worker handler: %v", err)
+	}
+
 	notFoundBody, err := publicSite.NotFoundBody()
 	if err != nil {
 		log.Fatalf("render 404 page: %v", err)
@@ -164,26 +169,28 @@ func main() {
 		6*time.Hour, media.OrphanGrace)
 
 	handler := httpserver.New(httpserver.Dependencies{
-		NotFoundBody: notFoundBody,
-		Admins:       auth.NewAdminRepo(conn),
-		Sessions:     auth.NewSessionStore(conn),
-		Store:        store,
-		Files:        renderedFiles,
-		DB:           conn,
-		Games:        games.NewRepo(conn),
-		Members:      membersRepo,
-		Awards:       awardsRepo,
-		Devlog:       devlogRepo,
-		Contact:      contactRepo,
-		Stats:        stats.NewRepo(conn),
-		Settings:     settingsRepo,
-		Media:        mediaRepo,
-		MediaFiles:   mediaFiles,
-		MediaDir:     cfg.DataDir + "/media",
-		PlayDir:      cfg.DataDir + "/games",
-		AssetsDir:    cfg.DataDir + "/assets",
-		Manifest:     publicSite.ManifestHandler(),
-		FaviconURL:   assets.URL("logo.svg"),
+		NotFoundBody:  notFoundBody,
+		Admins:        auth.NewAdminRepo(conn),
+		Sessions:      auth.NewSessionStore(conn),
+		Store:         store,
+		Files:         renderedFiles,
+		DB:            conn,
+		Games:         games.NewRepo(conn),
+		Members:       membersRepo,
+		Awards:        awardsRepo,
+		Devlog:        devlogRepo,
+		Contact:       contactRepo,
+		Stats:         stats.NewRepo(conn),
+		Settings:      settingsRepo,
+		Media:         mediaRepo,
+		MediaFiles:    mediaFiles,
+		MediaDir:      cfg.DataDir + "/media",
+		PlayDir:       cfg.DataDir + "/games",
+		AssetsDir:     cfg.DataDir + "/assets",
+		Manifest:      publicSite.ManifestHandler(),
+		FaviconURL:    assets.URL("logo.svg"),
+		ServiceWorker: serviceWorker,
+		Shell:         publicSite.ShellHandler(),
 	})
 
 	srv := &http.Server{

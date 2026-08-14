@@ -119,6 +119,7 @@
       </div>
     </footer>
     <script src="{{.ChromeScript}}" defer></script>
+    {{if .OfflineScript}}<script src="{{.OfflineScript}}" defer></script>{{end}}
     {{range .Scripts}}<script src="{{.}}" defer></script>{{end}}
   </body>
 </html>

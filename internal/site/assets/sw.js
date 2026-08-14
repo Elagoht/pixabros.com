@@ -90,6 +90,222 @@ self.SWLogic = {
   },
 };
 
-self.addEventListener("install", function () {
-  self.skipWaiting();
+// fetchShell asks the server what a page needs offline. The worker cannot hold
+// these URLs itself: they are content-hashed, so they move whenever a script
+// or the stylesheet changes.
+function fetchShell() {
+  return fetch(SHELL_PATH, { cache: "no-store" }).then(function (response) {
+    if (!response.ok) {
+      throw new Error("shell list unavailable");
+    }
+    return response.json();
+  });
+}
+
+// precache stores the shell under a name carrying its stamp, so an older shell
+// is a different cache and activation can drop it whole.
+function precache(shell) {
+  return caches.open(SHELL_PREFIX + shell.version).then(function (cache) {
+    return cache.addAll(shell.urls);
+  });
+}
+
+// currentShellVersion is remembered between events so activate knows which
+// shell cache to keep without asking the network again.
+var currentShellVersion = "";
+
+// shellCheckInFlight keeps a burst of navigations from starting a burst of
+// shell fetches. The list is a few hundred bytes, but one request per
+// navigation would still be one request nobody asked for.
+var shellCheckInFlight = false;
+
+// refreshShell re-reads the shell list and re-precaches when the stamp moved.
+//
+// Install alone is not enough. A visitor who installs the worker, then a
+// deploy moves the stylesheet, then the visitor goes offline, would open a
+// page asking for a stylesheet URL that was never cached -- an unstyled page.
+// Checking after a navigation that reached the network closes that.
+function refreshShell() {
+  if (shellCheckInFlight) {
+    return;
+  }
+  shellCheckInFlight = true;
+  fetchShell()
+    .then(function (shell) {
+      if (shell.version === currentShellVersion) {
+        return null;
+      }
+      var previous = currentShellVersion;
+      currentShellVersion = shell.version;
+      return precache(shell).then(function () {
+        if (previous) {
+          return caches.delete(SHELL_PREFIX + previous);
+        }
+        return null;
+      });
+    })
+    .catch(function () {})
+    .then(function () {
+      shellCheckInFlight = false;
+    });
+}
+
+self.addEventListener("install", function (event) {
+  event.waitUntil(
+    fetchShell()
+      .then(function (shell) {
+        currentShellVersion = shell.version;
+        return precache(shell);
+      })
+      // A failed install would leave the visitor with no worker at all, which
+      // is worse than a worker whose shell fills in as they browse.
+      .catch(function () {})
+      .then(function () {
+        return self.skipWaiting();
+      })
+  );
+});
+
+self.addEventListener("activate", function (event) {
+  event.waitUntil(
+    fetchShell()
+      .then(function (shell) {
+        currentShellVersion = shell.version;
+        return precache(shell);
+      })
+      .catch(function () {})
+      .then(function () {
+        return caches.keys();
+      })
+      .then(function (names) {
+        return Promise.all(
+          names.map(function (name) {
+            if (self.SWLogic.isKeepable(name, currentShellVersion)) {
+              return null;
+            }
+            return caches.delete(name);
+          })
+        );
+      })
+      .then(function () {
+        return self.clients.claim();
+      })
+  );
+});
+
+// trim keeps a runtime cache bounded by dropping its oldest entries. Cache
+// API returns keys in insertion order, which is what makes this possible
+// without keeping a second ledger; a true LRU would mean writing a timestamp
+// on every read, and these two caches are not worth that.
+function trim(cache, limit) {
+  return cache.keys().then(function (keys) {
+    if (keys.length <= limit) {
+      return null;
+    }
+    return Promise.all(
+      keys.slice(0, keys.length - limit).map(function (key) {
+        return cache.delete(key);
+      })
+    );
+  });
+}
+
+// networkFirst is what freshness-sensitive things get. The whole site is
+// pre-rendered and served with an ETag; serving a cached copy in preference to
+// the network would undo that.
+function networkFirst(request, cacheName, limit) {
+  return fetch(request)
+    .then(function (response) {
+      if (!response.ok) {
+        return response;
+      }
+      var copy = response.clone();
+      caches.open(cacheName).then(function (cache) {
+        return cache.put(request, copy).then(function () {
+          return trim(cache, limit);
+        });
+      });
+      return response;
+    })
+    .catch(function () {
+      return caches.match(request).then(function (cached) {
+        if (cached) {
+          return cached;
+        }
+        if (request.mode === "navigate") {
+          return caches.match("/offline");
+        }
+        return Response.error();
+      });
+    });
+}
+
+// cacheFirst is for content-hashed assets: their URL changes when their bytes
+// do, so a hit is never stale.
+function cacheFirst(request, cacheName) {
+  return caches.match(request).then(function (cached) {
+    if (cached) {
+      return cached;
+    }
+    return fetch(request).then(function (response) {
+      if (response.ok) {
+        var copy = response.clone();
+        caches.open(cacheName).then(function (cache) {
+          return cache.put(request, copy);
+        });
+      }
+      return response;
+    });
+  });
+}
+
+// playFirst serves a game build out of whichever version the visitor holds.
+// The completion marker is never handed out as a file: it is bookkeeping, not
+// part of the build.
+function playFirst(request, pathname) {
+  var slug = self.SWLogic.playSlug(pathname);
+  if (!slug || pathname === self.SWLogic.completeKey(slug)) {
+    return fetch(request);
+  }
+  return caches.match(request).then(function (cached) {
+    return cached || fetch(request);
+  });
+}
+
+self.addEventListener("fetch", function (event) {
+  var request = event.request;
+  if (request.method !== "GET") {
+    return;
+  }
+  var url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  var kind = self.SWLogic.classify(url.pathname);
+  if (kind === "bypass") {
+    return;
+  }
+  if (kind === "asset") {
+    event.respondWith(cacheFirst(request, SHELL_PREFIX + currentShellVersion));
+    return;
+  }
+  if (kind === "media") {
+    event.respondWith(networkFirst(request, MEDIA_CACHE, MEDIA_LIMIT));
+    return;
+  }
+  if (kind === "play") {
+    event.respondWith(playFirst(request, url.pathname));
+    return;
+  }
+  event.respondWith(
+    networkFirst(request, PAGES_CACHE, PAGES_LIMIT).then(function (response) {
+      // Only a navigation that actually reached the network proves we are
+      // online, which is the moment worth spending a shell check on.
+      if (request.mode === "navigate" && response && response.ok) {
+        refreshShell();
+      }
+      return response;
+    })
+  );
 });

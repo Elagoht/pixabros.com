@@ -27,6 +27,10 @@ const publicCSP = "default-src 'none'; " +
 	"font-src 'self'; " +
 	"connect-src 'self'; " +
 	"frame-src 'self' https://www.youtube-nocookie.com; " +
+	// manifest-src has no fallback but default-src, so leaving it out would
+	// deny the site its own manifest -- and a blocked manifest fails silently:
+	// the page renders, and the site simply cannot be installed.
+	"manifest-src 'self'; " +
 	"form-action 'self'; " +
 	"base-uri 'none'; " +
 	"frame-ancestors 'none'"

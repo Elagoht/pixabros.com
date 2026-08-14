@@ -31,6 +31,16 @@
     {{if .OGImage}}<meta name="twitter:image" content="{{.OGImage}}" />{{end}}
 
     {{if .Favicon}}<link rel="icon" href="{{.Favicon}}" />{{end}}
+    {{if .AppleIcon}}<link rel="apple-touch-icon" href="{{.AppleIcon}}" />{{end}}
+    {{if .Manifest}}<link rel="manifest" href="{{.Manifest}}" />{{end}}
+
+    {{/* What the browser paints around the page before any CSS has arrived:
+         the address bar on a phone, the title bar of an installed window. The
+         site has a lit room and a dark one, so it names both rather than
+         promising one and rendering the other. */}}
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#050806" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ddd8cc" />
+
     <link rel="stylesheet" href="{{.CSS}}" />
 
     {{/* A script whose type is not JavaScript is a data block: the browser

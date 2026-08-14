@@ -105,8 +105,15 @@ type pageData struct {
 	Path string
 	CSS  string
 	// Favicon overrides the site icon for one page. The game pages use their
-	// own cover art; everywhere else leaves it empty.
+	// own cover art; everywhere else leaves it empty and the renderer fills in
+	// the studio's mark.
 	Favicon string
+	// AppleIcon and Manifest are the same on every page and are filled in by
+	// the renderer. iOS reads the first and ignores the manifest's icons
+	// entirely, which is why it cannot simply be the favicon: that one is a
+	// vector, and a home screen icon has to be a raster.
+	AppleIcon string
+	Manifest  string
 	// Canonical is the page's own address, and Path above is only the nav
 	// highlight, which is why they are separate: a game's page highlights
 	// Games but is canonical to itself.
@@ -206,6 +213,15 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 		data.OGImage = data.Site.OGImageURL
 	}
 	data.OGImage = absoluteURL(data.Site.URL, data.OGImage)
+
+	// The studio's mark stands in wherever a page has no icon of its own,
+	// which is every page but a game's -- and a game's too, if it has no
+	// artwork attached yet.
+	if data.Favicon == "" {
+		data.Favicon = r.bundle.URL("logo.svg")
+	}
+	data.AppleIcon = r.bundle.URL("icon-192.png")
+	data.Manifest = ManifestPath
 
 	var raw bytes.Buffer
 	if err := parsed.ExecuteTemplate(&raw, "layout", data); err != nil {

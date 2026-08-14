@@ -64,6 +64,15 @@ func TestPublicCSP_FramesOnlyTheVideoPlayerAndItself(t *testing.T) {
 	}
 }
 
+// manifest-src has no fallback of its own beyond default-src, so a policy that
+// does not name it denies the manifest -- and a site whose manifest is blocked
+// is a site that cannot be installed, silently.
+func TestPublicCSP_AllowsItsOwnManifest(t *testing.T) {
+	if got := directives(publicCSP)["manifest-src"]; got != "'self'" {
+		t.Errorf("public manifest-src = %q, want 'self'", got)
+	}
+}
+
 // Anything the policy forgets to name falls through to default-src, so
 // default-src 'none' is what makes the rest of the policy a whitelist rather
 // than a suggestion.

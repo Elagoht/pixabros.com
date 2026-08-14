@@ -945,3 +945,99 @@ func TestRouter_MediaUploadAndServing(t *testing.T) {
 		t.Fatalf("anonymous lookup status = %d, want %d", anonResp.StatusCode, http.StatusUnauthorized)
 	}
 }
+
+// publicDeps is the smallest Dependencies that can answer a request without
+// panicking: the catch-all public route reads the rendered-page store, so a
+// route-level test still needs one behind it.
+func publicDeps(t *testing.T) Dependencies {
+	t.Helper()
+
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	files := storage.NewLocalDisk(t.TempDir(), "/rendered")
+	return Dependencies{Store: render.NewStore(conn, files), Files: files}
+}
+
+// A page links its icon explicitly, so this route exists for the surfaces that
+// never read one of our pages: a game build served from /play, a bookmark, a
+// browser that asks for the well-known path regardless.
+func TestNew_PointsTheWellKnownFaviconPathAtTheMark(t *testing.T) {
+	const markURL = "/assets/build/logo.deadbeef.svg"
+
+	deps := publicDeps(t)
+	deps.FaviconURL = markURL
+	srv := httptest.NewServer(New(deps))
+	defer srv.Close()
+
+	// The redirect is the thing under test, so it must not be followed.
+	client := srv.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	resp, err := client.Get(srv.URL + "/favicon.ico")
+	if err != nil {
+		t.Fatalf("GET /favicon.ico: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusFound)
+	}
+	if got := resp.Header.Get("Location"); got != markURL {
+		t.Errorf("Location = %q, want %q", got, markURL)
+	}
+}
+
+// Tests and any deployment that never built the assets leave it unset, and a
+// redirect to nowhere is worse than a plain 404.
+func TestNew_WithoutAMarkLeavesTheFaviconPathAlone(t *testing.T) {
+	srv := httptest.NewServer(New(publicDeps(t)))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/favicon.ico")
+	if err != nil {
+		t.Fatalf("GET /favicon.ico: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+}
+
+// The manifest cannot ride the rendered-page store, which serves everything as
+// HTML, so it gets a route of its own and this is what proves it is mounted.
+func TestNew_ServesTheManifest(t *testing.T) {
+	deps := publicDeps(t)
+	deps.Manifest = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/manifest+json")
+		w.Write([]byte(`{"name":"Pixabros"}`))
+	})
+	srv := httptest.NewServer(New(deps))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/manifest.webmanifest")
+	if err != nil {
+		t.Fatalf("GET the manifest: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "application/manifest+json" {
+		t.Errorf("Content-Type = %q, want application/manifest+json", got)
+	}
+	// The public policy covers it, and that policy has to allow it.
+	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "manifest-src 'self'") {
+		t.Errorf("the manifest is served under a policy that blocks it: %q", got)
+	}
+}

@@ -297,18 +297,65 @@ func TestRenderGame_UsesTheCoverAsTheFavicon(t *testing.T) {
 	}
 }
 
-// Every other page keeps the site's own icon, which today means none at all:
-// an empty href would ask the browser to fetch the page as its own icon.
-func TestRenderAwards_DoesNotClaimAFavicon(t *testing.T) {
+// Every other page falls back to the studio's mark. Leaving it off is what the
+// site used to do, and it cost every page but the games their tab icon.
+func TestRenderAwards_FallsBackToTheStudioMark(t *testing.T) {
 	conn := setupTestDB(t)
 	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
 
-	html, _, err := newTestSite(t, conn).renderAwards(PageAwards)
+	site := newTestSite(t, conn)
+	html, _, err := site.renderAwards(PageAwards)
 	if err != nil {
 		t.Fatalf("renderAwards() error = %v", err)
 	}
-	if strings.Contains(string(html), "rel=icon") {
-		t.Error("a page with no icon of its own still emitted one")
+	if want := "rel=icon href=" + site.renderer.bundle.URL("logo.svg"); !strings.Contains(string(html), want) {
+		t.Errorf("the awards page does not wear the studio mark (%s): %s", want, html)
+	}
+}
+
+// A game with neither a CD cover nor cartridge art would otherwise render an
+// empty href, which asks the browser to fetch the page as its own icon.
+func TestRenderGame_WithoutArtworkFallsBackToTheStudioMark(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedGame(t, conn, "Bare", "bare", true, false, "")
+
+	site := newTestSite(t, conn)
+	html, _, err := site.renderGame(GamePagePrefix + "bare")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	if want := "rel=icon href=" + site.renderer.bundle.URL("logo.svg"); !strings.Contains(string(html), want) {
+		t.Errorf("a game with no artwork does not wear the studio mark (%s): %s", want, html)
+	}
+}
+
+// The manifest is what makes the site installable, so it has to be linked from
+// every page rather than from the landing page alone.
+func TestRender_LinksTheManifestFromEveryPage(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedGame(t, conn, "Bare", "bare", true, false, "")
+	site := newTestSite(t, conn)
+
+	pages := map[string]func() ([]byte, error){
+		"landing": func() ([]byte, error) { html, _, err := site.renderLanding(PageLanding); return html, err },
+		"awards":  func() ([]byte, error) { html, _, err := site.renderAwards(PageAwards); return html, err },
+		"game":    func() ([]byte, error) { html, _, err := site.renderGame(GamePagePrefix + "bare"); return html, err },
+	}
+	for name, render := range pages {
+		html, err := render()
+		if err != nil {
+			t.Fatalf("render %s: %v", name, err)
+		}
+		if !strings.Contains(string(html), `rel=manifest href=`+ManifestPath) {
+			t.Errorf("the %s page does not link the manifest: %s", name, html)
+		}
+		// iOS ignores the manifest's icons and reads this one instead, so
+		// without it an installed site gets a screenshot for a home screen icon.
+		if want := "rel=apple-touch-icon href=" + site.renderer.bundle.URL("icon-192.png"); !strings.Contains(string(html), want) {
+			t.Errorf("the %s page has no apple-touch-icon (%s)", name, want)
+		}
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
 	"github.com/tdewolff/minify/v2/js"
+	"github.com/tdewolff/minify/v2/svg"
 )
 
 //go:embed assets
@@ -29,11 +30,16 @@ const buildDirName = "build"
 const hashLength = 8
 
 // minifiable maps an extension to the media type its minifier is registered
-// under. A file type absent from here is published byte for byte.
+// under. A file type absent from here is published byte for byte -- the PNG
+// icons are already compressed, and a font is not text at all.
 var minifiable = map[string]string{
 	".css": "text/css",
 	".js":  "application/javascript",
+	".svg": "image/svg+xml",
 }
+
+// fontDir is the one subtree published under stable names. See Build.
+const fontDir = "fonts/"
 
 // Bundle publishes the embedded assets under content-hashed names and
 // remembers where they landed, so a template can ask for "site.css" and get
@@ -46,10 +52,15 @@ type Bundle struct {
 // there that it did not just write, so a stylesheet from an older deploy does
 // not linger.
 //
-// Stylesheets are minified and then content-hashed, so the hash identifies the
-// bytes actually served. Fonts keep their plain names: a font file's contents
-// never change without its name changing, so it does not need a hash to bust
-// caches, and a stable name is what lets the CSS reference it literally.
+// Text assets are minified, and everything is then content-hashed, so the hash
+// identifies the bytes actually served. Fonts are the one exception and keep
+// their plain names: a font file's contents never change without its name
+// changing, so it does not need a hash to bust caches, and a stable name is
+// what lets the CSS reference it literally.
+//
+// Hashing is not optional for the rest. /assets is served with an immutable
+// cache, so an asset that kept its name across a change -- the studio's mark,
+// say -- would go on being served from cache forever.
 func Build(dir string) (*Bundle, error) {
 	buildDir := filepath.Join(dir, buildDirName)
 	if err := os.MkdirAll(buildDir, 0o755); err != nil {
@@ -59,6 +70,7 @@ func Build(dir string) (*Bundle, error) {
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
 	m.AddFunc("application/javascript", js.Minify)
+	m.AddFunc("image/svg+xml", svg.Minify)
 
 	bundle := &Bundle{urls: map[string]string{}}
 	written := map[string]bool{}
@@ -79,15 +91,16 @@ func Build(dir string) (*Bundle, error) {
 		// Path relative to the assets root: "site.css", "fonts/inter.woff2".
 		name := strings.TrimPrefix(embedPath, "assets/")
 
-		// Stylesheets and scripts are minified and hashed; anything else (the
-		// fonts) is published verbatim under its own name.
-		outName := name
 		if mediaType, ok := minifiable[path.Ext(name)]; ok {
 			minified, err := m.Bytes(mediaType, content)
 			if err != nil {
 				return fmt.Errorf("minify %s: %w", name, err)
 			}
 			content = minified
+		}
+
+		outName := name
+		if !strings.HasPrefix(name, fontDir) {
 			outName = hashedName(name, content)
 		}
 

@@ -1,7 +1,10 @@
 package site
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -140,6 +143,87 @@ func TestBuild_MinifiesCSSWithoutBreakingIt(t *testing.T) {
 	}
 	if strings.Contains(string(published), "Hand-written plain CSS") {
 		t.Error("minified CSS still contains a source comment")
+	}
+}
+
+// The mark and the two icons the manifest points at are content-hashed like
+// the stylesheet. /assets is served with an immutable cache, so a mark that
+// kept a stable name could be replaced and nobody would ever see the new one.
+func TestBuild_PublishesTheMarkAndIconsUnderHashedNames(t *testing.T) {
+	dir := t.TempDir()
+
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	for _, name := range []string{"logo.svg", "icon-192.png", "icon-512.png"} {
+		ext := path.Ext(name)
+		hashed := regexp.MustCompile(`^/assets/build/` +
+			regexp.QuoteMeta(strings.TrimSuffix(name, ext)) +
+			`\.[0-9a-f]{` + fmt.Sprint(hashLength) + `}` + regexp.QuoteMeta(ext) + `$`)
+
+		url := bundle.URL(name)
+		if !hashed.MatchString(url) {
+			t.Errorf("URL(%s) = %q, want /assets/build/<name>.<hash>%s", name, url, ext)
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, strings.TrimPrefix(url, "/assets/"))); err != nil {
+			t.Errorf("published %s is missing from disk: %v", name, err)
+		}
+	}
+}
+
+// The mark is a pixel-art drawing built from one path per colour, which is
+// several times larger as source than it needs to be on the wire.
+func TestBuild_MinifiesTheMark(t *testing.T) {
+	dir := t.TempDir()
+
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	source, err := assetFS.ReadFile("assets/logo.svg")
+	if err != nil {
+		t.Fatalf("read source mark: %v", err)
+	}
+	published, err := os.ReadFile(filepath.Join(dir, strings.TrimPrefix(bundle.URL("logo.svg"), "/assets/")))
+	if err != nil {
+		t.Fatalf("read published mark: %v", err)
+	}
+
+	if len(published) >= len(source) {
+		t.Errorf("published mark is %d bytes, source is %d -- minification did nothing", len(published), len(source))
+	}
+	// Minifying a drawing into something that is no longer a drawing would
+	// still pass a size check.
+	if !strings.Contains(string(published), "<svg") || !strings.Contains(string(published), "viewBox") {
+		t.Error("the minified mark is not an SVG with a viewBox any more")
+	}
+}
+
+// A PNG is already compressed; running it through a minifier it has no rule
+// for must leave the bytes alone rather than quietly truncate them.
+func TestBuild_PublishesIconsByteForByte(t *testing.T) {
+	dir := t.TempDir()
+
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	source, err := assetFS.ReadFile("assets/icon-512.png")
+	if err != nil {
+		t.Fatalf("read source icon: %v", err)
+	}
+	published, err := os.ReadFile(filepath.Join(dir, strings.TrimPrefix(bundle.URL("icon-512.png"), "/assets/")))
+	if err != nil {
+		t.Fatalf("read published icon: %v", err)
+	}
+
+	if !bytes.Equal(source, published) {
+		t.Errorf("published icon is %d bytes, source is %d -- something rewrote it", len(published), len(source))
 	}
 }
 

@@ -182,6 +182,8 @@ func main() {
 		MediaDir:     cfg.DataDir + "/media",
 		PlayDir:      cfg.DataDir + "/games",
 		AssetsDir:    cfg.DataDir + "/assets",
+		Manifest:     publicSite.ManifestHandler(),
+		FaviconURL:   assets.URL("logo.svg"),
 	})
 
 	srv := &http.Server{

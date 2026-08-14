@@ -33,6 +33,7 @@ import (
 	"pixabros/internal/render"
 	"pixabros/internal/settings"
 	"pixabros/internal/settingsapi"
+	"pixabros/internal/site"
 	"pixabros/internal/stats"
 	"pixabros/internal/statsapi"
 	"pixabros/internal/storage"
@@ -59,6 +60,12 @@ type Dependencies struct {
 	NotFoundBody []byte
 	PlayDir      string
 	AssetsDir    string
+	// Manifest serves the web app manifest. Nil leaves the route unmounted,
+	// which is what tests that do not build a public site get.
+	Manifest http.Handler
+	// FaviconURL is where the published studio mark landed. Empty leaves
+	// /favicon.ico a 404, which beats redirecting to nothing.
+	FaviconURL string
 }
 
 func New(deps Dependencies) http.Handler {
@@ -199,6 +206,20 @@ func New(deps Dependencies) http.Handler {
 		mux.Handle("/media/", http.StripPrefix("/media/", noDirListing(deps.MediaDir)))
 	}
 	mux.Handle("/assets/", http.StripPrefix("/assets/", serveImmutableAssets(deps.AssetsDir)))
+
+	if deps.Manifest != nil {
+		mux.Handle("GET "+site.ManifestPath, deps.Manifest)
+	}
+	// Every page of the site links its own icon, so this is for the surfaces
+	// that never read one: an uploaded game build under /play, a bookmark, a
+	// browser that asks for the well-known path anyway. It redirects rather
+	// than serving the bytes, so the mark keeps its one immutable URL.
+	if deps.FaviconURL != "" {
+		mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, deps.FaviconURL, http.StatusFound)
+		})
+	}
+
 	publicPages := render.ServePages(deps.Store, deps.Files)
 	if len(deps.NotFoundBody) > 0 {
 		publicPages = render.ServePages(deps.Store, deps.Files, render.WithNotFoundPage(deps.NotFoundBody))

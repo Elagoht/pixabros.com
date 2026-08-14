@@ -54,6 +54,20 @@ self.SWLogic = {
     return { slug: rest.slice(0, split), version: rest.slice(split + 1) };
   },
 
+  // cacheKeyFor maps a requested path to the key the download actually stored.
+  //
+  // The console points the game's iframe at /play/{slug}/, but the manifest
+  // names the same file "index.html", so that is what the cache holds.
+  // caches.match is an exact-URL lookup: it does not do the directory-index
+  // resolution http.FileServer does on the server. Without this the whole
+  // download misses offline and the frame shows the browser's error page.
+  cacheKeyFor: function (pathname) {
+    if (pathname.charAt(pathname.length - 1) === "/") {
+      return pathname + "index.html";
+    }
+    return pathname;
+  },
+
   playSlug: function (pathname) {
     if (pathname.indexOf("/play/") !== 0) {
       return null;
@@ -119,6 +133,33 @@ var currentShellVersion = "";
 // navigation would still be one request nobody asked for.
 var shellCheckInFlight = false;
 
+// shellVersion answers with the stamp of the shell this worker is serving,
+// recovering it from the cache names when the in-memory copy is empty.
+//
+// Browsers terminate an idle worker aggressively, and neither install nor
+// activate runs again on the cold start that follows -- so the variable above
+// is empty during exactly the ordinary work the worker exists to do. Without
+// the recovery, hashed assets land in a cache literally named "shell-" and
+// refreshShell's comparison can never match, re-precaching the entire shell on
+// the first online navigation after every restart.
+//
+// The recovery lives here rather than at each use site so there is one place
+// that knows the value can be missing.
+function shellVersion() {
+  if (currentShellVersion) {
+    return Promise.resolve(currentShellVersion);
+  }
+  return caches.keys().then(function (names) {
+    for (var i = 0; i < names.length; i++) {
+      if (names[i].indexOf(SHELL_PREFIX) === 0) {
+        currentShellVersion = names[i].slice(SHELL_PREFIX.length);
+        break;
+      }
+    }
+    return currentShellVersion;
+  });
+}
+
 // refreshShell re-reads the shell list and re-precaches when the stamp moved.
 //
 // Install alone is not enough. A visitor who installs the worker, then a
@@ -130,12 +171,13 @@ function refreshShell() {
     return;
   }
   shellCheckInFlight = true;
-  fetchShell()
-    .then(function (shell) {
-      if (shell.version === currentShellVersion) {
+  Promise.all([fetchShell(), shellVersion()])
+    .then(function (results) {
+      var shell = results[0];
+      var previous = results[1];
+      if (shell.version === previous) {
         return null;
       }
-      var previous = currentShellVersion;
       currentShellVersion = shell.version;
       return precache(shell).then(function () {
         if (previous) {
@@ -175,17 +217,26 @@ self.addEventListener("activate", function (event) {
       })
       .catch(function () {})
       .then(function () {
-        return caches.keys();
-      })
-      .then(function (names) {
-        return Promise.all(
-          names.map(function (name) {
-            if (self.SWLogic.isKeepable(name, currentShellVersion)) {
-              return null;
-            }
-            return caches.delete(name);
-          })
-        );
+        // A shell fetch that failed -- a network drop between fetching /sw.js
+        // and activating, which is the flaky connection this worker is for --
+        // leaves no version to compare against. isKeepable would then call
+        // every shell- cache droppable and the cleanup would delete the shell
+        // just precached: stylesheet, fonts, icons and the /offline page.
+        // There is nothing safe to decide without the version, so decide
+        // nothing.
+        if (currentShellVersion === "") {
+          return null;
+        }
+        return caches.keys().then(function (names) {
+          return Promise.all(
+            names.map(function (name) {
+              if (self.SWLogic.isKeepable(name, currentShellVersion)) {
+                return null;
+              }
+              return caches.delete(name);
+            })
+          );
+        });
       })
       .then(function () {
         return self.clients.claim();
@@ -205,6 +256,24 @@ function trim(cache, limit) {
     return Promise.all(
       keys.slice(0, keys.length - limit).map(function (key) {
         return cache.delete(key);
+      })
+    );
+  });
+}
+
+// offlinePage is the last thing a navigation gets when neither the network nor
+// the cache could answer it. The offline page is precached on install, but
+// install swallows a failed shell fetch rather than leaving the visitor with no
+// worker at all -- so it can genuinely be missing, and precisely when it is
+// most needed. respondWith(undefined) throws, which would replace a plain
+// sentence with the browser's own error page.
+function offlinePage() {
+  return caches.match("/offline").then(function (offline) {
+    return (
+      offline ||
+      new Response("You are offline, and this page has not been opened on this device before.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
       })
     );
   });
@@ -239,23 +308,7 @@ function networkFirst(event, request, cacheName, limit) {
           return cached;
         }
         if (request.mode === "navigate") {
-          return caches.match("/offline").then(function (offline) {
-            // The offline page is precached on install, but install swallows a
-            // failed shell fetch rather than leaving the visitor with no worker
-            // at all -- so it can genuinely be missing, and precisely when it is
-            // most needed. respondWith(undefined) throws, which would replace a
-            // plain sentence with the browser's own error page.
-            return (
-              offline ||
-              new Response(
-                "You are offline, and this page has not been opened on this device before.",
-                {
-                  status: 503,
-                  headers: { "Content-Type": "text/plain; charset=utf-8" },
-                }
-              )
-            );
-          });
+          return offlinePage();
         }
         return Response.error();
       });
@@ -270,7 +323,10 @@ function cacheFirst(event, request, cacheName) {
       return cached;
     }
     return fetch(request).then(function (response) {
-      if (response.ok) {
+      // An empty cache name means no shell cache exists to recover a version
+      // from, so there is nowhere this asset belongs; writing it to a cache
+      // called "shell-" would only leave litter for a later activate.
+      if (response.ok && cacheName) {
         var copy = response.clone();
         // Same reason as networkFirst: the response resolves and ends the
         // event's extended lifetime before an un-awaited write finishes,
@@ -295,8 +351,23 @@ function playFirst(request, pathname) {
   if (!slug || pathname === self.SWLogic.completeKey(slug)) {
     return fetch(request);
   }
-  return caches.match(request).then(function (cached) {
-    return cached || fetch(request);
+  // The requested path and the stored key are not always the same string; see
+  // SWLogic.cacheKeyFor. Matching on the request object where they do agree
+  // keeps the ordinary case going through the same Request the page made.
+  var key = self.SWLogic.cacheKeyFor(pathname);
+  return caches.match(key === pathname ? request : key).then(function (cached) {
+    if (cached) {
+      return cached;
+    }
+    return fetch(request).catch(function (err) {
+      // A game that was never downloaded, opened with no network. The frame is
+      // a navigation like any other, so it gets the same plain sentence a page
+      // would rather than the browser's error page.
+      if (request.mode === "navigate") {
+        return offlinePage();
+      }
+      throw err;
+    });
   });
 }
 
@@ -305,6 +376,20 @@ self.addEventListener("fetch", function (event) {
   if (request.method !== "GET") {
     return;
   }
+
+  // The page's download loop marks the requests it makes to fill a game cache,
+  // and they must reach the network. Served from cache instead, an update would
+  // find every file of the *old* build still held under /play/{slug}/, copy
+  // those bytes into the new version's cache, write a marker claiming the new
+  // version, and delete the old cache -- leaving the visitor told they are
+  // current, out no bandwidth, and running the old build forever. Nothing would
+  // ever reconcile it, because the marker is what the page trusts.
+  //
+  // Same-origin and not a forbidden header, so this costs no preflight.
+  if (request.headers.get("X-Offline-Copy")) {
+    return;
+  }
+
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) {
     return;
@@ -315,7 +400,11 @@ self.addEventListener("fetch", function (event) {
     return;
   }
   if (kind === "asset") {
-    event.respondWith(cacheFirst(event, request, SHELL_PREFIX + currentShellVersion));
+    event.respondWith(
+      shellVersion().then(function (version) {
+        return cacheFirst(event, request, version ? SHELL_PREFIX + version : "");
+      })
+    );
     return;
   }
   if (kind === "media") {

@@ -1606,19 +1606,83 @@ a:hover {
 
   /* 1280 for the screen itself plus the bezel's padding on either side. */
   --console-width: min(100vw - 2 * var(--space-page), 1328px);
+  background: var(--color-surface-panel);
+  border: 4px solid var(--color-border);
+  box-shadow: var(--step-lg);
   margin-inline: calc(50% - var(--console-width) / 2);
+  padding: 16px;
   width: var(--console-width);
 }
 
 .crt {
   position: relative;
-  background: linear-gradient(160deg, #3a3d45, #1c1e24 60%);
-  border: 1px solid #14161b;
-  border-radius: 1.5rem 1.5rem 0.75rem 0.75rem;
-  box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 0.06),
-    0 20px 45px rgb(0 0 0 / 0.5);
+  background: var(--color-surface-low);
+  border: 4px solid var(--color-border-strong);
+  border-radius: 0;
+  box-shadow: var(--step);
   padding: 1.5rem 1.5rem 2rem;
+}
+
+/* The mouth of the cartridge slot, drawn on the machine's face plate: a dark
+   recess with its own lip, telling the visitor where a cartridge goes. */
+.crt__slot {
+  align-items: center;
+  background: var(--color-input-bg);
+  border-bottom: 4px solid var(--color-border);
+  border-top: 4px solid var(--color-border);
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  margin-bottom: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.crt__slot::after {
+  background: #000;
+  bottom: 0;
+  content: "";
+  height: 8px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.crt__slot-label {
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The face plate under the screen: the power lamp and channel readout. */
+.crt__plate {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.crt__led--on {
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+  height: 10px;
+  width: 10px;
+}
+
+.crt__plate-label,
+.crt__plate-channel {
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.crt__plate-channel {
+  letter-spacing: 0.12em;
+  margin-left: auto;
 }
 
 .crt__screen {
@@ -1799,20 +1863,25 @@ a:hover {
   /* It can be dragged into the machine, so it looks like something you pick
      up. Clicking still works, which is what a touch screen has. */
   cursor: grab;
-  background:
-    linear-gradient(103deg, #b9bcc0 0 46%, #a7abb0 46% 100%),
-    #adb1b6;
-  border-radius: 0.55rem 0.55rem 0.3rem 0.3rem;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.45),
-    inset 0 -2px 4px rgb(0 0 0 / 0.25),
-    0 10px 22px rgb(0 0 0 / 0.45);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--step-sm);
   display: block;
   position: relative;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
     opacity 0.15s ease;
+}
+
+.cartridge:hover {
+  border-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cartridge:hover {
+    transform: translateY(-4px);
+  }
 }
 
 /* In flight: the shelf keeps a ghost of it while the real one follows the
@@ -1865,6 +1934,7 @@ a:hover {
 
 .cartridge__label img {
   height: 100%;
+  image-rendering: pixelated;
   object-fit: cover;
   width: 100%;
 }
@@ -1926,36 +1996,71 @@ a:hover {
 
 .cases {
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   list-style: none;
+  margin: 0;
   padding: 0;
 }
 
 .case {
   appearance: none;
-  aspect-ratio: 1;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  aspect-ratio: 3 / 4;
+  background: var(--color-surface);
+  border: 4px solid var(--color-border-strong);
+  box-shadow: var(--step-lg);
   cursor: pointer;
   display: block;
   overflow: hidden;
   padding: 0;
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
   width: 100%;
 }
 
-.case:hover {
-  box-shadow: 0 14px 26px rgb(0 0 0 / 0.45);
-  transform: translateY(-3px);
+/* The title sits over the artwork on a dark wash, so it is legible whatever
+   the cover shows. */
+.case::after {
+  background: linear-gradient(to top, var(--color-bg) 0%, transparent 55%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.case:hover,
+.case:focus-visible {
+  border-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .case:hover {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case {
+    transition: none;
+  }
 }
 
 .case__art {
+  display: block;
   height: 100%;
+  image-rendering: pixelated;
   object-fit: cover;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
   width: 100%;
+}
+
+.case:hover .case__art,
+.case:focus-visible .case__art {
+  opacity: 1;
 }
 
 .case__art--empty {
@@ -1984,14 +2089,16 @@ a:hover {
 }
 
 .case__front-title {
-  background: linear-gradient(to top, rgb(0 0 0 / 0.85), transparent);
-  bottom: 0;
-  color: #f1f1f3;
-  font-weight: 600;
-  inset-inline: 0;
-  padding: 2rem 0.9rem 0.8rem;
+  bottom: 12px;
+  color: var(--color-accent-strong);
+  font-family: var(--font-display);
+  font-weight: 700;
+  left: 12px;
   position: absolute;
-  text-align: start;
+  right: 12px;
+  text-align: left;
+  text-transform: uppercase;
+  z-index: 1;
 }
 
 /* The open case ------------------------------------------------------------
@@ -2007,14 +2114,14 @@ a:hover {
   --color-accent: var(--phosphor);
 
   --page: min(24rem, 42vw, 66vh);
-  /* The case is always dark: it is a physical object sitting over the page,
-     not a surface of it. Everything made of that plastic reads from here --
-     the tray, both faces, and the hole in the middle of the disc, which has to
-     be the same colour as the case behind it. */
-  --case: #191c22;
-  --case-edge: #2c313a;
-  --case-ink: #f1f1f3;
-  --case-ink-muted: #a2a8b4;
+  /* The case is a physical object sitting over the page, painted from the
+     console's own surfaces now rather than a custom plastic. Everything made
+     of it reads from here -- the tray, both faces, and the hole in the middle
+     of the disc, which has to be the same colour as the case behind it. */
+  --case: var(--color-surface);
+  --case-edge: var(--color-border);
+  --case-ink: var(--on-dark);
+  --case-ink-muted: var(--on-dark-muted);
 
   background: none;
   border: 0;
@@ -2034,6 +2141,7 @@ a:hover {
 
 .jewel__box {
   aspect-ratio: 1;
+  box-shadow: var(--step-lg);
   perspective: 2400px;
   position: relative;
   width: var(--page);
@@ -2051,8 +2159,8 @@ a:hover {
   align-items: center;
   background: var(--case);
   color: var(--case-ink);
-  border: 1px solid var(--case-edge);
-  border-radius: 0 0.4rem 0.4rem 0;
+  border: 4px solid var(--color-border-strong);
+  border-radius: 0;
   display: flex;
   height: 100%;
   justify-content: center;
@@ -2078,9 +2186,8 @@ a:hover {
 /* One face is showing at a time; the other is turned away from you. */
 .jewel__face {
   backface-visibility: hidden;
-  border: 1px solid var(--case-edge);
-  border-radius: 0.4rem;
-  box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
+  border: 4px solid var(--color-border-strong);
+  border-radius: 0;
   inset: 0;
   overflow: hidden;
   position: absolute;
@@ -2121,8 +2228,10 @@ a:hover {
 }
 
 .jewel__title {
+  font-family: var(--font-display);
   font-size: 1.35rem;
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
 }
 
 .jewel__face--inside .tag {
@@ -2155,6 +2264,8 @@ a:hover {
 }
 
 .jewel__price {
+  color: var(--color-success);
+  font-family: var(--font-osd);
   font-size: 1.1rem;
   font-weight: 700;
   margin-top: 0.9rem;
@@ -2163,24 +2274,35 @@ a:hover {
 .jewel__more {
   align-items: center;
   align-self: flex-start;
-  border: 1px solid rgb(255 255 255 / 0.28);
-  border-radius: 999px;
+  background: var(--color-surface-panel);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  box-shadow: var(--step-sm);
   color: var(--case-ink);
   display: inline-flex;
+  font-family: var(--font-osd);
   gap: 0.4rem;
+  letter-spacing: 0.05em;
   margin-top: 1.25rem;
   padding: 0.45rem 1.1rem;
   text-decoration: none;
+  text-transform: uppercase;
   transition:
     background-color 0.15s ease,
-    border-color 0.15s ease;
+    box-shadow 0.15s ease,
+    color 0.15s ease;
 }
 
 .jewel__more:hover,
 .jewel__more:focus-visible {
-  background-color: rgb(255 255 255 / 0.1);
-  border-color: rgb(255 255 255 / 0.5);
-  color: var(--case-ink);
+  background-color: var(--color-accent);
+  border-color: var(--color-border-strong);
+  color: var(--color-accent-ink);
+}
+
+.jewel__more:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
 }
 
 .jewel__more svg {
@@ -2559,22 +2681,28 @@ a:hover {
    like everything else the screen writes. Square, because the set drew it. */
 .crt__start {
   background-color: var(--color-accent);
-  border: 0;
+  border: 2px solid var(--color-border-strong);
   border-radius: 0;
-  color: #180d00;
+  box-shadow: var(--step-sm);
+  color: var(--color-accent-ink);
   cursor: pointer;
   font-family: var(--font-osd);
   font-size: 1.15rem;
   letter-spacing: 0.18em;
-  padding: 0.5rem 1.7rem;
+  padding: 10px 20px;
   text-transform: uppercase;
 }
 
 .crt__start:hover,
 .crt__start:focus-visible {
   background-color: var(--color-accent-strong);
-  box-shadow: 0 0 24px -2px color-mix(in srgb, var(--color-accent) 60%, transparent);
-  color: #180d00;
+  box-shadow: var(--step-sm);
+  color: var(--color-accent-ink);
+}
+
+.crt__start:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
 }
 
 /* Always on a dark screen, and written by the set, so it is amber like
@@ -2958,12 +3086,10 @@ a:hover {
 /* A machine standing on its own, not a plinth under the television: far
    narrower than the screen, and set apart from it. */
 .nes {
-  background: linear-gradient(180deg, #d5d2c8 0 62%, #bcb9af 62% 100%);
-  border-radius: 0.6rem;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.7),
-    inset 0 -3px 8px rgb(0 0 0 / 0.28),
-    0 18px 34px rgb(0 0 0 / 0.5);
+  background: var(--color-surface);
+  border-radius: 0;
+  border-top: 4px solid var(--color-border);
+  box-shadow: var(--step);
   display: grid;
   gap: 1.35rem;
   grid-template-columns: 11rem 1fr;
@@ -3091,11 +3217,12 @@ a:hover {
   width: 100%;
 }
 
+/* A cartridge in the machine is not on the shelf: it neither lifts on hover
+   nor is it a link. The base hover rule would lift it -- guard against that
+   (and against any future change to pointer-events) so the slotted one stays
+   seated. */
 .cartridge--slotted:hover {
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.45),
-    inset 0 -2px 4px rgb(0 0 0 / 0.25),
-    0 10px 22px rgb(0 0 0 / 0.45);
+  box-shadow: var(--step-sm);
   transform: none;
 }
 
@@ -3113,9 +3240,9 @@ a:hover {
 }
 
 .nes__brand {
-  border-bottom: 3px solid #8d2b28;
-  border-top: 3px solid #8d2b28;
-  color: #4b4841;
+  border-bottom: 3px solid var(--color-lamp);
+  border-top: 3px solid var(--color-lamp);
+  color: var(--on-dark);
   display: flex;
   flex-wrap: wrap;
   gap: 0.15rem 0.5rem;
@@ -3124,13 +3251,16 @@ a:hover {
 }
 
 .nes__brand-mark {
+  color: var(--color-accent);
+  font-family: var(--font-display);
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .nes__brand-sub {
+  font-family: var(--font-osd);
   font-size: 0.65rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -3157,23 +3287,29 @@ a:hover {
 }
 
 .nes__button {
-  background: linear-gradient(180deg, #b9b6ad, #96938b);
-  border: 1px solid #6f6c66;
-  border-radius: 0.25rem;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5);
-  color: #33312c;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  box-shadow: var(--step-sm);
+  color: var(--color-text);
   cursor: pointer;
   font: inherit;
+  font-family: var(--font-osd);
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   padding: 0.3rem 0.85rem;
   text-transform: uppercase;
 }
 
 .nes__button:hover {
-  background: linear-gradient(180deg, #c7c4bb, #a4a199);
-  color: #000;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.nes__button:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
 }
 
 .nes__button[hidden] {
@@ -3181,7 +3317,8 @@ a:hover {
 }
 
 .nes__now {
-  color: #55524b;
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
   font-size: 0.8125rem;
   font-weight: 600;
   overflow: hidden;

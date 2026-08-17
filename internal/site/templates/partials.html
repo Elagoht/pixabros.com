@@ -3,6 +3,10 @@
      Title, Cartridge (an imageView), Playable, PlayURL. */}}
 {{define "console"}}
   <div class="console" data-console data-console-drop>
+    {{/* The mouth of the cartridge slot, drawn on the machine's face plate. */}}
+    <div class="crt__slot" aria-hidden="true">
+      <span class="crt__slot-label">Insert cartridge below</span>
+    </div>
     <div class="crt">
       <div class="crt__screen" data-console-stage>
         {{if .Backdrop.URL}}
@@ -76,6 +80,12 @@
             <path d="M9 3.5H3.5V9M15 3.5h5.5V9M9 20.5H3.5V15M15 20.5h5.5V15" />
           </svg>
         </button>
+      </div>
+
+      <div class="crt__plate" aria-hidden="true">
+        <span class="crt__led crt__led--on"></span>
+        <span class="crt__plate-label">Power</span>
+        <span class="crt__plate-channel">CH-03</span>
       </div>
     </div>
 

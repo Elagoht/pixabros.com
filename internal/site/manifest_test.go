@@ -122,15 +122,17 @@ func TestManifest_CarriesTheSiteColours(t *testing.T) {
 
 	manifest, _ := decodeManifest(t, newTestSite(t, conn))
 
+	// The one room the site has is the dark one, and this is its ground.
+	const want = "#101412"
 	for _, key := range []string{"theme_color", "background_color"} {
-		if manifest[key] != themeColor {
-			t.Errorf("%s = %v, want %q", key, manifest[key], themeColor)
+		if manifest[key] != want {
+			t.Errorf("%s = %v, want %q", key, manifest[key], want)
 		}
 	}
 	// The colour is a promise about what the page will look like, so it has to
 	// be the one the stylesheet actually paints.
-	if !strings.Contains(string(siteCSS(t)), "--color-bg: "+themeColor) {
-		t.Errorf("the stylesheet does not declare %s as its background", themeColor)
+	if !strings.Contains(string(siteCSS(t)), "--color-bg: "+want) {
+		t.Errorf("the stylesheet does not declare %s as its background", want)
 	}
 }
 

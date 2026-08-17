@@ -2,125 +2,62 @@
  *
  * Hand-written plain CSS -- Tailwind belongs to the admin panel only.
  *
- * The site is what is on the television. The page is a dark room lit by a
- * cathode ray tube, the header is the channel banner the set draws over the
- * picture, and the whole thing is monochrome amber: the P3 phosphor an amber
- * terminal actually glows with. One hue for everything the screen draws, and a
- * single red for the lamp on the machine, which is the one light in the room
- * that is not the screen.
+ * The page is a games console: dark plastic, amber accents, hard edges. The
+ * header is the channel banner the set draws over the picture, the type is a
+ * terminal's, and the one colour that is not amber is the red of the power
+ * lamp on the machine.
  *
- * Dark is the room with the lights off, which is the brand's own look and so
- * the default. Light is the same room with the lights on: the set is still
- * there and still amber, you are just looking at it in daylight. Only the
- * tokens change between them -- every rule reads through one, which is what
- * makes a single block of overrides enough.
- *
- * What does not change is the hardware. The banner, the console, the tube and
- * the cases are objects, and an object does not turn white because the room
- * did.
- *
- * The rule that keeps it coherent: the interface is drawn by the television --
- * hard corners, monospace labels, phosphor -- and the objects on it are
- * physical -- moulded, rounded, lit. A cartridge has a radius; a menu does not.
+ * The site has one room, the dark one. Everything a rule needs is a token, so
+ * a component is skinned by the tokens it reads rather than by its own copy
+ * of a colour.
  */
 
 :root {
-  /* Inside the tube. */
-  --color-bg: #050806;
-  --color-surface: #0d1210;
-  --color-border: #1e2a23;
+  /* The console. */
+  --color-bg: #101412;
+  --color-surface: #1a1a1a;
+  --color-surface-low: #191c1a;
+  --color-surface-panel: #1d211e;
+  --color-border: #323632;
+  --color-border-strong: #544338;
 
-  --color-text: #dfe5e0;
-  --color-text-muted: #7f9187;
-  /* The ink written on a lit amber surface. */
-  --color-accent-ink: #180d00;
-  /* A field is a hole cut in the panel, so it is darker than the panel. */
-  --color-input-bg: #040705;
+  --color-text: #e0e3de;
+  --color-text-muted: #dac2b3;
+  --color-accent-ink: #101412;
+  --color-input-bg: #0b0f0c;
 
-  /* Amber phosphor, and the red lamp on the machine. The lamp is the exact
-     red the console further down the page already uses, so the two lights in
-     the room are the same light. */
-  --color-accent: #ffb642;
-  --color-accent-strong: #ffd694;
+  --color-accent: #f29f05;
+  --color-accent-strong: #ffb781;
   --color-lamp: #e5312a;
 
-  /* A monochrome screen says "good" by being brighter, not by turning green.
-     Only a fault gets a colour of its own. */
-  --color-success: #ffd694;
-  --color-warning: #ffb642;
-  --color-error: #ff6b5c;
+  --color-success: #22c55e;
+  --color-warning: #f29f05;
+  --color-error: #ffb4ab;
 
-  /* The colour the screen actually glows with. Deliberately not overridden by
-     the lit room: the surfaces that use it -- the banner, the tube, an open
-     case -- stay dark whatever the room does, and a pigment-dark amber on them
-     would be unreadable. Everything drawn on one of those surfaces reads
-     through these instead of through --color-accent. */
-  --phosphor: #ffb642;
-  --phosphor-bright: #ffd694;
-  --phosphor-ink: #180d00;
-  --on-dark: #dfe5e0;
-  --on-dark-muted: #7f9187;
+  /* What the tube and its furniture glow with. */
+  --phosphor: #ffb781;
+  --phosphor-bright: #ffdcc4;
+  --phosphor-ink: #101412;
+  --on-dark: #e0e3de;
+  --on-dark-muted: #dac2b3;
 
-  /* The room: the screen's light spilling down the page, and the fine stripe
-     of the tube's aperture grille. Both are tokens because the lit room needs
-     different ones -- a screen does not light a room with the lights on. */
-  --room-light: rgb(255 182 66 / 0.075);
-  --room-grille: rgb(255 214 148 / 0.018);
+  --room-light: rgb(242 159 5 / 0.06);
+  --room-grille: rgb(224 227 222 / 0.02);
 
-  /* Space Grotesk carries a weight axis, which is what lets the headings sit
-     heavy or light without a second file. Public Sans reads quietly
-     underneath it. Courier Prime is a terminal face and is rationed: the
-     channel banner and small labels, nothing else. */
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
   --font-osd: "Courier Prime", ui-monospace, SFMono-Regular, monospace;
 
-  /* Form controls and scrollbars follow the room rather than arriving as
-     white boxes on a dark page. */
-  color-scheme: dark light;
+  color-scheme: dark;
+
+  --step-sm: 2px 2px 0 #000;
+  --step: 4px 4px 0 #000;
+  --step-lg: 8px 8px 0 #000;
 
   --space-page: 1.5rem;
-  /* The banner is sticky, so this is both its height and the room every scroll
-     has to leave above its target. */
   --header-height: 3.25rem;
   --width-content: 68rem;
-  --radius: 0.625rem;
-}
-
-/* The lights on.
- *
- * The ground is a warm wall rather than white: this room has amber in it even
- * in daylight. The bright phosphor is unreadable on it, so the accent takes the
- * deep end of the same hue -- burnt amber is what that colour looks like when
- * it is pigment rather than light. */
-@media (prefers-color-scheme: light) {
-  :root {
-    --color-bg: #ddd8cc;
-    --color-surface: #eae5da;
-    --color-border: #c4bdad;
-
-    --color-text: #17140f;
-    --color-text-muted: #635c4e;
-    --color-accent-ink: #fff6e8;
-    --color-input-bg: #f4f1e9;
-
-    /* Burnt amber: the same hue as the phosphor, at the darkness a link needs
-       to clear 4.5:1 against the wall. A lighter one looked better and was not
-       readable, which is not a trade a link gets to make. */
-    --color-accent: #8a4d08;
-    --color-accent-strong: #6f3d04;
-    --color-lamp: #bd2a1f;
-
-    --color-success: #6f3d04;
-    --color-warning: #8a4d08;
-    --color-error: #b3271b;
-
-    /* No screen lights a lit room, so what was a glow becomes the faint
-       shading a wall has near the ceiling, and the grille darkens rather than
-       lightening. */
-    --room-light: rgb(23 20 15 / 0.05);
-    --room-grille: rgb(23 20 15 / 0.022);
-  }
+  --radius: 0;
 }
 
 @font-face {
@@ -213,36 +150,28 @@ svg {
   display: none !important;
 }
 
-/* Headings are the display face, condensed and set tight -- the proportions of
-   a caption burned across the bottom of a broadcast, which is where a heading
-   over a picture belongs. */
+/* Headings shout in the Stitch manner: the display face, heavy, uppercase and
+   set tight, like the title screen of a cartridge. */
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-stretch: 80%;
-  line-height: 1.08;
-  text-wrap: balance;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 
 h1 {
-  font-size: clamp(2.1rem, 1.4rem + 2.8vw, 3.4rem);
-  font-weight: 800;
-  letter-spacing: -0.005em;
-  text-transform: uppercase;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
 }
 
 h2 {
   font-size: clamp(1.5rem, 1.2rem + 1.3vw, 2.15rem);
-  font-weight: 700;
-  text-transform: uppercase;
 }
 
 h3 {
-  font-family: var(--font-display);
   font-size: 1.15rem;
-  font-stretch: 88%;
-  font-weight: 700;
 }
 
 p {
@@ -260,37 +189,28 @@ a:hover {
   text-decoration-color: currentColor;
 }
 
-/* One focus style for the whole site, on the phosphor. :focus-visible so a
-   mouse click does not leave a ring behind. Square, because it belongs to the
-   interface rather than to an object. */
+/* One focus style for the whole site, on the amber. :focus-visible so a mouse
+   click does not leave a ring behind. Thick and square, because it belongs to
+   the interface rather than to an object. */
 :focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-  border-radius: 0;
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Page frame ------------------------------------------------------------- */
 
 /* The channel banner --------------------------------------------------------
  *
- * A television's on-screen display: hard corners, a rule of phosphor along the
- * bottom, and type from a terminal. It sits over the picture rather than above
- * it, which is why the ground is translucent and blurred instead of solid.
+ * A television's on-screen display: hard corners, a heavy rule along the
+ * bottom, and type from a terminal. Solid console plastic now, not a
+ * translucency over the picture -- the Stitch redesign gives the banner a
+ * body, and a body throws a hard step shadow.
  */
 
 .osd {
-  /* The banner is a piece of the set, not of the page: it stays dark with the
-     lights on, so it carries the screen's own colours rather than the room's.
-     Redefining the tokens here means every rule inside reads the right ones
-     without knowing anything about it. */
-  --color-text: var(--on-dark);
-  --color-text-muted: var(--on-dark-muted);
-  --color-accent: var(--phosphor);
-  --color-accent-strong: var(--phosphor-bright);
-
-  backdrop-filter: blur(10px);
-  background-color: rgb(5 8 6 / 0.88);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  background: var(--color-bg);
+  border-bottom: 4px solid var(--color-border);
+  box-shadow: var(--step);
   position: sticky;
   top: 0;
   transition: transform 0.28s ease;
@@ -306,18 +226,21 @@ a:hover {
 
 /* The number the set leaves in the corner. Fixed rather than sticky, and
    outside the banner, because the banner is translated away and anything
-   inside it would go with it. */
+   inside it would go with it. A small mono chip now: bordered, on the
+   console's own plastic. */
 .osd-ghost {
-  color: color-mix(in srgb, var(--color-accent) 70%, transparent);
+  background: var(--color-bg);
+  border: 2px solid var(--color-border-strong);
+  color: var(--color-accent);
   font-family: var(--font-osd);
   font-size: 1rem;
   letter-spacing: 0.14em;
   opacity: 0;
+  padding: 2px 6px;
   pointer-events: none;
   position: fixed;
   inset-block-start: 0.65rem;
   inset-inline-end: max(var(--space-page), calc(50vw - var(--width-content) / 2));
-  text-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent);
   transition: opacity 0.25s ease;
   z-index: 9;
 }
@@ -349,17 +272,12 @@ a:hover {
 }
 
 .osd__name {
+  color: var(--color-accent);
   font-family: var(--font-display);
   font-size: 0.95rem;
-  font-stretch: 82%;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
-}
-
-.osd__set:hover .osd__name,
-.osd__set:focus-visible .osd__name {
-  color: var(--color-accent);
 }
 
 /* The power lamp, in the red the machine drawn further down the page uses: the
@@ -382,68 +300,57 @@ a:hover {
    name rather than beside it, and set in the terminal face. */
 .osd__channel {
   align-items: flex-start;
-  color: var(--color-text-muted);
+  color: var(--on-dark-muted);
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding-block: 0.35rem;
   padding-inline: 0.85rem;
-  position: relative;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .osd__number {
+  color: var(--color-accent);
   font-family: var(--font-osd);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
   line-height: 1;
-  opacity: 0.55;
 }
 
 .osd__label {
-  font-family: var(--font-display);
+  font-family: var(--font-osd);
   font-size: 0.8rem;
-  font-stretch: 84%;
-  font-weight: 600;
-  letter-spacing: 0.1em;
   line-height: 1.4;
   text-transform: uppercase;
 }
 
 .osd__channel:hover,
 .osd__channel:focus-visible {
-  color: var(--color-text);
+  color: var(--color-accent-strong);
 }
 
-/* The channel you are on: lit, with the block a set draws beside a selected
-   row. aria-current carries the state, so the styling follows the markup a
-   screen reader already announces rather than a second class. */
+/* The channel you are on: lit, and underlined with the Stitch rule. aria-
+   current carries the state, so the styling follows the markup a screen
+   reader already announces rather than a second class. */
 .osd__channel[aria-current="page"] {
+  border-bottom: 4px solid var(--color-accent);
   color: var(--color-accent);
+  padding-bottom: 2px;
 }
 
-.osd__channel[aria-current="page"] .osd__number {
-  opacity: 1;
-}
-
-.osd__channel[aria-current="page"]::before {
-  background-color: var(--color-accent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent);
-  content: "";
-  height: 2px;
-  inset-inline: 0.85rem;
-  position: absolute;
-  bottom: 0;
-}
-
-/* On a narrow screen the numbers go and the names sit in a row: a phone has
-   no width for a two-line channel each. */
+/* On a narrow screen the numbers go and the names wrap onto a second row: a
+   phone has no width for a two-line channel each. No hamburger, no script --
+   the same links, rearranged. */
 @media (max-width: 40rem) {
   .osd__inner {
     flex-wrap: wrap;
     gap: 0 0.25rem;
     padding-block: 0.5rem;
+  }
+
+  .osd__channels {
+    row-gap: 4px;
   }
 
   .osd__number {
@@ -527,7 +434,8 @@ a:hover {
 }
 
 .site-footer {
-  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-low);
+  border-top: 4px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: 0.875rem;
   margin-top: auto;
@@ -542,6 +450,14 @@ a:hover {
   padding-block: 2rem;
 }
 
+/* The copyright line is a label on the machine's underside: terminal type,
+   amber, shouting quietly. */
+.site-footer__inner p {
+  color: var(--color-accent);
+  font-family: var(--font-osd);
+  text-transform: uppercase;
+}
+
 /* The studio's own profiles, as marks. */
 .site-social {
   display: flex;
@@ -551,35 +467,34 @@ a:hover {
   padding: 0;
 }
 
+/* A square console chip: hard border, its own plastic, and the mark in
+   currentColor so filling the chip on hover inverts the drawing with it. */
 .site-social__link {
   align-items: center;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
   color: var(--color-text-muted);
   display: inline-flex;
-  height: 2.25rem;
   justify-content: center;
+  padding: 8px;
   text-decoration: none;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease;
-  width: 2.25rem;
 }
 
-/* A site with no mark of its own keeps its name, so the pill grows to hold it
+/* A site with no mark of its own keeps its name, so the chip grows to hold it
    rather than the globe standing there meaning nothing in particular. */
 .site-social__link--named {
   gap: 0.4rem;
   padding-inline: 0.9rem;
-  width: auto;
 }
 
 .site-social__link:hover,
 .site-social__link:focus-visible {
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
-  color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 
 .site-social__link svg {
@@ -844,32 +759,48 @@ a:hover {
 
 /* Buttons ---------------------------------------------------------------- */
 
-/* A control the set draws, not a moulded key: square, phosphor, and labelled
-   in the display face. The glow is what tells you it is live. */
+/* A console button: square, a hard cartridge border, a step shadow it sits on,
+   and a label in the terminal face. Pressing it is pressing it -- the control
+   moves and the shadow goes. */
 .button {
-  background-color: var(--color-accent);
-  border: 0;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
   border-radius: 0;
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
-  color: var(--color-accent-ink);
+  box-shadow: var(--step-sm);
+  color: var(--color-text);
   display: inline-block;
-  font-family: var(--font-display);
-  font-stretch: 86%;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-family: var(--font-osd);
+  letter-spacing: 0.05em;
   padding: 0.7rem 1.5rem;
   text-decoration: none;
   text-transform: uppercase;
   transition:
     background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    color 0.15s ease;
 }
 
 .button:hover,
 .button:focus-visible {
-  background-color: var(--color-accent-strong);
-  box-shadow: 0 0 22px -2px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  background: var(--color-accent);
   color: var(--color-accent-ink);
+}
+
+.button:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+/* The filled key: amber to start with, so it reads as the thing to press. */
+.button--primary {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-weight: 700;
+}
+
+.button--primary:hover,
+.button--primary:focus-visible {
+  background: var(--color-accent-strong);
 }
 
 /* Tags ------------------------------------------------------------------- */

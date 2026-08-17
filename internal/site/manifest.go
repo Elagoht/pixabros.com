@@ -18,10 +18,9 @@ const ManifestPath = "/manifest.webmanifest"
 // bar of an installed window, and the splash screen behind the icon. It is the
 // stylesheet's own --color-bg, and a test holds the two together.
 //
-// The dark room is the right one to promise here even though the site has a
-// lit one: this colour is shown before the page renders, and a flash of the
-// wrong background is worse than a consistent dark one.
-const themeColor = "#050806"
+// The site has one room, the dark one, so that is the only colour there is to
+// promise.
+const themeColor = "#101412"
 
 // manifest is the web app manifest, in the field order the spec lists.
 //

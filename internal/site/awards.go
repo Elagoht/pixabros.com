@@ -75,6 +75,7 @@ func (s *Site) renderAwards(pageKey string) ([]byte, []string, error) {
 		Schema:      awardsSchema(chrome, views),
 		Scripts:     []string{s.renderer.bundle.URL("lightbox.js")},
 		Site:        chrome,
+		PageClass:   "awards-page",
 		Data:        awardsPage{Awards: views},
 	})
 	if err != nil {

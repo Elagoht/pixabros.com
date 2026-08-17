@@ -10,7 +10,7 @@
     {{if .Awards}}
       <ul class="awards">
         {{range .Awards}}
-          <li class="award">
+          <li class="award chamfer">
             {{if .PictureURL}}
               {{/* A badge is worth looking at closely, so the picture opens
                    full size. Without scripting it stays an ordinary image. */}}
@@ -39,7 +39,7 @@
             {{end}}
 
             <div class="award__body">
-              <p class="award__year">{{.Year}}</p>
+              {{if .Year}}<p class="award__year">{{.Year}}</p>{{end}}
               <h2 class="award__title">{{.Title}}</h2>
               <p class="award__issuer">{{.Issuer}}</p>
               {{if .Date}}<p class="award__date">{{formatDate .Date}}</p>{{end}}

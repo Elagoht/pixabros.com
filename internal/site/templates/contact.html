@@ -1,22 +1,38 @@
 {{define "main"}}
-  {{/* The heading shares the form's width and centre line, so the page reads
-       as one column instead of a wide title over a narrow card. */}}
-  <div class="page-header page-header--narrow">
-    <h1>Contact</h1>
-    <p class="page-header__lead">
-      Questions, press or collaborations. Write to us and we will read it.
-    </p>
-  </div>
+  <div class="comm">
+    <div class="comm__side">
+      <div class="comm-card step">
+        <h1>Comm link</h1>
+        <p class="comm-card__lead">
+          Transmission initiated. Questions, press or collaborations -- write
+          to us and we will read it.
+        </p>
+        {{if .Site.Email}}
+          <p class="comm-card__row"><span class="comm-card__key">Email</span> {{.Site.Email}}</p>
+        {{end}}
+      </div>
+      {{if .Site.LinkViews}}
+        <div class="comm-card comm-card--nodes step">
+          <h2>Network nodes</h2>
+          <ul class="comm-nodes">
+            {{range .Site.LinkViews}}
+              <li><a class="comm-node" href="{{.URL}}" rel="me noopener">{{.Label}}</a></li>
+            {{end}}
+          </ul>
+        </div>
+      {{end}}
+    </div>
 
-  <div class="form-card">
     {{/* Posts to the API directly. Without JavaScript the browser follows the
          redirect to /contact/sent; the page script upgrades that to inline
          feedback. */}}
-    <form class="form" method="post" action="/api/contact">
+    <form class="form form-card form-card--signal step-lg" method="post" action="/api/contact">
+      <h2 class="signal-title"><span class="signal-cursor" aria-hidden="true">_</span> Signal input</h2>
+
       <label class="field">
-        <span class="field__label">Your name</span>
+        <span class="field__label">Player name</span>
         <input
-          class="field__input"
+          class="field__input inset-field"
           type="text"
           name="name"
           autocomplete="name"
@@ -25,9 +41,9 @@
       </label>
 
       <label class="field">
-        <span class="field__label">Subject <span class="field__required">*</span></span>
+        <span class="field__label">Quest objective <span class="field__required">*</span></span>
         <input
-          class="field__input"
+          class="field__input inset-field"
           type="text"
           name="subject"
           required
@@ -37,9 +53,9 @@
 
       <div class="field-row">
         <label class="field">
-          <span class="field__label">Phone</span>
+          <span class="field__label">Player phone</span>
           <input
-            class="field__input"
+            class="field__input inset-field"
             type="tel"
             name="phone"
             autocomplete="tel"
@@ -47,9 +63,9 @@
           />
         </label>
         <label class="field">
-          <span class="field__label">Email</span>
+          <span class="field__label">Player email</span>
           <input
-            class="field__input"
+            class="field__input inset-field"
             type="email"
             name="email"
             autocomplete="email"
@@ -60,10 +76,10 @@
 
       <label class="field">
         <span class="field__label">
-          Message <span class="field__required">*</span>
+          Message data <span class="field__required">*</span>
         </span>
         <textarea
-          class="field__input field__input--area"
+          class="field__input field__input--area inset-field"
           name="message"
           rows="8"
           required
@@ -90,7 +106,7 @@
 
       <p class="form__status" data-contact-status role="status"></p>
 
-      <button class="button" type="submit" data-contact-submit>Send message</button>
+      <button class="button button--primary" type="submit" data-contact-submit>Press start</button>
     </form>
   </div>
 {{end}}

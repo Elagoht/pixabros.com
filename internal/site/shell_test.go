@@ -39,7 +39,8 @@ func TestShellHandler_ListsEverythingAPageNeeds(t *testing.T) {
 
 	for _, name := range []string{
 		"site.css", "osd.js", "offline.js",
-		"fonts/archivo.woff2", "fonts/public-sans.woff2", "fonts/vt323.woff2",
+		"fonts/space-grotesk.woff2", "fonts/public-sans.woff2",
+		"fonts/courier-prime.woff2", "fonts/courier-prime-700.woff2",
 		"logo.svg", "icon-192.png", "icon-512.png",
 	} {
 		want := site.renderer.bundle.URL(name)

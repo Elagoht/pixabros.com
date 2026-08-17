@@ -67,13 +67,13 @@
   --room-light: rgb(255 182 66 / 0.075);
   --room-grille: rgb(255 214 148 / 0.018);
 
-  /* Archivo carries a width axis as well as weight, which is what lets the
-     headings be condensed like a broadcast caption without a second file.
-     Public Sans reads quietly underneath it. VT323 is a terminal face and is
-     rationed: the channel banner and small labels, nothing else. */
-  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  /* Space Grotesk carries a weight axis, which is what lets the headings sit
+     heavy or light without a second file. Public Sans reads quietly
+     underneath it. Courier Prime is a terminal face and is rationed: the
+     channel banner and small labels, nothing else. */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-osd: "VT323", ui-monospace, SFMono-Regular, monospace;
+  --font-osd: "Courier Prime", ui-monospace, SFMono-Regular, monospace;
 
   /* Form controls and scrollbars follow the room rather than arriving as
      white boxes on a dark page. */
@@ -124,10 +124,9 @@
 }
 
 @font-face {
-  font-family: "Archivo";
-  src: url("/assets/build/fonts/archivo.woff2") format("woff2");
-  font-weight: 100 900;
-  font-stretch: 62% 125%;
+  font-family: "Space Grotesk";
+  src: url("/assets/build/fonts/space-grotesk.woff2") format("woff2");
+  font-weight: 300 700;
   font-style: normal;
   font-display: swap;
 }
@@ -141,9 +140,17 @@
 }
 
 @font-face {
-  font-family: "VT323";
-  src: url("/assets/build/fonts/vt323.woff2") format("woff2");
+  font-family: "Courier Prime";
+  src: url("/assets/build/fonts/courier-prime.woff2") format("woff2");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  src: url("/assets/build/fonts/courier-prime-700.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }

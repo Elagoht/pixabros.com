@@ -93,7 +93,7 @@ func TestBuild_PublishesFontsUnderStableNames(t *testing.T) {
 	// The stylesheet references these paths literally, so they must not be
 	// hashed. Every face the site sets type in is checked, not just one:
 	// a face that failed to publish falls back silently in the browser.
-	for _, face := range []string{"archivo", "public-sans", "vt323"} {
+	for _, face := range []string{"space-grotesk", "public-sans", "courier-prime", "courier-prime-700"} {
 		name := "fonts/" + face + ".woff2"
 		if url := bundle.URL(name); url != "/assets/build/"+name {
 			t.Errorf("%s URL = %q, want an unhashed /assets/build/%s", face, url, name)
@@ -134,9 +134,10 @@ func TestBuild_MinifiesCSSWithoutBreakingIt(t *testing.T) {
 	// the design tokens themselves, and the font URL the CSS depends on.
 	for _, needle := range []string{
 		"--color-accent",
-		"/assets/build/fonts/archivo.woff2",
+		"/assets/build/fonts/space-grotesk.woff2",
 		"/assets/build/fonts/public-sans.woff2",
-		"/assets/build/fonts/vt323.woff2",
+		"/assets/build/fonts/courier-prime.woff2",
+		"/assets/build/fonts/courier-prime-700.woff2",
 	} {
 		if !strings.Contains(string(published), needle) {
 			t.Errorf("minified CSS lost %q", needle)

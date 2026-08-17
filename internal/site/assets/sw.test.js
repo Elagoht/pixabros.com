@@ -38,7 +38,7 @@ describe("classify", () => {
 
   it("sends a hashed asset to the cache first", () => {
     expect(SW.classify("/assets/build/site.f0c84817.css")).toBe("asset");
-    expect(SW.classify("/assets/build/fonts/vt323.woff2")).toBe("asset");
+    expect(SW.classify("/assets/build/fonts/space-grotesk.woff2")).toBe("asset");
   });
 
   // Media keys are not content-hashed, so a cache-first copy would outlive a

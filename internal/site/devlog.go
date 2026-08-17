@@ -24,11 +24,32 @@ type postSummary struct {
 	Slug     string
 	Date     string
 	GameName string
+	// GameSlug and Year drive the sidebar's client-side filter; a post with
+	// neither can only be found by scrolling, which is what it falls back to.
+	GameSlug string
+	Year     string
 	Image    imageView
 }
 
+// directoryView is one game bucket in the devlog sidebar, for filtering the
+// index client-side.
+type directoryView struct {
+	Title string
+	Slug  string
+	Count int
+}
+
+// archiveView is one year bucket in the devlog sidebar.
+type archiveView struct {
+	Year  string
+	Count int
+}
+
 type devlogIndexPage struct {
-	Posts []postSummary
+	Featured    postSummary
+	Rest        []postSummary
+	Directories []directoryView
+	Archive     []archiveView
 }
 
 type devlogPostPage struct {
@@ -43,7 +64,9 @@ type devlogPostPage struct {
 // renderDevlogIndex builds /devlog.
 //
 // game:list is in the tag set because each row can name the game a post is
-// about; renaming a game has to refresh this page too.
+// about; renaming a game has to refresh this page too. The sidebar's filters
+// are purely client-side over the statically rendered rows, so they add no
+// tags of their own.
 func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 	chrome, err := s.chrome()
 	if err != nil {
@@ -69,12 +92,55 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 			Title: post.Title,
 			Slug:  post.Slug,
 			Date:  post.PublishedAt,
+			Year:  yearOf(post.PublishedAt),
 			Image: lookupImage(images, post.OGImageID, post.Title),
 		}
 		if post.GameID != nil {
 			summary.GameName = gameNames[*post.GameID].Title
+			summary.GameSlug = gameNames[*post.GameID].Slug
 		}
 		summaries = append(summaries, summary)
+	}
+
+	directories := make([]directoryView, 0)
+	dirCounts := map[string]int{}
+	dirTitles := map[string]string{}
+	archive := make([]archiveView, 0)
+	yearCounts := map[string]int{}
+	for _, summary := range summaries {
+		if summary.GameSlug != "" {
+			if _, seen := dirTitles[summary.GameSlug]; !seen {
+				directories = append(directories, directoryView{Title: summary.GameName, Slug: summary.GameSlug})
+				dirTitles[summary.GameSlug] = summary.GameName
+			}
+			dirCounts[summary.GameSlug]++
+		}
+		if summary.Year != "" && yearCounts[summary.Year] == 0 {
+			archive = append(archive, archiveView{Year: summary.Year})
+		}
+		if summary.Year != "" {
+			yearCounts[summary.Year]++
+		}
+	}
+	for i := range directories {
+		directories[i].Count = dirCounts[directories[i].Slug]
+	}
+	for i := range archive {
+		archive[i].Count = yearCounts[archive[i].Year]
+	}
+
+	var featured postSummary
+	var rest []postSummary
+	if len(summaries) > 0 {
+		featured = summaries[0]
+		rest = summaries[1:]
+	}
+	// A sidebar with one bucket is a list calling itself a filter.
+	if len(directories) < 2 {
+		directories = nil
+	}
+	if len(archive) < 2 {
+		archive = nil
 	}
 
 	html, err := s.renderer.render("devlog.html", pageData{
@@ -84,7 +150,13 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 		Canonical:   canonicalURL(chrome.URL, PageDevlog),
 		Schema:      s.devlogIndexSchema(chrome, summaries),
 		Site:        chrome,
-		Data:        devlogIndexPage{Posts: summaries},
+		Data: devlogIndexPage{
+			Featured:    featured,
+			Rest:        rest,
+			Directories: directories,
+			Archive:     archive,
+		},
+		Scripts: []string{s.renderer.bundle.URL("devlog-filter.js")},
 	})
 	if err != nil {
 		return nil, nil, err

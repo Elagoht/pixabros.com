@@ -1,34 +1,86 @@
 {{define "main"}}
   <div class="page-header">
-    <h1>Devlog</h1>
+    <h1><span class="page-header__cursor" aria-hidden="true">&gt;</span> Devlog terminal</h1>
     <p class="page-header__lead">
-      Notes from the workshop: what we are building, and what broke on the way.
+      System status: online. Notes from the workshop, newest first.
     </p>
   </div>
 
-  {{if .Data.Posts}}
-    <ul class="post-list">
-      {{range .Data.Posts}}
-        <li class="post-row">
-          <a class="post-row__link" href="/devlog/{{.Slug}}">
-            {{if .Image.URL}}
-              <img class="post-row__thumb" src="{{.Image.URL}}" alt="" loading="lazy" />
-            {{else}}
-              <span class="post-row__thumb post-row__thumb--empty" aria-hidden="true"></span>
-            {{end}}
-            <span class="post-row__text">
-              <span class="post-row__title">{{.Title}}</span>
-              <span class="post-row__meta">
-                {{if .Date}}<span>{{formatDate .Date}}</span>{{end}}
-                {{if .GameName}}
-                  <span class="post-row__game">{{.GameName}}</span>
-                {{end}}
-              </span>
+  {{if .Data.Featured.Slug}}
+    <div class="devlog-layout">
+      <div class="devlog-feed">
+        <a class="post-feature" href="/devlog/{{.Data.Featured.Slug}}"
+           data-game="{{.Data.Featured.GameSlug}}" data-year="{{.Data.Featured.Year}}">
+          {{if .Data.Featured.Image.URL}}
+            <span class="post-feature__media">
+              <img src="{{.Data.Featured.Image.URL}}" alt="" loading="lazy" />
             </span>
-          </a>
-        </li>
+          {{end}}
+          <span class="post-feature__body">
+            {{if .Data.Featured.Date}}<span class="post-row__meta-line">{{formatDate .Data.Featured.Date}}</span>{{end}}
+            {{if .Data.Featured.GameName}}<span class="post-row__meta-line">{{.Data.Featured.GameName}}</span>{{end}}
+            <span class="post-feature__title">{{.Data.Featured.Title}}</span>
+            <span class="post-feature__read">Read protocol</span>
+          </span>
+        </a>
+
+        {{if .Data.Rest}}
+          <ul class="post-list">
+            {{range .Data.Rest}}
+              <li>
+                <a class="post-row" href="/devlog/{{.Slug}}"
+                   data-game="{{.GameSlug}}" data-year="{{.Year}}">
+                  {{if .Image.URL}}
+                    <img class="post-row__thumb" src="{{.Image.URL}}" alt="" loading="lazy" />
+                  {{else}}
+                    <span class="post-row__thumb post-row__thumb--empty" aria-hidden="true"></span>
+                  {{end}}
+                  <span class="post-row__text">
+                    <span class="post-row__meta-line">
+                      {{if .Date}}<span>{{formatDate .Date}}</span>{{end}}
+                      {{if .GameName}}<span class="post-row__game">{{.GameName}}</span>{{end}}
+                    </span>
+                    <span class="post-row__title">{{.Title}}</span>
+                  </span>
+                </a>
+              </li>
+            {{end}}
+          </ul>
+        {{end}}
+
+        <p class="empty-note" data-filter-empty hidden>Nothing in this directory.</p>
+      </div>
+
+      {{if or .Data.Directories .Data.Archive}}
+        <aside class="devlog-side" data-devlog-filters>
+          {{if .Data.Directories}}
+            <nav class="side-panel" aria-label="Filter by game">
+              <h2 class="side-panel__title">Directories</h2>
+              <ul class="side-list">
+                <li><button class="side-list__item is-active" type="button" data-filter-game="">&#9656; All posts</button></li>
+                {{range .Data.Directories}}
+                  <li>
+                    <button class="side-list__item" type="button" data-filter-game="{{.Slug}}">
+                      {{.Title}} <span class="side-list__count">[{{.Count}}]</span>
+                    </button>
+                  </li>
+                {{end}}
+              </ul>
+            </nav>
+          {{end}}
+          {{if .Data.Archive}}
+            <nav class="side-panel" aria-label="Filter by year">
+              <h2 class="side-panel__title">Archives</h2>
+              <ul class="side-archive">
+                {{range .Data.Archive}}
+                  <li><button class="side-archive__item" type="button" data-filter-year="{{.Year}}">{{.Year}} ({{.Count}})</button></li>
+                {{end}}
+              </ul>
+            </nav>
+          {{end}}
+        </aside>
       {{end}}
-    </ul>
+    </div>
   {{else}}
     <p class="empty-note">Nothing written up yet.</p>
   {{end}}

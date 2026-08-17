@@ -260,3 +260,54 @@ func TestNormaliseBlockMarkers_LeavesProseAlone(t *testing.T) {
 		t.Error("the no-break space after the heading marker was not normalised")
 	}
 }
+
+func seedPostFor(t *testing.T, conn *sql.DB, title, slug, publishedAt string, published bool, gameID *string) string {
+	t.Helper()
+	return seedPost(t, conn, title, slug, "Body", publishedAt, published, gameID)
+}
+
+func renderDevlogIndexPage(t *testing.T, s *Site) string {
+	t.Helper()
+	html, _, err := s.renderDevlogIndex(PageDevlog)
+	if err != nil {
+		t.Fatalf("renderDevlogIndex() error = %v", err)
+	}
+	return string(html)
+}
+
+func TestRenderDevlogIndex_BuildsDirectoriesAndArchive(t *testing.T) {
+	conn := setupTestDB(t)
+	grimID := seedGame(t, conn, "Grimoire", "grimoire", true, false, "")
+	vaultID := seedGame(t, conn, "Vault Zero", "vault-zero", true, false, "")
+	seedPostFor(t, conn, "First", "first", "2026-05-01", true, &grimID)
+	seedPostFor(t, conn, "Vault Log", "vault-log", "2026-06-01", true, &vaultID)
+	seedPostFor(t, conn, "Second", "second", "2025-05-01", true, nil)
+	seedPostFor(t, conn, "Third", "third", "2025-04-01", true, &grimID)
+
+	html := renderDevlogIndexPage(t, newTestSite(t, conn))
+
+	for _, want := range []string{
+		`data-filter-game=grimoire`, "Grimoire", "[2]",
+		`data-filter-game=vault-zero`, "Vault Zero", "[1]",
+		`data-filter-year=2025`, `data-filter-year=2026`, "(2)",
+		`data-game=grimoire`, `data-year=2025`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("devlog index is missing %q", want)
+		}
+	}
+	if !strings.Contains(html, "devlog-filter") {
+		t.Error("the filter script is not on the page")
+	}
+}
+
+func TestRenderDevlogIndex_NoSidebarWithoutTwoBuckets(t *testing.T) {
+	conn := setupTestDB(t)
+	seedPostFor(t, conn, "Only One", "only-one", "2026-05-01", true, nil)
+
+	html := renderDevlogIndexPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "Directories") {
+		t.Error("directories rendered with a single unfiled post")
+	}
+}

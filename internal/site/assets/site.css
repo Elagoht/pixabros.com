@@ -423,17 +423,6 @@ a:hover {
   text-shadow: 4px 4px 0 #000;
 }
 
-/* Matches the form card beneath it, so heading and form share one column. */
-.page-header--narrow {
-  margin-inline: auto;
-  max-width: 38rem;
-  text-align: center;
-}
-
-.page-header--narrow .page-header__lead {
-  margin-inline: auto;
-}
-
 .page-header__lead {
   color: var(--color-text-muted);
   margin-top: 0.75rem;
@@ -861,12 +850,6 @@ a:hover {
 
 /* A cartridge's clipped top-right corner. */
 .chamfer { clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); }
-
-/* A pixel-dashed divider: 4 on, 4 off. */
-.pixel-rule {
-  border: 0;
-  border-top: 4px dashed var(--color-border);
-}
 
 /* A field is a hole in the panel: darker than its card, hard-edged, amber
    when it has focus. */
@@ -1808,12 +1791,6 @@ a:hover {
   background: #000;
   border-radius: 0.35rem;
   box-shadow: none;
-}
-
-.crt__screen--live {
-  border: 0;
-  display: block;
-  height: 100%;
 }
 
 .crt__message {

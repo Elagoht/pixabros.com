@@ -1,24 +1,35 @@
 {{define "main"}}
   <section class="hero">
     {{if .Data.Hero.Logo.URL}}
-      {{/* The stored mark is 512 square. Saying so lets the browser keep the
-           room for it before it arrives, instead of the page jumping once it
-           does; the width it is actually drawn at is the stylesheet's. */}}
-      <img
-        class="hero__logo"
-        src="{{.Data.Hero.Logo.URL}}"
-        alt="{{.Data.Hero.Logo.Alt}}"
-        width="512"
-        height="512"
-      />
+      <div class="hero__brand step-lg">
+        {{/* The stored mark is 512 square; the stylesheet draws it at its own
+             width. Pixelated, because it is a pixel-art mark and a smooth
+             scale would blur what the studio drew. */}}
+        <img
+          class="hero__logo"
+          src="{{.Data.Hero.Logo.URL}}"
+          alt="{{.Data.Hero.Logo.Alt}}"
+          width="512"
+          height="512"
+        />
+      </div>
     {{end}}
-    <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>
-    {{if .Data.Hero.Description}}
-      <p class="hero__description">{{.Data.Hero.Description}}</p>
-    {{end}}
-    {{if .Data.Hero.CTAText}}
-      <a class="button" href="{{.Data.Hero.CTALink}}">{{.Data.Hero.CTAText}}</a>
-    {{end}}
+    <div class="hero__copy">
+      <p class="hero__status" aria-hidden="true">
+        <span class="hero__lamp"></span>
+        System online
+      </p>
+      <h1>{{if .Data.Hero.Slogan}}{{.Data.Hero.Slogan}}{{else}}{{.Site.Name}}{{end}}</h1>
+      {{if .Data.Hero.Description}}
+        <p class="hero__description">{{.Data.Hero.Description}}</p>
+      {{end}}
+      <div class="hero__actions">
+        {{if .Data.Hero.CTAText}}
+          <a class="button button--primary" href="{{.Data.Hero.CTALink}}">{{.Data.Hero.CTAText}}</a>
+        {{end}}
+        <a class="button" href="/games">View catalog</a>
+      </div>
+    </div>
   </section>
 
   {{if .Data.HasPortfolio}}

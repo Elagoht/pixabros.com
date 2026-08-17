@@ -849,7 +849,9 @@ a:hover {
 /* Tags ------------------------------------------------------------------- */
 
 .tags {
-  --tag-size: 0.75rem;
+  /* 11px, the Stitch chip. The size lives here rather than on .tag so the
+     tighter card modifiers below keep working. */
+  --tag-size: 0.6875rem;
   --tag-line: 1.2rem;
   --tag-pad-block: 0.15rem;
   --tag-pad-inline: 0.6rem;
@@ -868,17 +870,11 @@ a:hover {
 }
 
 .tag {
-  background-color: var(
-    --tag-fill,
-    color-mix(in srgb, var(--color-accent) 10%, transparent)
-  );
-  border: 1px solid var(
-    --tag-edge,
-    color-mix(in srgb, var(--color-accent) 26%, transparent)
-  );
-  /* Square: a tag is a label the interface prints, and only the objects on the
-     page are rounded. */
-  border-radius: 0;
+  background-color: var(--tag-fill, var(--color-surface-panel));
+  border: 1px solid var(--tag-edge, var(--color-border));
+  /* The one sanctioned radius: a tag is a chip the interface prints, not an
+     object on the page, so it takes the interface's edge. */
+  border-radius: 2px;
   font-family: var(--font-osd);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -954,26 +950,21 @@ a:hover {
 }
 
 /* A jam entry was made against a clock. The badge says so rather than letting
-   the game be read as a full production, and it is deliberately plainer than
-   an accent-coloured tag: it is a fact about the game, not a highlight. */
+   the game be read as a full production: a solid amber block now, loud on
+   purpose, because it is a distinction the studio earned. */
 .jam-badge {
-  background-color: color-mix(in srgb, var(--color-text-muted) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-text-muted) 32%, transparent);
-  border-radius: 999px;
-  color: var(--badge-ink, var(--color-text-muted));
+  background-color: var(--color-accent);
+  border-radius: 2px;
+  color: var(--badge-ink, var(--color-accent-ink));
   display: inline-block;
+  font-family: var(--font-osd);
   font-size: 0.7rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 0.1rem 0.5rem;
+  padding: 1px 6px;
   text-transform: uppercase;
   vertical-align: middle;
   white-space: nowrap;
-}
-
-.shelf-meta--overlay .jam-badge {
-  --badge-ink: rgb(255 255 255 / 0.85);
-  background-color: rgb(255 255 255 / 0.14);
-  border-color: rgb(255 255 255 / 0.28);
 }
 
 /* On the detail page the badge is a line of its own under the title. */
@@ -988,15 +979,18 @@ a:hover {
 }
 
 .section__title {
+  font-family: var(--font-display);
   margin-bottom: 0.5rem;
-  /* The same lit rule the banner draws under the channel you are on, so a
-     section reads as another thing the set is showing you. */
+  /* A rule the set draws under the heading, like the one under the channel
+     you are on -- the console's own edging rather than a lit line, because
+     the heading itself already shouts. */
   padding-bottom: 0.5rem;
   position: relative;
+  text-transform: uppercase;
 }
 
 .section__title::after {
-  background-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  background-color: var(--color-border);
   content: "";
   height: 2px;
   position: absolute;
@@ -1033,29 +1027,99 @@ a:hover {
   margin-top: 1.5rem;
 }
 
-/* Hero ------------------------------------------------------------------- */
+/* Hero ---------------------------------------------------------------------
+ *
+ * The set switching on: a bordered panel on the console's plastic, the raster
+ * drawn over it, and the studio's mark in its own frame beside the copy.
+ */
 
 .hero {
-  padding-block: 2rem 1rem;
-  text-align: center;
+  position: relative;
+  display: grid;
+  gap: var(--space-page);
+  align-items: center;
+  padding: var(--space-page);
+  background: var(--color-surface);
+  border: 4px solid var(--color-border-strong);
+  box-shadow: var(--step);
+  overflow: hidden;
 }
 
-/* The mark leads the page, so it is sized like the thing you are meant to see
-   first rather than like an avatar. Square: it is a printed mark, and rounding
-   its corners made it read as an app icon. */
-.hero__logo {
-  height: auto;
-  margin-bottom: 1.75rem;
-  margin-inline: auto;
-  width: clamp(9rem, 26vw, 16rem);
+/* The tube's raster, over whatever the hero shows rather than under it. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.16) 2px 4px);
+  pointer-events: none;
 }
 
-.hero__description {
-  color: var(--color-text-muted);
-  font-size: 1.0625rem;
-  margin: 1rem auto 1.75rem;
-  max-width: 38rem;
+@media (min-width: 48rem) {
+  .hero { grid-template-columns: 1fr auto; }
+
+  /* The copy is the flexible column on the left and the framed mark the fixed
+     one on the right, the way the reference pairs them. The markup keeps the
+     mark first, so a reader meets the studio before its slogan. */
+  .hero__brand { grid-column: 2; }
+  .hero__copy { grid-column: 1; }
 }
+
+.hero__copy { position: relative; z-index: 1; display: grid; gap: 12px; justify-items: start; max-width: 34rem; }
+
+/* The set reporting itself: a chip on the machine's own field, with the lamp
+   that says it is on. Decoration, so the whole line is aria-hidden. */
+.hero__status {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-osd); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-success);
+  background: var(--color-input-bg); border: 2px solid var(--color-border);
+  padding: 4px 10px;
+}
+.hero__lamp { width: 8px; height: 8px; background: var(--color-success); }
+
+/* The title screen's headline: the display face, in the amber. */
+.hero h1 {
+  color: var(--color-accent);
+}
+
+.hero__description { color: var(--color-text-muted); font-size: 18px; line-height: 1.6; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+
+/* The mark hangs on the wall in its own frame: the room's black behind it,
+   so the pixel art reads against the panel rather than merging with it. */
+.hero__brand { position: relative; z-index: 1; background: var(--color-bg); border: 4px solid var(--color-border-strong); padding: 16px; }
+.hero__logo { display: block; width: min(280px, 60vw); height: auto; image-rendering: pixelated; }
+
+/* System log and achievements ------------------------------------------------
+ *
+ * The home page's one split: what the studio has been writing on the left,
+ * what it has won on the right.
+ */
+
+.home-split { display: grid; gap: var(--space-page); }
+@media (min-width: 48rem) { .home-split { grid-template-columns: 1fr 1fr; } }
+
+.log-list { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.log-entry {
+  display: grid; gap: 4px; padding: 12px;
+  background: var(--color-surface); border: 4px solid var(--color-border-strong);
+  color: inherit; text-decoration: none;
+}
+.log-entry:hover, .log-entry:focus-visible { border-color: var(--color-accent); }
+.log-entry__date { font-family: var(--font-osd); font-size: 12px; text-transform: uppercase; color: var(--on-dark-muted); }
+.log-entry__title { font-weight: 600; }
+.log-entry:hover .log-entry__title { color: var(--color-accent-strong); }
+.log-entry__blurb { color: var(--color-text-muted); font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.medals { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; list-style: none; padding: 0; margin: 0; }
+.medal {
+  display: grid; gap: 4px; justify-items: center; text-align: center;
+  min-height: 150px; align-content: center; padding: 16px;
+  background: var(--color-surface); border: 4px solid var(--color-border-strong);
+}
+.medal__year { font-family: var(--font-osd); font-size: 12px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; }
+.medal__title { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; }
+.medal__issuer { font-family: var(--font-osd); font-size: 12px; color: var(--on-dark-muted); text-transform: uppercase; }
 
 /* Portfolio carousel ------------------------------------------------------
  *
@@ -1093,17 +1157,26 @@ a:hover {
   scrollbar-width: thin;
 }
 
+/* A cartridge in the slot: the console's own plastic, the heavy border, the
+   step it sits on. */
 .slide {
   position: relative;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border: 4px solid var(--color-border-strong);
   border-radius: var(--radius);
+  box-shadow: var(--step);
   display: grid;
   flex: 0 0 min(100%, 60rem);
   gap: 0;
   grid-template-columns: 1fr;
   overflow: hidden;
   scroll-snap-align: center;
+}
+
+/* The whole cartridge lights up, whichever of its links is the reason. */
+.slide:has(.slide__link:focus-visible),
+.slide:hover {
+  border-color: var(--color-accent);
 }
 
 @media (min-width: 48rem) {
@@ -1139,6 +1212,13 @@ a:hover {
   width: 100%;
 }
 
+/* The artwork is pixel art: scale it in steps rather than smoothing it into
+   a blur. */
+.slide__image--cover,
+.slide__image--shot {
+  image-rendering: pixelated;
+}
+
 .slide__image--empty {
   align-items: center;
   /* Fixed, not themed: the backdrop behind it is always dark. */
@@ -1164,27 +1244,30 @@ a:hover {
   opacity: 1;
 }
 
+/* The console's own key: the button skin from Task 3, square, sitting on its
+   small step. The arrows keep their mid-track positioning, so a press has to
+   carry the vertical centring with it rather than replacing it. */
 .carousel__arrow {
   align-items: center;
-  backdrop-filter: blur(4px);
-  background-color: rgb(0 0 0 / 0.6);
-  border: 1px solid rgb(255 255 255 / 0.12);
-  z-index: 2;
-  border-radius: 999px;
-  /* Fixed, not themed: the chip behind it is dark in both themes. */
-  color: #f4f4f5;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  box-shadow: var(--step-sm);
+  color: var(--color-text);
+  cursor: pointer;
   display: flex;
-  justify-content: center;
-  display: flex;
-  font-size: 1.5rem;
   height: 2.5rem;
   justify-content: center;
   line-height: 1;
+  padding: 0;
   position: absolute;
   text-decoration: none;
   top: 50%;
   transform: translateY(-50%);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
   width: 2.5rem;
   z-index: 3;
 }
@@ -1198,7 +1281,13 @@ a:hover {
 
 .carousel__arrow:hover {
   background-color: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-accent-ink);
+}
+
+/* Pressing it is pressing it: the key moves onto where its step was. */
+.carousel__arrow:active {
+  box-shadow: none;
+  transform: translateY(calc(-50% + 2px)) translateX(2px);
 }
 
 .carousel__arrow--prev {
@@ -1226,20 +1315,9 @@ a:hover {
 }
 
 .slide__title {
+  font-family: var(--font-display);
   font-size: 1.25rem;
-}
-
-.slide__link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.slide__link:hover {
-  color: var(--color-accent);
-}
-
-.slide__media:focus-visible {
-  outline-offset: -3px;
+  text-transform: uppercase;
 }
 
 .slide__link {
@@ -1322,34 +1400,57 @@ a:hover {
   padding: 0;
 }
 
+/* A case on the shelf: the .chamfer cut on its top-right corner, written
+   straight into the card because its shape is the component rather than
+   something added to it. */
 .sale-card {
   aspect-ratio: 1;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 4px solid var(--color-border-strong);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   overflow: hidden;
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  /* The step shadow is a filter, not a box-shadow: clip-path cuts everything
+     the element paints, its own box-shadow included, where a drop-shadow
+     falls from the chamfered shape itself. */
+  filter: drop-shadow(var(--step-lg));
 }
 
 .sale-card:hover {
-  box-shadow: 0 14px 26px rgb(0 0 0 / 0.35);
-  transform: translateY(-3px);
+  filter: drop-shadow(12px 12px 0 #000);
+  transform: translateY(-2px);
 }
 
 /* The artwork drifts in a little under the overlay, so the whole card feels
-   like one object rather than a picture with a label on top. */
+   like one object rather than a picture with a label on top. Pixelated,
+   because the covers are pixel art. */
 .sale-card__art {
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: cover;
   transition: transform 0.35s ease;
+  width: 100%;
 }
 
 .sale-card:hover .sale-card__art {
   transform: scale(1.04);
 }
 
-.sale-card__art {
-  height: 100%;
-  object-fit: cover;
-  width: 100%;
+/* A lift and a zoom are motion. A visitor who asked for less keeps the card
+   where it is, with only the size of its shadow to say it is live. */
+@media (prefers-reduced-motion: reduce) {
+  .sale-card,
+  .sale-card__art {
+    transition: none;
+  }
+
+  .sale-card:hover {
+    transform: none;
+  }
+
+  .sale-card:hover .sale-card__art {
+    transform: none;
+  }
 }
 
 .sale-card__art--empty {
@@ -1377,7 +1478,9 @@ a:hover {
    mode, which was unreadable. */
 .sale-card__title {
   color: #f4f4f5;
+  font-family: var(--font-display);
   font-size: 1rem;
+  text-transform: uppercase;
 }
 
 .sale-card__foot {
@@ -1410,14 +1513,23 @@ a:hover {
   padding: 0;
 }
 
+/* A panel off the console: its own plastic, the heavy cartridge border, and
+   room inside it so the border is a frame rather than an edge the words
+   touch. */
 .member {
+  background: var(--color-surface);
+  border: 4px solid var(--color-border-strong);
+  padding: 1.5rem;
   text-align: center;
 }
 
+/* The portrait is a printed picture, not a lens portrait: square, bordered,
+   and drawn in steps rather than smoothed. */
 .member__avatar {
   aspect-ratio: 1;
-  border: 2px solid var(--color-accent);
-  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  image-rendering: pixelated;
   margin-inline: auto;
   object-fit: cover;
   width: 7rem;
@@ -1429,7 +1541,9 @@ a:hover {
 }
 
 .member__name {
+  font-family: var(--font-display);
   margin-top: 1rem;
+  text-transform: uppercase;
 }
 
 .member__links {

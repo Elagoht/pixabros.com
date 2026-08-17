@@ -243,12 +243,10 @@ const (
 	memberListTag = "member:list"
 )
 
-// buildHero assembles the site's opening statement.
-//
-// There is deliberately no featured image beside it. The spec called for one,
-// and it was taken from whichever game happened to be first: an arbitrary
-// picture, linked to nothing, that said nothing about the studio. The
-// portfolio below is where the games introduce themselves.
+// buildHero assembles the site's opening statement. The logo from the
+// homepage settings stands beside the copy, the way the Stitch hero pairs
+// its artwork with the title; a studio that has not set one gets a text-only
+// hero rather than an arbitrary picture.
 func (s *Site) buildHero(values map[string]string, images map[string]media.Media) heroView {
 	hero := heroView{
 		Slogan:      values["hero_slogan"],

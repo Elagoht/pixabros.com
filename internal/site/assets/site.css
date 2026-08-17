@@ -416,6 +416,13 @@ a:hover {
   margin-bottom: 2.5rem;
 }
 
+/* The game detail header stamps its title: a hard black block under the
+   display face, like a title screen. Scoped to the game page because the
+   other pages' headers are their own tasks. */
+.page-header--game h1 {
+  text-shadow: 4px 4px 0 #000;
+}
+
 /* Matches the form card beneath it, so heading and form share one column. */
 .page-header--narrow {
   margin-inline: auto;
@@ -1572,10 +1579,10 @@ a:hover {
 /* Breadcrumb ------------------------------------------------------------- */
 
 .crumbs {
-  color: var(--color-text-muted);
+  color: var(--on-dark-muted);
   display: flex;
   font-family: var(--font-osd);
-  font-size: 1rem;
+  font-size: 13px;
   gap: 0.5rem;
   letter-spacing: 0.08em;
   margin-bottom: 1.5rem;
@@ -1583,11 +1590,12 @@ a:hover {
 }
 
 .crumbs a {
+  color: var(--color-accent-strong);
   text-decoration: none;
 }
 
 .crumbs a:hover {
-  color: var(--color-accent-strong);
+  color: var(--on-dark);
 }
 
 /* The console --------------------------------------------------------------
@@ -2510,7 +2518,9 @@ a:hover {
 }
 
 .game-price {
-  font-size: 1.25rem;
+  color: var(--color-success);
+  font-family: var(--font-osd);
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -2523,11 +2533,14 @@ a:hover {
 }
 
 .game-facts dt {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
 .game-facts dd {
+  color: var(--color-accent);
   font-size: 0.9rem;
 }
 
@@ -2558,8 +2571,8 @@ a:hover {
 .shot {
   appearance: none;
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 2px solid var(--color-border);
+  border-radius: 0;
   cursor: zoom-in;
   display: block;
   overflow: hidden;
@@ -2634,22 +2647,26 @@ a:hover {
 
 .store-link {
   align-items: center;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  color: var(--color-accent-strong);
   display: inline-flex;
+  font: inherit;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 10px 14px;
   text-decoration: none;
   transition:
-    border-color 0.15s ease,
-    transform 0.15s ease;
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .store-link:hover,
 .store-link:focus-visible {
+  background: var(--color-accent);
   border-color: var(--color-accent);
-  transform: translateY(-1px);
+  color: var(--color-accent-ink);
 }
 
 .store-link svg {
@@ -2808,6 +2825,11 @@ a:hover {
   max-width: 44rem;
 }
 
+.prose a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
 .prose > * + * {
   margin-top: 1.1rem;
 }
@@ -2856,6 +2878,7 @@ a:hover {
    cannot be -- hence display: block, with max-content so it is only as wide as
    its columns need and no wider than the column it sits in. */
 .prose table {
+  border: 1px solid var(--color-border);
   border-collapse: collapse;
   display: block;
   /* Figures in a column line up. */
@@ -2914,6 +2937,7 @@ a:hover {
 }
 
 .prose img {
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -3359,7 +3383,9 @@ a:hover {
 }
 
 /* The offline control. It is injected by script, so it never exists for a
-   visitor without JavaScript and needs no no-JS state of its own. */
+   visitor without JavaScript and needs no no-JS state of its own. The script
+   only ever builds a status line and an action button (progress is carried as
+   text, not a fill), so the block style lives on those two. */
 .offline {
   display: flex;
   flex-wrap: wrap;
@@ -3369,23 +3395,30 @@ a:hover {
 }
 
 .offline__status {
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
+  font-size: 13px;
   margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  text-transform: uppercase;
 }
 
 .offline__action {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
   background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.875rem;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0;
+  color: var(--color-accent-strong);
   cursor: pointer;
+  font: inherit;
+  padding: 10px 14px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.offline__action:hover {
+.offline__action:hover,
+.offline__action:focus-visible {
+  background: var(--color-accent);
   border-color: var(--color-accent);
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
 }

@@ -803,6 +803,49 @@ a:hover {
   background: var(--color-accent-strong);
 }
 
+/* Retro utilities ---------------------------------------------------------- */
+
+/* Depth is a solid offset block, never a blur. */
+.step { box-shadow: var(--step); }
+.step-sm { box-shadow: var(--step-sm); }
+.step-lg { box-shadow: var(--step-lg); }
+
+/* The tube's raster: a 4px-period stripe, painted as an overlay layer on top
+   of whatever it covers. Pointer-events none always: it is decoration. */
+.scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgb(0 0 0 / 0.22) 2px 4px
+  );
+}
+
+/* A cartridge's clipped top-right corner. */
+.chamfer { clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); }
+
+/* A pixel-dashed divider: 4 on, 4 off. */
+.pixel-rule {
+  border: 0;
+  border-top: 4px dashed var(--color-border);
+}
+
+/* A field is a hole in the panel: darker than its card, hard-edged, amber
+   when it has focus. */
+.inset-field {
+  background: var(--color-input-bg);
+  border: 2px solid var(--color-border);
+  border-bottom-color: var(--color-border-strong);
+  border-right-color: var(--color-border-strong);
+  color: var(--color-text);
+  font-family: var(--font-osd);
+  padding: 10px 12px;
+}
+.inset-field::placeholder { color: var(--on-dark-muted); }
+.inset-field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
 /* Tags ------------------------------------------------------------------- */
 
 .tags {

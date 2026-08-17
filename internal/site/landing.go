@@ -81,6 +81,24 @@ type memberView struct {
 	Links  []brandedLink
 }
 
+// landingPostView is one entry of the home page's System Log: the two most
+// recent posts, newest first.
+type landingPostView struct {
+	Title string
+	Slug  string
+	Date  string
+	// Blurb is the markdown collapsed to plain text; posts have no summary
+	// field and the card has no room for more than a taste.
+	Blurb string
+}
+
+// landingAwardView is one entry of the home page's Achievements pair.
+type landingAwardView struct {
+	Title  string
+	Issuer string
+	Year   string
+}
+
 type landingPage struct {
 	Hero            heroView
 	PortfolioTitle  string
@@ -90,16 +108,21 @@ type landingPage struct {
 	MembersTitle    string
 	MembersSubtitle string
 	Members         []memberView
+	LogPosts        []landingPostView
+	Achievements    []landingAwardView
 	HasPortfolio    bool
 	HasSales        bool
 	HasMembers      bool
+	HasLog          bool
+	HasAchievements bool
 }
 
 // renderLanding builds the site root.
 //
 // Tags: homepage covers the hero and section copy, game:list the portfolio and
-// sales grids, member:list the team section, and site_settings the chrome.
-// All four must match what the admin API enqueues.
+// sales grids, member:list the team section, site_settings the chrome,
+// devlog:list the system log, and award:list the achievements. All six must
+// match what the admin API enqueues.
 func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	chrome, err := s.chrome()
 	if err != nil {
@@ -144,6 +167,39 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 		return nil, nil, fmt.Errorf("list members: %w", err)
 	}
 
+	posts, err := s.publishedPosts()
+	if err != nil {
+		return nil, nil, err
+	}
+	logPosts := make([]landingPostView, 0, 2)
+	for _, post := range posts {
+		if len(logPosts) == 2 {
+			break
+		}
+		logPosts = append(logPosts, landingPostView{
+			Title: post.Title,
+			Slug:  post.Slug,
+			Date:  post.PublishedAt,
+			Blurb: excerpt(post.ContentMarkdown, 120),
+		})
+	}
+
+	awardList, err := s.awards.List("date", true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list awards: %w", err)
+	}
+	achievements := make([]landingAwardView, 0, 2)
+	for _, award := range awardList {
+		if len(achievements) == 2 {
+			break
+		}
+		achievements = append(achievements, landingAwardView{
+			Title:  award.Title,
+			Issuer: award.Issuer,
+			Year:   yearOf(award.Date),
+		})
+	}
+
 	page := landingPage{
 		Hero:            s.buildHero(copyValues, images),
 		PortfolioTitle:  fallback(copyValues["portfolio_section_title"], "Our games"),
@@ -153,10 +209,14 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 		MembersTitle:    fallback(copyValues["members_section_title"], "The team"),
 		MembersSubtitle: copyValues["members_section_subtitle"],
 		Members:         buildMembers(memberList, images),
+		LogPosts:        logPosts,
+		Achievements:    achievements,
 	}
 	page.HasPortfolio = len(page.Slides) > 0
 	page.HasSales = len(page.Sales) > 0
 	page.HasMembers = len(page.Members) > 0
+	page.HasLog = len(page.LogPosts) > 0
+	page.HasAchievements = len(page.Achievements) > 0
 
 	html, err := s.renderer.render("landing.html", pageData{
 		Title:       "Two brothers making small, sharp games you can play right now",
@@ -173,7 +233,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 		return nil, nil, err
 	}
 
-	return html, []string{homepageTag, gameListTag, memberListTag, siteSettingsTag}, nil
+	return html, []string{homepageTag, gameListTag, memberListTag, siteSettingsTag, devlogListTag, awardsListTag}, nil
 }
 
 // These must match the tags the admin API enqueues exactly.

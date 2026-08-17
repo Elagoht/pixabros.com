@@ -176,6 +176,41 @@
     </section>
   {{end}}
 
+  {{if or .Data.HasLog .Data.HasAchievements}}
+    <div class="home-split">
+      {{if .Data.HasLog}}
+        <section class="section" aria-labelledby="log-heading">
+          <h2 class="section__title" id="log-heading">System log</h2>
+          <ul class="log-list">
+            {{range .Data.LogPosts}}
+              <li>
+                <a class="log-entry" href="/devlog/{{.Slug}}">
+                  {{if .Date}}<span class="log-entry__date">{{.Date}}</span>{{end}}
+                  <span class="log-entry__title">{{.Title}}</span>
+                  {{if .Blurb}}<span class="log-entry__blurb">{{.Blurb}}</span>{{end}}
+                </a>
+              </li>
+            {{end}}
+          </ul>
+        </section>
+      {{end}}
+      {{if .Data.HasAchievements}}
+        <section class="section" aria-labelledby="achievements-heading">
+          <h2 class="section__title" id="achievements-heading">Achievements</h2>
+          <ul class="medals">
+            {{range .Data.Achievements}}
+              <li class="medal">
+                {{if .Year}}<span class="medal__year">{{.Year}}</span>{{end}}
+                <span class="medal__title">{{.Title}}</span>
+                <span class="medal__issuer">{{.Issuer}}</span>
+              </li>
+            {{end}}
+          </ul>
+        </section>
+      {{end}}
+    </div>
+  {{end}}
+
   {{if .Data.HasMembers}}
     <section class="section" aria-labelledby="members-heading">
       <h2 class="section__title" id="members-heading">{{.Data.MembersTitle}}</h2>

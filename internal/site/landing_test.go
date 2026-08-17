@@ -50,6 +50,7 @@ func TestRenderLanding_DeclaresEveryTagItDependsOn(t *testing.T) {
 	want := map[string]bool{
 		"homepage": false, "game:list": false,
 		"member:list": false, "site_settings": false,
+		"devlog:list": false, "award:list": false,
 	}
 	for _, tag := range tags {
 		if _, ok := want[tag]; !ok {
@@ -466,5 +467,63 @@ func TestRenderLanding_UsesAPathForTheButton(t *testing.T) {
 	html, _ := renderLandingPage(t, newTestSite(t, conn))
 	if !strings.Contains(html, `href=/games`) {
 		t.Errorf("the button does not point at the path it was given: %s", html)
+	}
+}
+
+func seedLandingPost(t *testing.T, conn *sql.DB, title, slug, publishedAt string, published bool) string {
+	t.Helper()
+	return seedPost(t, conn, title, slug, "Body of "+title, publishedAt, published, nil)
+}
+
+func TestRenderLanding_DeclaresDevlogAndAwardTags(t *testing.T) {
+	conn := setupTestDB(t)
+	_, tags := renderLandingPage(t, newTestSite(t, conn))
+
+	for _, want := range []string{"devlog:list", "award:list"} {
+		found := false
+		for _, tag := range tags {
+			if tag == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("the landing page never declared the %q tag", want)
+		}
+	}
+}
+
+func TestRenderLanding_ShowsLatestTwoPostsAndAwards(t *testing.T) {
+	conn := setupTestDB(t)
+	seedLandingPost(t, conn, "Newest", "newest", "2026-08-01", true)
+	seedLandingPost(t, conn, "Second", "second", "2026-07-01", true)
+	seedLandingPost(t, conn, "Third", "third", "2026-06-01", true)
+	seedLandingPost(t, conn, "Draft", "draft", "2026-08-02", false)
+	seedAward(t, conn, "Best Game", "IndieCade", "2026-05-01", "", nil)
+	seedAward(t, conn, "Best Audio", "PixelFest", "2025-05-01", "", nil)
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	for _, want := range []string{"Newest", "Second", "Best Game", "Best Audio", "IndieCade"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("landing page is missing %q", want)
+		}
+	}
+	if strings.Contains(html, "Third") {
+		t.Error("a third post leaked past the two-post budget")
+	}
+	if strings.Contains(html, ">Draft<") {
+		t.Error("an unpublished post leaked onto the landing page")
+	}
+}
+
+func TestRenderLanding_HidesLogAndAchievementsWhenEmpty(t *testing.T) {
+	conn := setupTestDB(t)
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "System log") {
+		t.Error("the system log heading rendered with no posts")
+	}
+	if strings.Contains(html, "Achievements") {
+		t.Error("the achievements heading rendered with no awards")
 	}
 }

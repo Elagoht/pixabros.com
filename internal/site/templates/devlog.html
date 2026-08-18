@@ -51,35 +51,50 @@
         <p class="empty-note" data-filter-empty hidden>Nothing in this directory.</p>
       </div>
 
-      {{if or .Data.Directories .Data.Archive}}
-        <aside class="devlog-side" data-devlog-filters>
-          {{if .Data.Directories}}
-            <nav class="side-panel" aria-label="Filter by game">
-              <h2 class="side-panel__title">Directories</h2>
-              <ul class="side-list">
-                <li><button class="side-list__item is-active" type="button" data-filter-game="">&#9656; All posts</button></li>
-                {{range .Data.Directories}}
-                  <li>
-                    <button class="side-list__item" type="button" data-filter-game="{{.Slug}}">
-                      {{.Title}} <span class="side-list__count">[{{.Count}}]</span>
-                    </button>
-                  </li>
-                {{end}}
-              </ul>
-            </nav>
-          {{end}}
-          {{if .Data.Archive}}
-            <nav class="side-panel" aria-label="Filter by year">
-              <h2 class="side-panel__title">Archives</h2>
-              <ul class="side-archive">
-                {{range .Data.Archive}}
-                  <li><button class="side-archive__item" type="button" data-filter-year="{{.Year}}">{{.Year}} ({{.Count}})</button></li>
-                {{end}}
-              </ul>
-            </nav>
-          {{end}}
-        </aside>
-      {{end}}
+      <aside class="devlog-side" data-devlog-filters>
+        {{/* A terminal prompt to query the logs, after the Stitch's panel: a
+             green lamp and a > prompt over a black input. Filters the list
+             like the directory buttons -- presentational only, no refetch. */}}
+        <section class="side-panel side-panel--terminal" aria-label="Search posts">
+          <h2 class="side-panel__title"><span class="side-lamp" aria-hidden="true"></span> Terminal access</h2>
+          <label class="side-search">
+            <span class="side-search__prompt" aria-hidden="true">&gt;</span>
+            <input
+              class="side-search__input"
+              type="search"
+              data-devlog-query
+              placeholder="QUERY_LOGS..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+        </section>
+        {{if .Data.Directories}}
+          <nav class="side-panel" aria-label="Filter by game">
+            <h2 class="side-panel__title">Directories</h2>
+            <ul class="side-list">
+              <li><button class="side-list__item is-active" type="button" data-filter-game="">&#9656; All posts</button></li>
+              {{range .Data.Directories}}
+                <li>
+                  <button class="side-list__item" type="button" data-filter-game="{{.Slug}}">
+                    {{.Title}} <span class="side-list__count">[{{.Count}}]</span>
+                  </button>
+                </li>
+              {{end}}
+            </ul>
+          </nav>
+        {{end}}
+        {{if .Data.Archive}}
+          <nav class="side-panel" aria-label="Filter by year">
+            <h2 class="side-panel__title">Archives</h2>
+            <ul class="side-archive">
+              {{range .Data.Archive}}
+                <li><button class="side-archive__item" type="button" data-filter-year="{{.Year}}">{{.Year}} ({{.Count}})</button></li>
+              {{end}}
+            </ul>
+          </nav>
+        {{end}}
+      </aside>
     </div>
   {{else}}
     <p class="empty-note">Nothing written up yet.</p>

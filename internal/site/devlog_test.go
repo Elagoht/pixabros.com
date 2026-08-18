@@ -291,6 +291,9 @@ func TestRenderDevlogIndex_BuildsDirectoriesAndArchive(t *testing.T) {
 		`data-filter-game=vault-zero`, "Vault Zero", "[1]",
 		`data-filter-year=2025`, `data-filter-year=2026`, "(2)",
 		`data-game=grimoire`, `data-year=2025`,
+		// The page tells the client how many posts there are and how many it
+		// drew, so load-more knows whether a second page exists.
+		`data-devlog-feed`, `data-total=4`, `data-per-page=10`, `data-devlog-more`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("devlog index is missing %q", want)

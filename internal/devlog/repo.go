@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	"pixabros/internal/dbutil"
@@ -230,6 +231,87 @@ func (r *Repo) List(field string, descending bool) ([]Post, error) {
 		direction = "DESC"
 	}
 	return r.query(`ORDER BY ` + column + ` ` + direction + `, id ASC`)
+}
+
+// SearchInput narrows the public devlog index. Zero values mean "no filter".
+type SearchInput struct {
+	// Query is a case-insensitive substring of the title, the same match the
+	// old client-side filter made against the rendered row text.
+	Query string
+	// Game is the slug of the game a post must be about.
+	Game string
+	// Year is the four-digit year of the publication date.
+	Year  string
+	Limit int
+	// Offset is where the page starts; page N is Offset = (N-1)*Limit.
+	Offset int
+}
+
+type SearchResult struct {
+	Posts []Post
+	Total int
+}
+
+// Search returns one page of published posts, newest first, and how many match
+// the same filters in total so a client can decide whether another page exists.
+func (r *Repo) Search(input SearchInput) (SearchResult, error) {
+	where, args := searchWhere(input)
+	orderBy := `ORDER BY COALESCE(published_at, date(created_at)) DESC, id ASC`
+
+	// A zero limit is the zero value, not "no rows": a caller who only
+	// filters still wants the matching page. 50 is a page nobody would
+	// actually ask for, so it only ever appears when Limit was forgotten.
+	limit := input.Limit
+	if limit < 1 {
+		limit = 50
+	}
+
+	rows, err := r.db.Query(`SELECT `+postColumns+` FROM `+table+` `+where+` `+orderBy+`
+		LIMIT ? OFFSET ?;`, append(args, limit, input.Offset)...)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	defer rows.Close()
+
+	var posts []Post
+	for rows.Next() {
+		p, err := scanPost(rows)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		posts = append(posts, p)
+	}
+	if err := rows.Err(); err != nil {
+		return SearchResult{}, err
+	}
+
+	var total int
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM `+table+` `+where+`;`, args...).Scan(&total); err != nil {
+		return SearchResult{}, err
+	}
+	return SearchResult{Posts: posts, Total: total}, nil
+}
+
+// searchWhere builds the shared WHERE clause for Search's list and count
+// queries. lower() only folds ASCII, which is what the titles of these posts
+// are expected to carry; the clientside filter that used to do this work ran
+// the same toLowerCase.
+func searchWhere(input SearchInput) (string, []any) {
+	clauses := []string{"is_published = 1"}
+	var args []any
+	if input.Query != "" {
+		clauses = append(clauses, "instr(lower(title), lower(?)) > 0")
+		args = append(args, input.Query)
+	}
+	if input.Game != "" {
+		clauses = append(clauses, "game_id IN (SELECT id FROM games WHERE slug = ?)")
+		args = append(args, input.Game)
+	}
+	if input.Year != "" {
+		clauses = append(clauses, "substr(published_at, 1, 4) = ?")
+		args = append(args, input.Year)
+	}
+	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
 func (r *Repo) query(orderBy string) ([]Post, error) {

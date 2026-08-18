@@ -16,6 +16,10 @@ const (
 	DevlogPagePrefix = "devlog/"
 )
 
+// devlogPerPage is how many posts one page renders, and must match the search
+// API's default per_page so the static page and the fetched pages line up.
+const devlogPerPage = 10
+
 // devlogListTag and the per-post tag must match what devlogapi enqueues.
 const devlogListTag = "devlog:list"
 
@@ -50,6 +54,11 @@ type devlogIndexPage struct {
 	Rest        []postSummary
 	Directories []directoryView
 	Archive     []archiveView
+	// Total is how many published posts there are, and PerPage how many the
+	// page shows at once. The client reads both to know whether another page
+	// exists and to paginate the same way the API does.
+	Total   int
+	PerPage int
 }
 
 type devlogPostPage struct {
@@ -134,6 +143,12 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 	if len(summaries) > 0 {
 		featured = summaries[0]
 		rest = summaries[1:]
+		// Only the first page is rendered. The rest is fetched from the public
+		// search API one page at a time, so the page never carries a devlog
+		// that grows without bound.
+		if len(rest) > devlogPerPage-1 {
+			rest = rest[:devlogPerPage-1]
+		}
 	}
 	// A sidebar with one bucket is a list calling itself a filter.
 	if len(directories) < 2 {
@@ -155,6 +170,8 @@ func (s *Site) renderDevlogIndex(pageKey string) ([]byte, []string, error) {
 			Rest:        rest,
 			Directories: directories,
 			Archive:     archive,
+			Total:       len(summaries),
+			PerPage:     devlogPerPage,
 		},
 		Scripts: []string{s.renderer.bundle.URL("devlog-filter.js")},
 	})

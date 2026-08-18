@@ -8,7 +8,7 @@
 
   {{if .Data.Featured.Slug}}
     <div class="devlog-layout">
-      <div class="devlog-feed">
+      <div class="devlog-feed" data-devlog-feed data-total="{{.Data.Total}}" data-per-page="{{.Data.PerPage}}">
         <a class="post-feature" href="/devlog/{{.Data.Featured.Slug}}"
            data-game="{{.Data.Featured.GameSlug}}" data-year="{{.Data.Featured.Year}}">
           {{if .Data.Featured.Image.URL}}
@@ -49,6 +49,11 @@
         {{end}}
 
         <p class="empty-note" data-filter-empty hidden>Nothing in this directory.</p>
+
+        {{/* Another page of posts is fetched from the search API and appended
+             here. Without a script the button does nothing and the first page
+             is the whole devlog, which is the intended no-JS fallback. */}}
+        <button class="button post-load" type="button" data-devlog-more hidden>Load more</button>
       </div>
 
       <aside class="devlog-side" data-devlog-filters>

@@ -115,12 +115,18 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("PUT /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/awards/{id}", adminapi.RequireSession(deps.Sessions, awardsHandlers.Delete))
 
-	devlogHandlers := devlogapi.NewHandlers(deps.Devlog, deps.DB, ogimage.NewStore(deps.Media, deps.MediaFiles, deps.DB))
+	// The admin handlers and the public search share one cache, so a mutation
+	// clears exactly what the search answers from.
+	devlogSearch := devlogapi.NewSearchCache(128)
+	devlogHandlers := devlogapi.NewHandlers(deps.Devlog, deps.DB, ogimage.NewStore(deps.Media, deps.MediaFiles, deps.DB), devlogSearch)
 	mux.HandleFunc("GET /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.List))
 	mux.HandleFunc("POST /api/admin/devlog", adminapi.RequireSession(deps.Sessions, devlogHandlers.Create))
 	mux.HandleFunc("GET /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Get))
 	mux.HandleFunc("PUT /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Update))
 	mux.HandleFunc("DELETE /api/admin/devlog/{id}", adminapi.RequireSession(deps.Sessions, devlogHandlers.Delete))
+
+	publicDevlog := devlogapi.NewPublicHandlers(deps.Devlog, deps.Games, deps.Media, devlogOrigin(deps.Settings), devlogSearch)
+	mux.HandleFunc("GET /api/devlog/posts", publicDevlog.SearchPosts)
 
 	contactHandlers := contactapi.NewHandlers(deps.Contact)
 	statsHandlers := statsapi.NewHandlers(deps.Stats)
@@ -250,6 +256,30 @@ func New(deps Dependencies) http.Handler {
 	mux.Handle("/", publicPages)
 
 	return withSecurityHeaders(mux)
+}
+
+// devlogOrigin is the site's own origin, for the public devlog search. The
+// search lives on the rendered page, so a request naming any other origin is
+// refused. An unset or unreadable site_url yields "" -- the handler treats an
+// empty origin as "no restriction", which is the right fallback when the
+// endpoint is mounted in tests that never configure one.
+func devlogOrigin(repo *settings.Repo) string {
+	if repo == nil {
+		return ""
+	}
+	group, err := settings.LookupGroup("site")
+	if err != nil {
+		return ""
+	}
+	values, err := repo.Values(group)
+	if err != nil {
+		return ""
+	}
+	origin, err := devlogapi.AllowedOriginOf(values["site_url"])
+	if err != nil {
+		return ""
+	}
+	return origin
 }
 
 // noDirListing wraps a directory-backed file server and refuses to serve

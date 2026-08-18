@@ -30,10 +30,13 @@ type Handlers struct {
 	// their own.
 	og *ogimage.Store
 	db *sql.DB
+	// cache holds the public search responses. Every mutation clears it so a
+	// fresh post, rename or delete reaches the public index immediately.
+	cache *searchCache
 }
 
-func NewHandlers(repo *devlog.Repo, db *sql.DB, og *ogimage.Store) *Handlers {
-	return &Handlers{og: og, repo: repo, db: db}
+func NewHandlers(repo *devlog.Repo, db *sql.DB, og *ogimage.Store, cache *searchCache) *Handlers {
+	return &Handlers{og: og, repo: repo, db: db, cache: cache}
 }
 
 type postResponse struct {
@@ -184,6 +187,7 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
+	h.cache.Clear()
 
 	httpapi.WriteJSON(w, http.StatusCreated, toPostResponse(post))
 }
@@ -319,6 +323,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
+	h.cache.Clear()
 
 	httpapi.WriteJSON(w, http.StatusOK, toPostResponse(post))
 }
@@ -343,6 +348,7 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "could not enqueue regen")
 		return
 	}
+	h.cache.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }

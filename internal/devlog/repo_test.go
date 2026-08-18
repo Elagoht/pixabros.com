@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"pixabros/internal/db"
+	"pixabros/internal/games"
 	"pixabros/internal/id"
 )
 
@@ -256,5 +257,90 @@ func TestRepo_ListSorting(t *testing.T) {
 
 	if _, err := repo.List("title; DROP TABLE devlog_posts", false); !errors.Is(err, ErrInvalidSort) {
 		t.Errorf("List() with an injected field error = %v, want ErrInvalidSort", err)
+	}
+}
+
+func TestRepo_SearchMatchesTitleCaseInsensitively(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+	repo.Create(CreateInput{Title: "Server Rendering", IsPublished: true, PublishedAt: "2026-04-20"})
+	repo.Create(CreateInput{Title: "Pixel Art", IsPublished: true, PublishedAt: "2026-03-05"})
+
+	result, err := repo.Search(SearchInput{Query: "pixel"})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if result.Total != 1 || len(result.Posts) != 1 || result.Posts[0].Title != "Pixel Art" {
+		t.Fatalf("Search() = %+v, want the pixel post", result)
+	}
+}
+
+func TestRepo_SearchExcludesDrafts(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+	repo.Create(CreateInput{Title: "Published", IsPublished: true, PublishedAt: "2026-04-20"})
+	repo.Create(CreateInput{Title: "Draft"})
+
+	result, err := repo.Search(SearchInput{})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if result.Total != 1 {
+		t.Fatalf("Search() total = %d, want 1 (drafts excluded)", result.Total)
+	}
+}
+
+func TestRepo_SearchFiltersByGameSlug(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+	game, err := games.NewRepo(repo.db).Create(games.CreateInput{Title: "Cyber Drift", IsPublished: true})
+	if err != nil {
+		t.Fatalf("create game error = %v", err)
+	}
+
+	onGame, _ := repo.Create(CreateInput{Title: "Cyber Note", IsPublished: true, PublishedAt: "2026-04-20"})
+	repo.Update(onGame.ID, UpdateInput{Title: "Cyber Note", IsPublished: true, PublishedAt: "2026-04-20", GameID: &game.ID})
+	repo.Create(CreateInput{Title: "Standalone", IsPublished: true, PublishedAt: "2026-03-05"})
+
+	result, err := repo.Search(SearchInput{Game: game.Slug})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if result.Total != 1 || result.Posts[0].Title != "Cyber Note" {
+		t.Fatalf("Search() = %+v, want only the cyber note", result)
+	}
+}
+
+func TestRepo_SearchFiltersByYear(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+	repo.Create(CreateInput{Title: "This Year", IsPublished: true, PublishedAt: "2026-04-20"})
+	repo.Create(CreateInput{Title: "Last Year", IsPublished: true, PublishedAt: "2025-11-02"})
+
+	result, err := repo.Search(SearchInput{Year: "2025"})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if result.Total != 1 || result.Posts[0].Title != "Last Year" {
+		t.Fatalf("Search() = %+v, want only the 2025 post", result)
+	}
+}
+
+func TestRepo_SearchPaginates(t *testing.T) {
+	repo := NewRepo(setupTestDB(t))
+	for i := 0; i < 3; i++ {
+		repo.Create(CreateInput{Title: "Post", IsPublished: true, PublishedAt: "2026-04-20"})
+	}
+
+	first, err := repo.Search(SearchInput{Limit: 2, Offset: 0})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if first.Total != 3 || len(first.Posts) != 2 {
+		t.Fatalf("first page = %+v, want 2 of 3", first)
+	}
+
+	second, err := repo.Search(SearchInput{Limit: 2, Offset: 2})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if second.Total != 3 || len(second.Posts) != 1 {
+		t.Fatalf("second page = %+v, want 1 of 3", second)
 	}
 }

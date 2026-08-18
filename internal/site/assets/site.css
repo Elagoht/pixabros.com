@@ -529,6 +529,14 @@ a:hover {
   text-transform: uppercase;
 }
 
+/* Another page of the devlog is fetched from the search API and appended.
+   It sits on its own line below the list, centered like the row it summons. */
+.post-load {
+  display: block;
+  margin: 1.5rem auto 0;
+  width: fit-content;
+}
+
 /* Awards --------------------------------------------------------------------
  *
  * Each award is a cartridge case stood on the shelf: the picture as the label,

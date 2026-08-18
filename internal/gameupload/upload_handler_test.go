@@ -180,6 +180,74 @@ func TestUpload_FailedUploadLeavesPreviousBuildIntact(t *testing.T) {
 	}
 }
 
+// uploadRequestWithContentType builds a multipart request carrying a field
+// the handler does not look for, so FormFile fails with ErrMissingFile rather
+// than a transport-level parse error.
+func uploadRequestWithoutFileField(t *testing.T, slug string) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("not_file", "payload"); err != nil {
+		t.Fatalf("WriteField(): %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/games/"+slug+"/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.SetPathValue("slug", slug)
+	return req
+}
+
+// TestUpload_MissingFileFieldNotLogged proves the operator-facing log stays
+// quiet for plain client mistakes: a multipart body without a "file" part is
+// a bad request, not something to investigate on the server.
+func TestUpload_MissingFileFieldNotLogged(t *testing.T) {
+	var captured error
+	handler := NewHandler(t.TempDir(), func(slug string, build gamearchive.Build) error { return nil },
+		WithErrorLogger(func(err error) { captured = err }))
+
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, uploadRequestWithoutFileField(t, "pixel-quest"))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "missing_file") {
+		t.Errorf("body = %s, want the missing_file code", rec.Body.String())
+	}
+	if captured != nil {
+		t.Errorf("onError called with %v, want it untouched for a client-side mistake", captured)
+	}
+}
+
+// TestUpload_UnreadableBodyLoggedAndCoded proves a body that cannot be parsed
+// as multipart (here: the wrong Content-Type, the same shape as a boundary
+// stripped by a proxy or a stream cut mid-part) is logged with its real
+// cause and answered with its own code instead of pretending the client
+// forgot the file field.
+func TestUpload_UnreadableBodyLoggedAndCoded(t *testing.T) {
+	var captured error
+	handler := NewHandler(t.TempDir(), func(slug string, build gamearchive.Build) error { return nil },
+		WithErrorLogger(func(err error) { captured = err }))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/games/pixel-quest/upload", strings.NewReader("junk"))
+	req.Header.Set("Content-Type", "text/plain")
+	req.SetPathValue("slug", "pixel-quest")
+	rec := httptest.NewRecorder()
+	handler.Upload(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "unreadable_upload") {
+		t.Errorf("body = %s, want the unreadable_upload code", rec.Body.String())
+	}
+	if captured == nil {
+		t.Fatal("onError was not called, want the underlying parse error logged")
+	}
+}
+
 func TestUpload_InvalidArchiveReturnsBadRequest(t *testing.T) {
 	gamesDir := t.TempDir()
 	handler := NewHandler(gamesDir, func(slug string, build gamearchive.Build) error { return nil })

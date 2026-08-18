@@ -169,6 +169,7 @@ say "About to write:"
 echo "   user          $SERVICE_USER (system account, no login, no home)"
 echo "   binary        $INSTALL_DIR/pixabros"
 echo "   data          $DATA_DIR  (owned by $SERVICE_USER, mode 0750)"
+echo "   upload tmp    $DATA_DIR/tmp  (multipart spill-over, mode 0700)"
 echo "   environment   $ENV_FILE  (root only, mode 0600)"
 echo "   unit          $UNIT_PATH"
 echo "   listening on  $LISTEN_ADDR"
@@ -194,6 +195,11 @@ mv -f "$INSTALL_DIR/pixabros.new" "$INSTALL_DIR/pixabros"
 
 say "Preparing $DATA_DIR"
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$DATA_DIR"
+# Game archive uploads spill multipart parts larger than 32 MiB into temp
+# files. The unit's ProtectSystem=strict + PrivateTmp=true leaves the process
+# a RAM-backed /tmp, which a large archive can exhaust -- so TMPDIR points
+# into the data dir, disk-backed and already covered by ReadWritePaths.
+install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "$DATA_DIR/tmp"
 
 say "Writing $ENV_FILE"
 install -d -m 0755 "$(dirname "$ENV_FILE")"
@@ -204,6 +210,8 @@ cat >"$ENV_FILE" <<EOF
 PIXABROS_ADDR=$LISTEN_ADDR
 PIXABROS_DB_PATH=$DB_PATH
 PIXABROS_DATA_DIR=$DATA_DIR
+# Keep multipart spill-over on disk, not in the RAM-backed private /tmp.
+TMPDIR=$DATA_DIR/tmp
 EOF
 chown root:root "$ENV_FILE"
 chmod 0600 "$ENV_FILE"

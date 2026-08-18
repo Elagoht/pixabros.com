@@ -60,7 +60,17 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 			httpapi.WriteError(w, http.StatusRequestEntityTooLarge, "file_too_large", "uploaded archive exceeds the maximum allowed size")
 			return
 		}
-		httpapi.WriteError(w, http.StatusBadRequest, "missing_file", "a file field is required")
+		// Only a body that parsed fine but lacks the part is the client's
+		// doing. Anything else (a boundary the proxy dropped, a stream cut
+		// mid-part, a temp-file spill that failed) is a transport problem
+		// worth the operator's attention, so the real error goes to the log
+		// while the client gets a code that does not blame a missing field.
+		if errors.Is(err, http.ErrMissingFile) {
+			httpapi.WriteError(w, http.StatusBadRequest, "missing_file", "a file field is required")
+			return
+		}
+		h.onError(fmt.Errorf("read upload body for slug %q: %w", slug, err))
+		httpapi.WriteError(w, http.StatusBadRequest, "unreadable_upload", "the request body could not be read as a file upload")
 		return
 	}
 	defer file.Close()

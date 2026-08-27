@@ -153,6 +153,43 @@
     </section>
   {{end}}
 
+  {{if .Data.HasMembers}}
+    <section class="section" aria-labelledby="members-heading">
+      <h2 class="section__title" id="members-heading">{{.Data.MembersTitle}}</h2>
+      {{if .Data.MembersSubtitle}}
+        <p class="section__subtitle">{{.Data.MembersSubtitle}}</p>
+      {{end}}
+
+      <ul class="members">
+        {{range .Data.Members}}
+          <li class="member">
+            {{if .Avatar.URL}}
+              <img class="member__avatar" src="{{.Avatar.URL}}" alt="{{.Avatar.Alt}}" loading="lazy" />
+            {{else}}
+              <div class="member__avatar member__avatar--empty" aria-hidden="true"></div>
+            {{end}}
+            <h3 class="member__name">{{.Name}}</h3>
+            {{/* The tags are what the panel collects roles into, so they read
+                 as the person's title and belong right under their name. */}}
+            {{if .Tags}}
+              <ul class="tags tags--centred">
+                {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
+              </ul>
+            {{end}}
+            {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
+            {{if .Links}}
+              <ul class="member__links">
+                {{range .Links}}
+                  <li><a href="{{.URL}}" rel="me noopener">{{.Label}}</a></li>
+                {{end}}
+              </ul>
+            {{end}}
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+
   {{if .Data.HasSales}}
     <section class="section" aria-labelledby="sales-heading">
       <h2 class="section__title" id="sales-heading">{{.Data.SalesTitle}}</h2>
@@ -229,40 +266,4 @@
     </div>
   {{end}}
 
-  {{if .Data.HasMembers}}
-    <section class="section" aria-labelledby="members-heading">
-      <h2 class="section__title" id="members-heading">{{.Data.MembersTitle}}</h2>
-      {{if .Data.MembersSubtitle}}
-        <p class="section__subtitle">{{.Data.MembersSubtitle}}</p>
-      {{end}}
-
-      <ul class="members">
-        {{range .Data.Members}}
-          <li class="member">
-            {{if .Avatar.URL}}
-              <img class="member__avatar" src="{{.Avatar.URL}}" alt="{{.Avatar.Alt}}" loading="lazy" />
-            {{else}}
-              <div class="member__avatar member__avatar--empty" aria-hidden="true"></div>
-            {{end}}
-            <h3 class="member__name">{{.Name}}</h3>
-            {{/* The tags are what the panel collects roles into, so they read
-                 as the person's title and belong right under their name. */}}
-            {{if .Tags}}
-              <ul class="tags tags--centred">
-                {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
-              </ul>
-            {{end}}
-            {{if .Bio}}<p class="member__bio">{{.Bio}}</p>{{end}}
-            {{if .Links}}
-              <ul class="member__links">
-                {{range .Links}}
-                  <li><a href="{{.URL}}" rel="me noopener">{{.Label}}</a></li>
-                {{end}}
-              </ul>
-            {{end}}
-          </li>
-        {{end}}
-      </ul>
-    </section>
-  {{end}}
 {{end}}

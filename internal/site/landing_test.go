@@ -155,6 +155,30 @@ func TestRenderLanding_ShowsTheConfiguredVision(t *testing.T) {
 	}
 }
 
+func TestRenderLanding_PlacesTheTeamImmediatelyAfterTheVision(t *testing.T) {
+	conn := setupTestDB(t)
+	if _, err := conn.Exec(
+		`INSERT INTO homepage_settings (key, value, value_type) VALUES
+		 ('vision_title', 'Our vision', 'text'),
+		 ('vision_content', 'A focused vision.', 'text');`,
+	); err != nil {
+		t.Fatalf("seed homepage vision: %v", err)
+	}
+	seedMember(t, conn, "A Brother", "Code", "Bio", true)
+	seedGame(t, conn, "For Sale", "for-sale", true, true, "")
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+	vision := strings.Index(html, `id=vision-heading`)
+	members := strings.Index(html, `id=members-heading`)
+	sales := strings.Index(html, `id=sales-heading`)
+	if vision == -1 || members == -1 || sales == -1 {
+		t.Fatalf("expected vision, members and sales sections in rendered landing page")
+	}
+	if !(vision < members && members < sales) {
+		t.Errorf("section order is vision=%d members=%d sales=%d; want vision, members, then later homepage sections", vision, members, sales)
+	}
+}
+
 func TestRenderLanding_UsesAltTextForCarouselImagesAndLabelsThumbnails(t *testing.T) {
 	conn := setupTestDB(t)
 	gameID := seedGame(t, conn, "Alt Game", "alt-game", true, false, "")

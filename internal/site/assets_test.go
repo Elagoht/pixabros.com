@@ -334,6 +334,26 @@ func TestBuild_CentresVisionAcrossTheContentColumn(t *testing.T) {
 	}
 }
 
+func TestBuild_PositionsTheDevlogSearchWithoutWrapperPadding(t *testing.T) {
+	dir := t.TempDir()
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	published, err := os.ReadFile(filepath.Join(dir, strings.TrimPrefix(bundle.URL("site.css"), "/assets/")))
+	if err != nil {
+		t.Fatalf("read published CSS: %v", err)
+	}
+	css := string(published)
+	if !strings.Contains(css, ".side-search{position:relative}") {
+		t.Error("the devlog search wrapper still adds spacing around its input")
+	}
+	if !strings.Contains(css, "top:62%") {
+		t.Error("the devlog search prompt is not positioned at 62%")
+	}
+}
+
 func siteCSS(t *testing.T) []byte {
 	t.Helper()
 	source, err := assetFS.ReadFile("assets/site.css")

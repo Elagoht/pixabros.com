@@ -2954,7 +2954,6 @@ a:hover {
 }
 
 .side-search {
-  padding: 8px;
   position: relative;
 }
 
@@ -2965,7 +2964,7 @@ a:hover {
   left: 16px;
   pointer-events: none;
   position: absolute;
-  top: 50%;
+  top: 62%;
   transform: translateY(-50%);
 }
 

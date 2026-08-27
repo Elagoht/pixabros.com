@@ -430,6 +430,121 @@ func TestCanonicalURL(t *testing.T) {
 	}
 }
 
+func TestPages_PublishEnglishAndDefaultAlternates(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSEOSettings(t, conn)
+	html, _, err := newTestSite(t, conn).renderLanding(PageLanding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(html)
+	for _, want := range []string{
+		`rel=alternate hreflang=en href=https://pixabros.com/`,
+		`rel=alternate hreflang=x-default href=https://pixabros.com/`,
+		`rel=alternate type=application/rss+xml title="Pixabros devlog" href=/rss.xml`,
+		`name=publisher content="Pixabros"`,
+		`name=application-name content="Pixabros"`,
+		`name=robots content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if strings.Contains(body, `hreflang="tr"`) {
+		t.Error("published a nonexistent Turkish alternate")
+	}
+}
+
+func TestPageWithoutCanonicalOmitsHreflang(t *testing.T) {
+	conn := setupTestDB(t)
+	html, _, err := newTestSite(t, conn).renderLanding(PageLanding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(html), `hreflang=`) {
+		t.Error("hreflang has no truthful absolute target")
+	}
+}
+
+func TestNormalizeKeywords(t *testing.T) {
+	cases := []struct {
+		name   string
+		values []string
+		want   string
+	}{
+		{
+			name:   "trims splits deduplicates and preserves first spelling",
+			values: []string{" Pixabros, Indie Games ", "indie games,  Devlog", "PIxABROS", ""},
+			want:   "Pixabros, Indie Games, Devlog",
+		},
+		{
+			name:   "removes blank values",
+			values: []string{" , ", "\t", "Games"},
+			want:   "Games",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeKeywords(tc.values...); got != tc.want {
+				t.Errorf("normalizeKeywords(%q) = %q, want %q", tc.values, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRenderGame_KeywordsIncludeGameContent(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSEOSettings(t, conn)
+	seedGame(t, conn, "Dungrid Tactics", "dungrid-tactics", true, false, "grid tactics, PvP")
+	if _, err := conn.Exec(`UPDATE games SET genre = 'Turn-based tactics' WHERE slug = 'dungrid-tactics'`); err != nil {
+		t.Fatal(err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "dungrid-tactics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keywords := keywordsOf(t, string(html))
+	for _, want := range []string{"Dungrid Tactics", "Turn-based tactics", "grid tactics", "PvP"} {
+		if !strings.Contains(keywords, want) {
+			t.Errorf("keywords missing game value %q", want)
+		}
+	}
+}
+
+func TestRenderDevlogPost_KeywordsDoNotLeakOtherPosts(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSEOSettings(t, conn)
+	seedPost(t, conn, "Published Post", "published-post", "Published body.", "2026-01-02", true, nil)
+	seedPost(t, conn, "Other Published Post", "other-published-post", "Other body.", "2026-01-03", true, nil)
+	seedPost(t, conn, "Draft Post", "draft-post", "Draft body.", "2026-01-04", false, nil)
+
+	html, _, err := newTestSite(t, conn).renderDevlogPost(DevlogPagePrefix + "published-post")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keywords := keywordsOf(t, string(html))
+	if !strings.Contains(keywords, "Published Post") {
+		t.Error("keywords missing the rendered post title")
+	}
+	for _, unwanted := range []string{"Other Published Post", "Draft Post"} {
+		if strings.Contains(keywords, unwanted) {
+			t.Errorf("keywords leaked %q from another post", unwanted)
+		}
+	}
+}
+
+var keywordsPattern = regexp.MustCompile(`<meta name=keywords content="([^"]*)"`)
+
+func keywordsOf(t *testing.T, html string) string {
+	t.Helper()
+	match := keywordsPattern.FindStringSubmatch(html)
+	if match == nil {
+		t.Fatal("the page has no keywords metadata")
+	}
+	return match[1]
+}
+
 // everyPage is the whole public site, so a rule meant for all of it is checked
 // against all of it rather than against whichever pages a test remembered.
 func everyPage(site *Site) map[string]func(string) ([]byte, []string, error) {

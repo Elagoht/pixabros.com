@@ -70,6 +70,7 @@ func (s *Site) renderAwards(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("awards.html", pageData{
 		Title:       "Awards and festival recognition for our games",
 		Description: "Awards and recognition for games made by " + chrome.Name + ".",
+		Keywords:    []string{"indie game awards", "game festival recognition"},
 		Path:        "/" + PageAwards,
 		Canonical:   canonicalURL(chrome.URL, PageAwards),
 		Schema:      awardsSchema(chrome, views),

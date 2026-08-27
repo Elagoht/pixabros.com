@@ -110,6 +110,7 @@ func (s *Site) NotFoundBody() ([]byte, error) {
 	return s.renderer.render("404.html", pageData{
 		Title:       "Page not found, but the games are still where they were",
 		Description: "The page you were looking for does not exist.",
+		Keywords:    []string{"indie games", "game studio"},
 		Site:        chrome,
 	})
 }

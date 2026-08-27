@@ -5,12 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{.Title}}</title>
     {{if .Description}}<meta name="description" content="{{.Description}}" />{{end}}
+    {{if .KeywordText}}<meta name="keywords" content="{{.KeywordText}}" />{{end}}
+    <meta name="author" content="{{.Site.Name}}" />
+    <meta name="publisher" content="{{.Site.Name}}" />
+    <meta name="application-name" content="{{.Site.Name}}" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="dark" />
 
     {{/* Self-referencing on every page: without it a query string or a
          trailing slash reads as a second copy of the same page. It is only
          omitted when the studio has not configured the site's address, since
          there would be nothing truthful to point at. */}}
-    {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}" />{{end}}
+    {{if .Canonical}}
+      <link rel="canonical" href="{{.Canonical}}" />
+      <link rel="alternate" hreflang="en" href="{{.Canonical}}" />
+      <link rel="alternate" hreflang="x-default" href="{{.Canonical}}" />
+    {{end}}
+    <link rel="alternate" type="application/rss+xml" title="{{.Site.Name}} devlog" href="/rss.xml" />
 
     <meta property="og:site_name" content="{{.Site.Name}}" />
     <meta property="og:title" content="{{.Title}}" />

@@ -24,6 +24,26 @@ const (
 	descriptionMaxLength = 155
 )
 
+// normalizeKeywords turns the page's curated terms into one metadata value.
+// Splitting and deduplicating here means page renderers can safely combine
+// author-entered comma-separated tags with their own fixed terms.
+func normalizeKeywords(values ...string) string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			keyword := strings.TrimSpace(part)
+			key := strings.ToLower(keyword)
+			if keyword == "" || seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, keyword)
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
 // buildTitle assembles a page's title.
 //
 // Always the site's name first, so a tab or a result row is recognisable before

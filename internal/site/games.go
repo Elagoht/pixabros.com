@@ -145,6 +145,7 @@ func (s *Site) renderArcade(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("arcade.html", pageData{
 		Title:       "Games you can play right here in your browser, and the rest",
 		Description: "Play our browser games and browse the rest of the catalogue.",
+		Keywords:    []string{"indie games", "browser games", "game catalogue"},
 		Path:        "/" + PageGames,
 		Canonical:   canonicalURL(chrome.URL, PageGames),
 		Schema:      arcadeSchema(chrome, page),
@@ -279,6 +280,7 @@ func (s *Site) renderGame(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("game.html", pageData{
 		Title:       gameSubject(game.Title, game.Genre, chrome.Name),
 		Description: fallback(game.ShortDescription, game.Title+" by "+chrome.Name+"."),
+		Keywords:    []string{"indie game", game.Title, game.Genre, game.Tags},
 		Path:        "/" + PageGames,
 		Canonical:   canonicalURL(chrome.URL, pageKey),
 		OGImage:     page.Cover.URL,

@@ -101,6 +101,8 @@ type pageData struct {
 	// no page can opt out of them.
 	Title       string
 	Description string
+	Keywords    []string
+	KeywordText string
 	// Path marks the current nav item and is not otherwise displayed.
 	Path string
 	CSS  string
@@ -211,6 +213,7 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 	// card's fallbacks hold for every page including ones added later.
 	data.Title = buildTitle(data.Site.Name, data.Site.Tagline, data.Title)
 	data.Description = buildDescription(data.Description, data.Site.Name, data.Site.Description)
+	data.KeywordText = normalizeKeywords(append(data.Keywords, data.Site.Name)...)
 	if data.OGType == "" {
 		data.OGType = "website"
 	}

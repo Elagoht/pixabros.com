@@ -116,6 +116,7 @@ func (s *Site) renderOffline(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("offline.html", pageData{
 		Title:       "You are offline",
 		Description: "This page has not been opened on this device before.",
+		Keywords:    []string{"offline games", "indie games"},
 		Canonical:   canonicalURL(chrome.URL, PageOffline),
 		Site:        chrome,
 	})

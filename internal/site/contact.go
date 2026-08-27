@@ -28,6 +28,7 @@ func (s *Site) renderContact(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("contact.html", pageData{
 		Title:       "Contact the studio about a game, a job or the press",
 		Description: "Get in touch with " + chrome.Name + ".",
+		Keywords:    []string{"contact game studio", "game press enquiries"},
 		Path:        "/" + PageContact,
 		Canonical:   canonicalURL(chrome.URL, PageContact),
 		Schema:      contactSchema(chrome),
@@ -55,6 +56,7 @@ func (s *Site) renderContactSent(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("contact-sent.html", pageData{
 		Title:       "Message sent, and we will get back to you shortly",
 		Description: "Your message has been sent.",
+		Keywords:    []string{"contact game studio"},
 		Path:        "/" + PageContact,
 		Canonical:   canonicalURL(chrome.URL, PageContactSent),
 		Site:        chrome,

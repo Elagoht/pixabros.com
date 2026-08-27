@@ -225,6 +225,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	html, err := s.renderer.render("landing.html", pageData{
 		Title:       "We Are Two Brothers Making Games Passionately",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
+		Keywords:    []string{"indie games", "game development", "two brother game studio"},
 		Path:        "/",
 		PageClass:   "landing",
 		Canonical:   canonicalURL(chrome.URL, ""),

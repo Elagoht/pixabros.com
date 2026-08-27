@@ -3,9 +3,11 @@
 ## Outcome
 
 Production already sends every tested non-canonical origin directly to
-`https://pixabros.com/` in one Cloudflare-served `301`. The canonical HTTPS URL
-returns `200` without a redirect. No application redirect is involved, so no Go
-redirect was added.
+`https://pixabros.com/` in one `301` observed through Cloudflare. The canonical
+HTTPS URL returns `200` without a redirect. The headers do not distinguish a
+Cloudflare-generated redirect from one proxied from upstream, so redirect
+ownership remains unconfirmed. No Go redirect was added because the live chain
+is already one hop.
 
 Three-run mobile Lighthouse medians were 1,965.8 ms FCP on production and
 1,800.7 ms on a local production binary. A second, unchanged control measured
@@ -103,23 +105,30 @@ url=https://pixabros.com/ redirects=1 total=0.763688
 ```
 
 Every non-canonical response has `Server: cloudflare`, a Cloudflare ray ID, and
-a `Location` that is already the final origin. Repository search found only the
-intentional favicon and post-submit application redirects:
+a `Location` that is already the final origin. Those headers prove Cloudflare
+served or proxied the response; they do not prove a Cloudflare Redirect Rule
+generated it. Repository search found only the intentional favicon and
+post-submit application redirects:
 
 ```bash
 rg -n 'http\.Redirect|StatusMovedPermanently|StatusPermanentRedirect|Location' \
   cmd internal deploy
 ```
 
-There is no host- or scheme-canonicalization redirect in the Go server or
-deployment scripts. Together, these are the available ownership signals that
-the canonical redirect is edge-controlled. No Cloudflare state was read or
-changed.
+There is no host- or scheme-canonicalization redirect in the checked Go server
+or deployment scripts. That narrows the repository-controlled possibilities,
+but it cannot exclude untracked origin-proxy or deployed configuration.
+Ownership is therefore inferred as external to the checked Go code but is not
+confirmed as Cloudflare-controlled. No Cloudflare, origin, or proxy
+configuration was read or changed.
 
-Operator action: none. Preserve the current single edge rule. If it ever needs
-to be recreated, use one rule matching HTTP or `www.pixabros.com` and send the
-request directly to `https://pixabros.com` while preserving path and query. Do
-not add a Go redirect or a second edge hop.
+Operator action: none. Preserve the observed one-hop behavior and perform a
+read-only Cloudflare/origin-proxy configuration inspection before assigning or
+changing ownership. If that inspection confirms a Cloudflare rule and it ever
+needs to be recreated, use one rule matching HTTP or `www.pixabros.com` and
+send the request directly to `https://pixabros.com` while preserving path and
+query. Do not add a Go redirect or a second hop while the live chain is already
+direct.
 
 ## Lighthouse methodology
 
@@ -134,15 +143,30 @@ Google Chrome for Testing 152.0.7977.64 (headless shell, macOS arm64)
 Node.js 22.15.1
 ```
 
-Chrome was provisioned with the official Puppeteer browsers utility. Lighthouse
-used its mobile form factor, simulated throttling, a 412 by 823 viewport at
-1.75 device scale, 150 ms RTT, 1,638.4 Kbit/s throughput, and 4x CPU slowdown.
-Lighthouse clears service workers and Cache Storage for each navigation.
-
-Production command, run three times per set:
+Chrome was provisioned with the official Puppeteer browsers utility. The actual
+temporary measurement root was `/tmp/pixabros-task6.hkwSqJ`; the JSON traces and
+downloaded browser were not added to the repository and are not durable task
+artifacts. Setup was:
 
 ```bash
-export CHROME_PATH="$MEASURE_DIR/browser/chrome-headless-shell/.../chrome-headless-shell"
+MEASURE_DIR=$(mktemp -d /tmp/pixabros-task6.XXXXXX)
+npx --yes @puppeteer/browsers@latest install \
+  chrome-headless-shell@stable --path "$MEASURE_DIR/browser"
+
+# stable resolved to 152.0.7977.64 during this capture
+export CHROME_PATH="$MEASURE_DIR/browser/chrome-headless-shell/\
+mac_arm-152.0.7977.64/chrome-headless-shell-mac-arm64/chrome-headless-shell"
+```
+
+For a version-identical rerun, provision
+`chrome-headless-shell@152.0.7977.64` rather than `@stable`. Lighthouse used its
+mobile form factor, simulated throttling, a 412 by 823 viewport at 1.75 device
+scale, 150 ms RTT, 1,638.4 Kbit/s throughput, and 4x CPU slowdown. Lighthouse
+clears service workers and Cache Storage for each navigation.
+
+Baseline production command:
+
+```bash
 for run in 1 2 3; do
   npx --yes lighthouse@12.8.2 https://pixabros.com/ \
     --only-categories=performance \
@@ -155,6 +179,13 @@ for run in 1 2 3; do
     --quiet
 done
 ```
+
+The unchanged production control used the same command with
+`--output-path="$MEASURE_DIR/control-production-$run.json"`. The local baseline
+and control substituted `http://127.0.0.1:18186/` and used
+`$MEASURE_DIR/local-$run.json` and
+`$MEASURE_DIR/control-local-$run.json` respectively. The four sets therefore
+had distinct paths and did not overwrite one another.
 
 The local binary was built from commit `4fe6929` and run on a disposable copy
 of the existing local data, so the source database was not modified:
@@ -171,8 +202,9 @@ PIXABROS_DATA_DIR="$MEASURE_DIR/local-data" \
 The same Lighthouse flags were then used with
 `http://127.0.0.1:18186/`. The local data had zero games, members, posts, and
 awards, so its HTML was 3,122 bytes versus 44,617 bytes in production. The
-local run is useful for origin response cost and shared asset behavior, but it
-is not a strict page-content comparison.
+local run records an empty-data application baseline and shared asset behavior;
+it neither isolates production origin cost nor provides a strict page-content
+comparison.
 
 Measurement windows:
 
@@ -280,26 +312,30 @@ Headers were captured with cold GETs at `2026-08-27T17:00:21Z`:
 | LCP media logo | `max-age=14400` | `HIT` |
 
 The content-hashed repository assets have the intended one-year immutable
-cache. The four-hour media TTL is an edge policy and Lighthouse estimates zero
-FCP savings from changing it (50 ms LCP on a repeat visit). It is not an FCP
-remediation for this task.
+cache. The four-hour media TTL is not set by the checked Go media handler, but
+its external owner is unconfirmed. Lighthouse estimates zero FCP savings from
+changing it (50 ms LCP on a repeat visit), so it is not an FCP remediation for
+this task.
 
-### Application versus production cost
+### Local versus production response comparison
 
 The median Lighthouse document-response audit was 183.446 ms in production and
-0.238 ms locally; the unchanged control was 187.409 ms and 0.223 ms. The local
-binary responds quickly, while TLS, network, Cloudflare, and the production
-origin path account for the observable difference. Lighthouse still scores the
-production response-time audit as passing. No repository server bottleneck was
-demonstrated.
+0.238 ms locally; the unchanged control was 187.409 ms and 0.223 ms. The two
+targets differ in page content and database state as well as TLS, network,
+Cloudflare, HTTP protocol/compression, and the deployed-origin path. The
+measurement cannot assign the delta among those causes. It only establishes
+the empty-data local baseline and the live production baseline under the stated
+conditions. Lighthouse still scores the production response-time audit as
+passing, and no comparable evidence demonstrates a repository server
+bottleneck.
 
 ## Remediation decision
 
 No RED/GREEN code cycle was performed because no performance code was changed.
 The evidence boundary is:
 
-- canonicalization is already a one-hop Cloudflare redirect and needs no Go
-  handler;
+- canonicalization is already one hop as observed through Cloudflare; its exact
+  generator is unconfirmed, and the checked Go code needs no redirect change;
 - the required stylesheet is render-blocking, but the available local trace is
   not transport- or content-comparable, so critical-CSS or asynchronous-CSS
   work cannot be credited with a measured improvement;

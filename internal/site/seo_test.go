@@ -60,7 +60,7 @@ func TestRenderLanding_UsesAConciseSearchTitle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderLanding() error = %v", err)
 	}
-	if got := titleOf(t, string(html)); got != "Pixabros | We Are Two Brothers Making Games" {
+	if got := titleOf(t, string(html)); got != "Pixabros | We Are Two Brothers Making Games Passionately" {
 		t.Errorf("landing title = %q, want the concise homepage title", got)
 	}
 }

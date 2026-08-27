@@ -223,7 +223,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	page.HasAchievements = len(page.Achievements) > 0
 
 	html, err := s.renderer.render("landing.html", pageData{
-		Title:       "We Are Two Brothers Making Games",
+		Title:       "We Are Two Brothers Making Games Passionately",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
 		Path:        "/",
 		PageClass:   "landing",

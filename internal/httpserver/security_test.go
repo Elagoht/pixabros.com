@@ -62,18 +62,28 @@ func TestRobotsPolicyFor_PicksThePolicyForTheRoute(t *testing.T) {
 		"/":                        wantIndexRobots,
 		"/games/dungrid-tactics":   wantIndexRobots,
 		"/devlog/shipping-dungrid": wantIndexRobots,
+		"/apiary":                  wantIndexRobots,
+		"/playground":              wantIndexRobots,
+		"/I-am-a-pixabrother/":     wantIndexRobots,
+		"/assets2/site.css":        wantIndexRobots,
+		"/media-library/cover":     wantIndexRobots,
 
-		adminUIPrefix:            wantNoindexRobots,
-		adminUIPrefix + "games":  wantNoindexRobots,
-		"/api/admin/games":       wantNoindexRobots,
-		"/api/contact":           wantNoindexRobots,
-		"/play/dungrid-tactics/": wantNoindexRobots,
-		"/offline":               wantNoindexRobots,
-		"/contact/sent":          wantNoindexRobots,
-		"/sw.js":                 wantNoindexRobots,
-		"/api/shell":             wantNoindexRobots,
+		strings.TrimSuffix(adminUIPrefix, "/"): wantNoindexRobots,
+		adminUIPrefix:                          wantNoindexRobots,
+		adminUIPrefix + "games":                wantNoindexRobots,
+		"/api":                                 wantNoindexRobots,
+		"/api/admin/games":                     wantNoindexRobots,
+		"/api/contact":                         wantNoindexRobots,
+		"/play":                                wantNoindexRobots,
+		"/play/dungrid-tactics/":               wantNoindexRobots,
+		"/offline":                             wantNoindexRobots,
+		"/contact/sent":                        wantNoindexRobots,
+		"/sw.js":                               wantNoindexRobots,
+		"/api/shell":                           wantNoindexRobots,
 
+		"/assets":                    "",
 		"/assets/site-abc123.css":    "",
+		"/media":                     "",
 		"/media/og_generated/x.webp": "",
 		"/manifest.webmanifest":      "",
 		"/robots.txt":                "",
@@ -374,7 +384,134 @@ func newRobotsTestServer(t *testing.T) *httptest.Server {
 var (
 	errHijack = errors.New("hijack reached underlying writer")
 	errPush   = errors.New("push reached underlying writer")
+	errRead   = errors.New("read failed")
 )
+
+// statusRecordingWriter models net/http's commitment rules closely enough to
+// expose middleware mistakes that httptest.ResponseRecorder cannot: 1xx
+// responses (except 101) are informational and may precede a final response.
+type statusRecordingWriter struct {
+	header   http.Header
+	statuses []int
+	final    int
+	body     strings.Builder
+}
+
+func (w *statusRecordingWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+	return w.header
+}
+
+func (w *statusRecordingWriter) WriteHeader(status int) {
+	if w.final != 0 {
+		return
+	}
+	if status < 100 || status > 999 {
+		panic("invalid status")
+	}
+	w.statuses = append(w.statuses, status)
+	if status < 100 || status > 199 || status == http.StatusSwitchingProtocols {
+		w.final = status
+	}
+}
+
+func (w *statusRecordingWriter) Write(body []byte) (int, error) {
+	if w.final == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.body.Write(body)
+}
+
+type statusReaderFromWriter struct{ *statusRecordingWriter }
+
+func (w *statusReaderFromWriter) ReadFrom(src io.Reader) (int64, error) {
+	return io.Copy(struct{ io.Writer }{w.statusRecordingWriter}, src)
+}
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, errRead }
+
+func TestWithSecurityHeaders_InformationalStatusCanBeFollowedBy404(t *testing.T) {
+	underlying := &statusRecordingWriter{}
+	handler := withSecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusEarlyHints)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	handler.ServeHTTP(underlying, httptest.NewRequest(http.MethodGet, "/missing", nil))
+
+	wantStatuses := []int{http.StatusEarlyHints, http.StatusNotFound}
+	if got := underlying.statuses; len(got) != len(wantStatuses) || got[0] != wantStatuses[0] || got[1] != wantStatuses[1] {
+		t.Errorf("statuses = %v, want %v", got, wantStatuses)
+	}
+	if got := underlying.Header().Get("X-Robots-Tag"); got != wantNoindexRobots {
+		t.Errorf("X-Robots-Tag = %q, want %q", got, wantNoindexRobots)
+	}
+}
+
+func TestWithSecurityHeaders_InvalidStatusDoesNotCommitWrapper(t *testing.T) {
+	underlying := &statusRecordingWriter{}
+	handler := withSecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		panicked := false
+		func() {
+			defer func() { panicked = recover() != nil }()
+			w.WriteHeader(99)
+		}()
+		if !panicked {
+			t.Error("WriteHeader(99) did not panic")
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	handler.ServeHTTP(underlying, httptest.NewRequest(http.MethodGet, "/missing", nil))
+
+	if underlying.final != http.StatusNotFound {
+		t.Errorf("final status = %d, want %d", underlying.final, http.StatusNotFound)
+	}
+	if got := underlying.Header().Get("X-Robots-Tag"); got != wantNoindexRobots {
+		t.Errorf("X-Robots-Tag = %q, want %q", got, wantNoindexRobots)
+	}
+}
+
+func TestWithSecurityHeaders_EmptyOrFailedReadFromDoesNotCommitWrapper(t *testing.T) {
+	tests := []struct {
+		name    string
+		reader  io.Reader
+		wantErr error
+	}{
+		{name: "empty EOF", reader: strings.NewReader("")},
+		{name: "error before bytes", reader: failingReader{}, wantErr: errRead},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			underlying := &statusReaderFromWriter{statusRecordingWriter: &statusRecordingWriter{}}
+			handler := withSecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				readerFrom := w.(io.ReaderFrom)
+				n, err := readerFrom.ReadFrom(tc.reader)
+				if n != 0 {
+					t.Errorf("ReadFrom() bytes = %d, want 0", n)
+				}
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("ReadFrom() error = %v, want %v", err, tc.wantErr)
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}))
+
+			handler.ServeHTTP(underlying, httptest.NewRequest(http.MethodGet, "/missing", nil))
+
+			if underlying.final != http.StatusNotFound {
+				t.Errorf("final status = %d, want %d", underlying.final, http.StatusNotFound)
+			}
+			if got := underlying.Header().Get("X-Robots-Tag"); got != wantNoindexRobots {
+				t.Errorf("X-Robots-Tag = %q, want %q", got, wantNoindexRobots)
+			}
+		})
+	}
+}
 
 type optionalResponseWriter struct {
 	header  http.Header
@@ -406,6 +543,124 @@ func (w *optionalResponseWriter) ReadFrom(src io.Reader) (int64, error) {
 }
 
 func (w *optionalResponseWriter) Push(string, *http.PushOptions) error { return errPush }
+
+const (
+	testHasFlusher = 1 << iota
+	testHasHijacker
+	testHasReaderFrom
+	testHasPusher
+)
+
+func optionalInterfaceMask(w http.ResponseWriter) int {
+	mask := 0
+	if _, ok := w.(http.Flusher); ok {
+		mask |= testHasFlusher
+	}
+	if _, ok := w.(http.Hijacker); ok {
+		mask |= testHasHijacker
+	}
+	if _, ok := w.(io.ReaderFrom); ok {
+		mask |= testHasReaderFrom
+	}
+	if _, ok := w.(http.Pusher); ok {
+		mask |= testHasPusher
+	}
+	return mask
+}
+
+func TestWrapRobotsResponseWriter_PreservesAllOptionalInterfaceMasks(t *testing.T) {
+	base := &plainResponseWriter{}
+	all := &optionalResponseWriter{}
+	tests := []struct {
+		name       string
+		mask       int
+		underlying http.ResponseWriter
+	}{
+		{name: "none", underlying: base},
+		{name: "flusher", mask: testHasFlusher, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+		}{base, all}},
+		{name: "hijacker", mask: testHasHijacker, underlying: struct {
+			http.ResponseWriter
+			http.Hijacker
+		}{base, all}},
+		{name: "reader-from", mask: testHasReaderFrom, underlying: struct {
+			http.ResponseWriter
+			io.ReaderFrom
+		}{base, all}},
+		{name: "pusher", mask: testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Pusher
+		}{base, all}},
+		{name: "flusher-hijacker", mask: testHasFlusher | testHasHijacker, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			http.Hijacker
+		}{base, all, all}},
+		{name: "flusher-reader-from", mask: testHasFlusher | testHasReaderFrom, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			io.ReaderFrom
+		}{base, all, all}},
+		{name: "flusher-pusher", mask: testHasFlusher | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			http.Pusher
+		}{base, all, all}},
+		{name: "hijacker-reader-from", mask: testHasHijacker | testHasReaderFrom, underlying: struct {
+			http.ResponseWriter
+			http.Hijacker
+			io.ReaderFrom
+		}{base, all, all}},
+		{name: "hijacker-pusher", mask: testHasHijacker | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Hijacker
+			http.Pusher
+		}{base, all, all}},
+		{name: "reader-from-pusher", mask: testHasReaderFrom | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			io.ReaderFrom
+			http.Pusher
+		}{base, all, all}},
+		{name: "flusher-hijacker-reader-from", mask: testHasFlusher | testHasHijacker | testHasReaderFrom, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			http.Hijacker
+			io.ReaderFrom
+		}{base, all, all, all}},
+		{name: "flusher-hijacker-pusher", mask: testHasFlusher | testHasHijacker | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			http.Hijacker
+			http.Pusher
+		}{base, all, all, all}},
+		{name: "flusher-reader-from-pusher", mask: testHasFlusher | testHasReaderFrom | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Flusher
+			io.ReaderFrom
+			http.Pusher
+		}{base, all, all, all}},
+		{name: "hijacker-reader-from-pusher", mask: testHasHijacker | testHasReaderFrom | testHasPusher, underlying: struct {
+			http.ResponseWriter
+			http.Hijacker
+			io.ReaderFrom
+			http.Pusher
+		}{base, all, all, all}},
+		{name: "all", mask: testHasFlusher | testHasHijacker | testHasReaderFrom | testHasPusher, underlying: all},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := optionalInterfaceMask(tc.underlying); got != tc.mask {
+				t.Fatalf("test writer mask = %04b, want %04b", got, tc.mask)
+			}
+			if got := optionalInterfaceMask(wrapRobotsResponseWriter(tc.underlying)); got != tc.mask {
+				t.Errorf("wrapped writer mask = %04b, want %04b", got, tc.mask)
+			}
+		})
+	}
+}
 
 func TestWithSecurityHeaders_PreservesOptionalResponseWriterBehavior(t *testing.T) {
 	underlying := &optionalResponseWriter{}

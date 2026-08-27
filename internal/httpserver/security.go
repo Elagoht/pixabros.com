@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -109,11 +110,17 @@ func (w *robotsResponseWriter) WriteHeader(status int) {
 	if w.wroteHeader {
 		return
 	}
-	w.wroteHeader = true
+	if status < 100 || status > 999 {
+		panic(fmt.Sprintf("invalid WriteHeader code %v", status))
+	}
 	if status == http.StatusNotFound {
 		w.Header().Set("X-Robots-Tag", noindexRobots)
 	}
 	w.ResponseWriter.WriteHeader(status)
+	if status >= 100 && status <= 199 && status != http.StatusSwitchingProtocols {
+		return
+	}
+	w.wroteHeader = true
 }
 
 func (w *robotsResponseWriter) Write(body []byte) (int, error) {
@@ -149,10 +156,11 @@ type robotsReaderFrom struct{ w *robotsResponseWriter }
 
 func (r robotsReaderFrom) ReadFrom(src io.Reader) (int64, error) {
 	w := r.w
-	if !w.wroteHeader {
-		w.WriteHeader(http.StatusOK)
+	n, err := w.ResponseWriter.(io.ReaderFrom).ReadFrom(src)
+	if n > 0 {
+		w.wroteHeader = true
 	}
-	return w.ResponseWriter.(io.ReaderFrom).ReadFrom(src)
+	return n, err
 }
 
 type robotsPusher struct{ w *robotsResponseWriter }

@@ -3,6 +3,8 @@ package httpserver
 import (
 	"archive/zip"
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -17,14 +19,294 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"pixabros/internal/auth"
+	"pixabros/internal/awards"
+	"pixabros/internal/contact"
 	"pixabros/internal/db"
+	"pixabros/internal/devlog"
 	"pixabros/internal/games"
 	"pixabros/internal/media"
+	"pixabros/internal/members"
 	"pixabros/internal/render"
+	"pixabros/internal/settings"
+	"pixabros/internal/site"
+	"pixabros/internal/stats"
 	"pixabros/internal/storage"
 )
+
+type discoveryTestSystem struct {
+	db        *sql.DB
+	server    *httptest.Server
+	store     *render.Store
+	worker    *render.Worker
+	reconcile *site.Reconciler
+	posts     *devlog.Repo
+	settings  *settings.Repo
+	post      devlog.Post
+}
+
+type discoveryResponse struct {
+	body        string
+	contentType string
+	etag        string
+}
+
+func newDiscoveryTestSystem(t *testing.T) *discoveryTestSystem {
+	t.Helper()
+
+	dataDir := t.TempDir()
+	conn, err := db.Open(filepath.Join(dataDir, "test.db"))
+	if err != nil {
+		t.Fatalf("db.Open() error = %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("db.Migrate() error = %v", err)
+	}
+
+	settingsRepo := settings.NewRepo(conn)
+	siteGroup, err := settings.LookupGroup("site")
+	if err != nil {
+		t.Fatalf("LookupGroup(site) error = %v", err)
+	}
+	if err := settingsRepo.Replace(siteGroup, map[string]string{
+		"site_name":       "Pixabros Integration",
+		"org_description": "An integration-test studio.",
+		"site_url":        "https://old.example",
+	}); err != nil {
+		t.Fatalf("seed site settings: %v", err)
+	}
+
+	postsRepo := devlog.NewRepo(conn)
+	post, err := postsRepo.Create(devlog.CreateInput{
+		Title:           "First Post",
+		ContentMarkdown: "The original integration-test post.",
+		IsPublished:     true,
+		PublishedAt:     "2026-08-20",
+	})
+	if err != nil {
+		t.Fatalf("seed published post: %v", err)
+	}
+
+	assetsDir := filepath.Join(dataDir, "assets")
+	bundle, err := site.Build(assetsDir)
+	if err != nil {
+		t.Fatalf("site.Build() error = %v", err)
+	}
+	publicSite, err := site.New(conn, bundle)
+	if err != nil {
+		t.Fatalf("site.New() error = %v", err)
+	}
+
+	registry := render.NewRegistry()
+	publicSite.Register(registry)
+	renderedFiles := storage.NewLocalDisk(filepath.Join(dataDir, "rendered-store"), "/rendered")
+	store := render.NewStore(conn, renderedFiles)
+	reconciler := site.NewReconciler(publicSite.DesiredPages, store, registry)
+	if _, _, err := reconciler.RefreshAll(); err != nil {
+		t.Fatalf("startup RefreshAll() error = %v", err)
+	}
+
+	worker := render.NewWorker(conn, registry, store, time.Millisecond)
+	mediaRepo := media.NewRepo(conn)
+	mediaFiles := storage.NewLocalDisk(dataDir, "")
+	server := httptest.NewServer(New(Dependencies{
+		Admins:     auth.NewAdminRepo(conn),
+		Sessions:   auth.NewSessionStore(conn),
+		Store:      store,
+		Files:      renderedFiles,
+		DB:         conn,
+		Games:      games.NewRepo(conn),
+		Members:    members.NewRepo(conn),
+		Awards:     awards.NewRepo(conn),
+		Devlog:     postsRepo,
+		Contact:    contact.NewRepo(conn),
+		Stats:      stats.NewRepo(conn),
+		Settings:   settingsRepo,
+		Media:      mediaRepo,
+		MediaFiles: mediaFiles,
+		MediaDir:   filepath.Join(dataDir, "media"),
+		PlayDir:    filepath.Join(dataDir, "games"),
+		AssetsDir:  assetsDir,
+	}))
+	t.Cleanup(server.Close)
+
+	return &discoveryTestSystem{
+		db:        conn,
+		server:    server,
+		store:     store,
+		worker:    worker,
+		reconcile: reconciler,
+		posts:     postsRepo,
+		settings:  settingsRepo,
+		post:      post,
+	}
+}
+
+func (s *discoveryTestSystem) get(t *testing.T, pageKey string) discoveryResponse {
+	t.Helper()
+	resp, err := s.server.Client().Get(s.server.URL + "/" + pageKey)
+	if err != nil {
+		t.Fatalf("GET /%s error = %v", pageKey, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read GET /%s body: %v", pageKey, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /%s status = %d, want %d; body=%s", pageKey, resp.StatusCode, http.StatusOK, body)
+	}
+	return discoveryResponse{
+		body:        string(body),
+		contentType: resp.Header.Get("Content-Type"),
+		etag:        resp.Header.Get("ETag"),
+	}
+}
+
+func (s *discoveryTestSystem) enqueueAndDrain(t *testing.T, tag string) {
+	t.Helper()
+	if err := render.EnqueueRegen(s.db, tag); err != nil {
+		t.Fatalf("EnqueueRegen(%q) error = %v", tag, err)
+	}
+	processed, err := s.worker.ProcessOnce(context.Background())
+	if err != nil {
+		t.Fatalf("ProcessOnce(%q) error = %v", tag, err)
+	}
+	if processed != 1 {
+		t.Fatalf("ProcessOnce(%q) processed = %d, want 1", tag, processed)
+	}
+	if _, _, err := s.reconcile.Reconcile(); err != nil {
+		t.Fatalf("Reconcile() after %q error = %v", tag, err)
+	}
+	var status string
+	if err := s.db.QueryRow(
+		`SELECT status FROM regen_jobs WHERE tag = ? ORDER BY id DESC LIMIT 1;`, tag,
+	).Scan(&status); err != nil {
+		t.Fatalf("read %q job status: %v", tag, err)
+	}
+	if status != "done" {
+		t.Fatalf("%q job status = %q, want done", tag, status)
+	}
+}
+
+func TestDiscoveryResources_EndToEnd(t *testing.T) {
+	system := newDiscoveryTestSystem(t)
+	tests := []struct {
+		key         string
+		contentType string
+		contains    []string
+	}{
+		{
+			key:         site.PageRobots,
+			contentType: "text/plain; charset=utf-8",
+			contains:    []string{"User-agent: *\n", "Sitemap: https://old.example/sitemap.xml\n"},
+		},
+		{
+			key:         site.PageLLMS,
+			contentType: "text/plain; charset=utf-8",
+			contains:    []string{"# Pixabros Integration\n", "[First Post](https://old.example/devlog/first-post)"},
+		},
+		{
+			key:         site.PageSitemap,
+			contentType: "application/xml; charset=utf-8",
+			contains:    []string{`<?xml version="1.0" encoding="UTF-8"?>`, `<loc>https://old.example/devlog/first-post</loc>`},
+		},
+		{
+			key:         site.PageRSS,
+			contentType: "application/rss+xml; charset=utf-8",
+			contains:    []string{`<rss version="2.0">`, `<title>First Post</title>`, `<link>https://old.example/devlog/first-post</link>`},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.key, func(t *testing.T) {
+			exists, err := system.store.HasPage(test.key)
+			if err != nil {
+				t.Fatalf("HasPage(%q) error = %v", test.key, err)
+			}
+			if !exists {
+				t.Fatalf("startup refresh did not persist %q", test.key)
+			}
+
+			got := system.get(t, test.key)
+			if got.contentType != test.contentType {
+				t.Errorf("GET /%s Content-Type = %q, want %q", test.key, got.contentType, test.contentType)
+			}
+			if got.etag == "" {
+				t.Errorf("GET /%s returned no ETag", test.key)
+			}
+			for _, fragment := range test.contains {
+				if !strings.Contains(got.body, fragment) {
+					t.Errorf("GET /%s body missing %q:\n%s", test.key, fragment, got.body)
+				}
+			}
+		})
+	}
+}
+
+func TestDiscoveryResources_Regenerate(t *testing.T) {
+	system := newDiscoveryTestSystem(t)
+	keys := []string{site.PageRobots, site.PageLLMS, site.PageSitemap, site.PageRSS}
+	beforePostUpdate := make(map[string]discoveryResponse, len(keys))
+	for _, key := range keys {
+		beforePostUpdate[key] = system.get(t, key)
+	}
+
+	updated, err := system.posts.Update(system.post.ID, devlog.UpdateInput{
+		Title:           "Renamed Post",
+		ContentMarkdown: "The rewritten integration-test post.",
+		IsPublished:     true,
+		PublishedAt:     system.post.PublishedAt,
+	})
+	if err != nil {
+		t.Fatalf("update published post: %v", err)
+	}
+	system.enqueueAndDrain(t, "devlog:list")
+
+	afterPostUpdate := make(map[string]discoveryResponse, len(keys))
+	for _, key := range keys {
+		afterPostUpdate[key] = system.get(t, key)
+	}
+	if afterPostUpdate[site.PageRobots].etag != beforePostUpdate[site.PageRobots].etag {
+		t.Error("robots.txt ETag changed after only a published post changed")
+	}
+	for _, key := range []string{site.PageLLMS, site.PageSitemap, site.PageRSS} {
+		if afterPostUpdate[key].etag == beforePostUpdate[key].etag {
+			t.Errorf("%s ETag did not change after a published post changed", key)
+		}
+		if !strings.Contains(afterPostUpdate[key].body, "https://old.example/devlog/"+updated.Slug) {
+			t.Errorf("%s did not regenerate with the renamed post URL:\n%s", key, afterPostUpdate[key].body)
+		}
+		if strings.Contains(afterPostUpdate[key].body, "https://old.example/devlog/"+system.post.Slug) {
+			t.Errorf("%s retained the old post URL after regeneration:\n%s", key, afterPostUpdate[key].body)
+		}
+	}
+
+	siteGroup, err := settings.LookupGroup("site")
+	if err != nil {
+		t.Fatalf("LookupGroup(site) error = %v", err)
+	}
+	if err := system.settings.Replace(siteGroup, map[string]string{"site_url": "https://new.example"}); err != nil {
+		t.Fatalf("update site_url: %v", err)
+	}
+	system.enqueueAndDrain(t, "site_settings")
+
+	for _, key := range keys {
+		afterSiteURLUpdate := system.get(t, key)
+		if afterSiteURLUpdate.etag == afterPostUpdate[key].etag {
+			t.Errorf("%s ETag did not change after site_url changed", key)
+		}
+		if !strings.Contains(afterSiteURLUpdate.body, "https://new.example") {
+			t.Errorf("%s did not regenerate with the new absolute origin:\n%s", key, afterSiteURLUpdate.body)
+		}
+		if strings.Contains(afterSiteURLUpdate.body, "https://old.example") {
+			t.Errorf("%s retained the old absolute origin after regeneration:\n%s", key, afterSiteURLUpdate.body)
+		}
+	}
+}
 
 func TestRouter_LoginAndSingleOriginServing(t *testing.T) {
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))

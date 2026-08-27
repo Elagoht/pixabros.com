@@ -118,6 +118,7 @@ func (s *Site) renderOffline(pageKey string) ([]byte, []string, error) {
 		Description: "This page has not been opened on this device before.",
 		Keywords:    []string{"offline games", "indie games"},
 		Canonical:   canonicalURL(chrome.URL, PageOffline),
+		Robots:      RobotsNoindex,
 		Site:        chrome,
 	})
 	if err != nil {

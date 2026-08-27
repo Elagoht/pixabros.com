@@ -59,6 +59,7 @@ func (s *Site) renderContactSent(pageKey string) ([]byte, []string, error) {
 		Keywords:    []string{"contact game studio"},
 		Path:        "/" + PageContact,
 		Canonical:   canonicalURL(chrome.URL, PageContactSent),
+		Robots:      RobotsNoindex,
 		Site:        chrome,
 	})
 	if err != nil {

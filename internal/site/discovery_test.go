@@ -361,3 +361,88 @@ func TestRenderLLMS_LinksPublishedContentAndFeedsOnly(t *testing.T) {
 		}
 	}
 }
+
+// robots.txt and the X-Robots-Tag header are two documents stating one policy,
+// so both are written from crawlerExclusions: everything on the list is
+// disallowed here, and nothing off it is.
+func TestRobotsTxt_DisallowsExactlyTheCrawlerExclusions(t *testing.T) {
+	conn := setupTestDB(t)
+	site := newTestSite(t, conn)
+
+	body, _, err := site.renderRobots(PageRobots)
+	if err != nil {
+		t.Fatalf("renderRobots() error = %v", err)
+	}
+
+	var disallowed []string
+	for _, line := range strings.Split(string(body), "\n") {
+		if path, ok := strings.CutPrefix(line, "Disallow: "); ok {
+			disallowed = append(disallowed, path)
+		}
+	}
+	if want := CrawlerExclusions(); !reflect.DeepEqual(disallowed, want) {
+		t.Errorf("robots.txt disallows %v, want exactly %v", disallowed, want)
+	}
+}
+
+// The truncation is what nearly every feed item goes through, so its
+// boundaries are spelled out: the cut is rune-safe, backs up to a whole word
+// when one is close enough, and never lands mid-character.
+func TestPlainTextSummary_TruncatesOnRuneBoundaries(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		max  int
+		want string
+	}{
+		{
+			name: "shorter than the limit is untouched",
+			body: "A short body.",
+			max:  rssSummaryMaxRunes,
+			want: "A short body.",
+		},
+		{
+			name: "exactly at the limit is untouched",
+			body: strings.Repeat("a", rssSummaryMaxRunes),
+			max:  rssSummaryMaxRunes,
+			want: strings.Repeat("a", rssSummaryMaxRunes),
+		},
+		{
+			name: "one rune over is cut to the limit with an ellipsis",
+			body: strings.Repeat("a", rssSummaryMaxRunes+1),
+			max:  rssSummaryMaxRunes,
+			want: strings.Repeat("a", rssSummaryMaxRunes-1) + "…",
+		},
+		{
+			name: "the cut backs up to a whole word",
+			body: "one two threefourfive",
+			max:  10,
+			want: "one two…",
+		},
+		{
+			name: "a space in the far half is not worth backing up to",
+			body: "a bbbbbbbbbbbbbb",
+			max:  10,
+			want: "a bbbbbbb…",
+		},
+		{
+			name: "multibyte runes are counted, not bytes",
+			body: "一二三四五六七八",
+			max:  5,
+			want: "一二三四…",
+		},
+		{
+			name: "no limit means no cut",
+			body: strings.Repeat("a", rssSummaryMaxRunes*2),
+			max:  0,
+			want: strings.Repeat("a", rssSummaryMaxRunes*2),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := plainTextSummary(tt.body, tt.max); got != tt.want {
+				t.Errorf("plainTextSummary cut wrong:\ngot  %q\nwant %q", got, tt.want)
+			}
+		})
+	}
+}

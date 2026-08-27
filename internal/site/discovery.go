@@ -14,7 +14,34 @@ const (
 	PageLLMS    = "llms.txt"
 	PageSitemap = "sitemap.xml"
 	PageRSS     = "rss.xml"
+
+	// AdminUIPrefix is where the admin panel is mounted. It lives here rather
+	// than with the routes so the crawler policy below can name it, and the
+	// panel's own routes can quote it from there.
+	AdminUIPrefix = "/I-am-a-pixabro/"
 )
+
+// crawlerExclusions are the route families the crawler policy keeps out of the
+// index. One list feeds both documents that express it -- robots.txt disallows
+// each entry, and the HTTP layer answers the same paths with noindex -- so the
+// two cannot drift apart. A path disallowed in robots.txt but served without
+// noindex reads as a secret and is indexed anyway.
+//
+// An entry ending in "/" names a family and matches its bare form too; one
+// without names a single page.
+var crawlerExclusions = []string{
+	AdminUIPrefix,
+	"/api/",
+	"/play/",
+	"/" + PageOffline,
+	"/" + PageContactSent,
+}
+
+// CrawlerExclusions returns the paths the crawler policy keeps out of the
+// index. The HTTP layer walks the same list robots.txt was written from.
+func CrawlerExclusions() []string {
+	return append([]string(nil), crawlerExclusions...)
+}
 
 const rssSummaryMaxRunes = 300
 
@@ -40,15 +67,11 @@ func (s *Site) renderRobots(_ string) ([]byte, []string, error) {
 	}
 
 	var body strings.Builder
-	for _, line := range []string{
-		"User-agent: *",
-		"Allow: /",
-		"Disallow: /I-am-a-pixabro/",
-		"Disallow: /api/",
-		"Disallow: /play/",
-		"Disallow: /offline",
-		"Disallow: /contact/sent",
-	} {
+	lines := []string{"User-agent: *", "Allow: /"}
+	for _, path := range crawlerExclusions {
+		lines = append(lines, "Disallow: "+path)
+	}
+	for _, line := range lines {
 		body.WriteString(line)
 		body.WriteByte('\n')
 	}

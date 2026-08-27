@@ -614,3 +614,57 @@ func TestPages_DescriptionsObeyTheLengthRule(t *testing.T) {
 		}
 	}
 }
+
+// A document states its crawler policy twice -- in its head and in the
+// X-Robots-Tag header -- and the two statements must agree. The head is what a
+// meta-only consumer reads, so a page the HTTP layer noindexes has to say so
+// in its own head as well.
+func TestPages_HeadRobotsAgreeWithTheHTTPPolicy(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSEOSettings(t, conn)
+	seedGame(t, conn, "Dungrid Tactics", "dungrid-tactics", true, false, "Tactics")
+	seedMember(t, conn, "Someone", "Code", "A bio.", true)
+	seedAward(t, conn, "A Prize", "A Jury", "2026-01-01", "", nil)
+	seedPost(t, conn, "A Post", "a-post", "Body text.", "2026-01-02", true, nil)
+
+	site := newTestSite(t, conn)
+
+	indexable := everyPage(site)
+	// The page a contact form lands on is noindex, and is checked below.
+	delete(indexable, PageContactSent)
+	for key, render := range indexable {
+		html, _, err := render(key)
+		if err != nil {
+			t.Fatalf("render %s: %v", key, err)
+		}
+		if !strings.Contains(string(html), `<meta name=robots content="`+RobotsIndex+`"`) {
+			t.Errorf("%s does not carry the index policy in its head:\n%s", key, html)
+		}
+	}
+
+	notFound, err := site.NotFoundBody()
+	if err != nil {
+		t.Fatalf("NotFoundBody() error = %v", err)
+	}
+	offline, _, err := site.renderOffline(PageOffline)
+	if err != nil {
+		t.Fatalf("renderOffline() error = %v", err)
+	}
+	sent, _, err := site.renderContactSent(PageContactSent)
+	if err != nil {
+		t.Fatalf("renderContactSent() error = %v", err)
+	}
+
+	for name, html := range map[string][]byte{
+		"the 404 page":  notFound,
+		PageOffline:     offline,
+		PageContactSent: sent,
+	} {
+		if !strings.Contains(string(html), `<meta name=robots content="`+RobotsNoindex+`"`) {
+			t.Errorf("%s does not carry the noindex policy in its head:\n%s", name, html)
+		}
+		if strings.Contains(string(html), RobotsIndex) {
+			t.Errorf("%s carries the index policy the HTTP layer contradicts", name)
+		}
+	}
+}

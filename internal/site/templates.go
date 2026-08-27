@@ -103,6 +103,11 @@ type pageData struct {
 	Description string
 	Keywords    []string
 	KeywordText string
+	// Robots is the crawler policy the head states. Empty asks for the index
+	// policy, so a page is indexable until it says otherwise -- and a page
+	// that the HTTP layer noindexes must say so here too, or the head and the
+	// header would disagree about the same document.
+	Robots string
 	// Path marks the current nav item and is not otherwise displayed.
 	Path string
 	CSS  string
@@ -211,6 +216,9 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 
 	// Applied here rather than by each page, so the title rule and the share
 	// card's fallbacks hold for every page including ones added later.
+	if data.Robots == "" {
+		data.Robots = RobotsIndex
+	}
 	data.Title = buildTitle(data.Site.Name, data.Site.Tagline, data.Title)
 	data.Description = buildDescription(data.Description, data.Site.Name, data.Site.Description)
 	data.KeywordText = normalizeKeywords(append(data.Keywords, data.Site.Name)...)

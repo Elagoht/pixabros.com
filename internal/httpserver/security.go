@@ -11,13 +11,15 @@ import (
 	"pixabros/internal/site"
 )
 
-// adminUIPrefix is where the panel is mounted. It is a constant because both
-// the route and the policy that covers it have to agree on it.
-const adminUIPrefix = "/I-am-a-pixabro/"
+// adminUIPrefix is where the panel is mounted, named in the site package so
+// the route and the policy that covers it cannot be written differently.
+const adminUIPrefix = site.AdminUIPrefix
 
-var (
-	indexRobots   = "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
-	noindexRobots = "noindex, nofollow, noarchive"
+// A document's head and its response header carry the same two policies, so
+// the words are quoted from the site package rather than written again here.
+const (
+	indexRobots   = site.RobotsIndex
+	noindexRobots = site.RobotsNoindex
 )
 
 // The four areas of this origin need different policies, so one header for
@@ -321,15 +323,33 @@ func robotsPolicyFor(path string) string {
 		path == "/"+site.PageSitemap,
 		path == "/"+site.PageRSS:
 		return ""
-	case path == strings.TrimSuffix(adminUIPrefix, "/") || strings.HasPrefix(path, adminUIPrefix),
-		path == "/api" || strings.HasPrefix(path, "/api/"),
-		path == "/play" || strings.HasPrefix(path, "/play/"),
-		path == "/"+site.PageOffline,
-		path == "/"+site.PageContactSent,
+	case inACrawlerExclusion(path),
 		path == site.ServiceWorkerPath,
 		path == site.ShellPath:
 		return noindexRobots
 	default:
 		return indexRobots
 	}
+}
+
+// inACrawlerExclusion reports whether a path falls in a family robots.txt
+// disallows. The two policies read the same list -- see site.CrawlerExclusions
+// -- so neither can name a path the other has never heard of.
+func inACrawlerExclusion(path string) bool {
+	for _, excluded := range site.CrawlerExclusions() {
+		if strings.HasSuffix(excluded, "/") {
+			// A family covers its bare form too: /api and /api/ are the same
+			// place to a router that trims trailing slashes.
+			if path == strings.TrimSuffix(excluded, "/") || strings.HasPrefix(path, excluded) {
+				return true
+			}
+			continue
+		}
+		// A single page matches exactly, so /offline-recovery is not dragged
+		// in by /offline.
+		if path == excluded {
+			return true
+		}
+	}
+	return false
 }

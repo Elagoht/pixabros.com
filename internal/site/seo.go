@@ -24,6 +24,15 @@ const (
 	descriptionMaxLength = 155
 )
 
+// The two crawler policies a page can carry. They are published twice -- in the
+// document's head and in the X-Robots-Tag header -- so they are written once
+// here and quoted everywhere else: policies that disagree with themselves get
+// resolved by each crawler in its own way.
+const (
+	RobotsIndex   = "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+	RobotsNoindex = "noindex, nofollow, noarchive"
+)
+
 // normalizeKeywords turns the page's curated terms into one metadata value.
 // Splitting and deduplicating here means page renderers can safely combine
 // author-entered comma-separated tags with their own fixed terms.

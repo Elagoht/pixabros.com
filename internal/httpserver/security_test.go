@@ -16,6 +16,7 @@ import (
 	"pixabros/internal/db"
 	"pixabros/internal/games"
 	"pixabros/internal/render"
+	"pixabros/internal/site"
 	"pixabros/internal/storage"
 )
 
@@ -748,6 +749,24 @@ func TestPolicies_LoadImagesOnlyFromThisSite(t *testing.T) {
 	} {
 		if got := directives(policy)["img-src"]; got != "'self'" {
 			t.Errorf("%s img-src = %q, want 'self'", name, got)
+		}
+	}
+}
+
+// Every path robots.txt disallows is answered with noindex here. Both policies
+// are written from site.CrawlerExclusions, so neither can name a path the
+// other has never heard of -- and this test is what catches the list itself
+// being reshaped into something the matcher no longer honours.
+func TestRobotsPolicyFor_CoversEveryCrawlerExclusion(t *testing.T) {
+	for _, excluded := range site.CrawlerExclusions() {
+		paths := []string{strings.TrimSuffix(excluded, "/")}
+		if strings.HasSuffix(excluded, "/") {
+			paths = append(paths, excluded+"probe")
+		}
+		for _, path := range paths {
+			if got := robotsPolicyFor(path); got != wantNoindexRobots {
+				t.Errorf("robotsPolicyFor(%q) = %q, want %q", path, got, wantNoindexRobots)
+			}
 		}
 	}
 }

@@ -240,3 +240,16 @@ all automated verification passes.
 - adding keywords solely to manipulate rankings;
 - redesigning the visual interface or weakening the site's security headers;
 - performance changes not supported by a trace.
+
+## Recorded deviations (2026-08-27)
+
+Two points where the implementation deliberately differs from what is written
+above. Both are intentional; the code is the authority on these.
+
+- The layout emits `referrer=strict-origin-when-cross-origin`, not the
+  `origin-when-cross-origin` written above: it is the modern browser default
+  and strictly narrower, so the head leaks no more of an address than this
+  spec asked for.
+- The RSS `<link rel="alternate">` title is "`<site name>` devlog" rather than
+  the literal "Pixabros Devlog", so it follows the configured site name the
+  same way every other published title does.

@@ -429,6 +429,13 @@ the behavior, keep it as an end-to-end regression and record that the failure
 was proven by temporarily removing one discovery registration, then restore it
 and rerun.
 
+> Recorded 2026-08-27, at final review: the branch shipped without a note of
+> the red run, so it was proven after the fact. With
+> `{Key: PageRSS, Render: s.renderRSS}` removed from `discoveryPages`,
+> `TestDiscoveryResources_EndToEnd` failed on its `/rss.xml` subtest and
+> `TestDiscoveryResources_Regenerate` failed too; with the registration
+> restored, both passed.
+
 - [ ] **Step 3: Add the minimal missing wiring**
 
 Correct only the integration gap revealed by Step 2. Do not refactor unrelated

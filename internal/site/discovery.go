@@ -20,6 +20,7 @@ const rssSummaryMaxRunes = 300
 
 var (
 	markdownLink                = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
+	bareAbsoluteURL             = regexp.MustCompile(`https?://[^\s<>()]+`)
 	whitespaceBeforePunctuation = regexp.MustCompile(`\s+([.,;:!?])`)
 )
 
@@ -82,7 +83,7 @@ func (s *Site) renderLLMS(_ string) ([]byte, []string, error) {
 	body.WriteString("# ")
 	body.WriteString(chrome.Name)
 	body.WriteString("\n\n")
-	if description := strings.TrimSpace(chrome.Description); description != "" {
+	if description := plainTextSummary(chrome.Description, 0); description != "" {
 		body.WriteString(description)
 		body.WriteString("\n\n")
 	}
@@ -239,7 +240,7 @@ func (s *Site) renderRSS(_ string) ([]byte, []string, error) {
 		return nil, nil, err
 	}
 
-	description := strings.TrimSpace(chrome.Description)
+	description := plainTextSummary(chrome.Description, 0)
 	if description == "" {
 		description = "Notes from the " + chrome.Name + " devlog."
 	}
@@ -278,12 +279,13 @@ func rssPublicationTime(publishedAt string, createdAt time.Time) time.Time {
 	return createdAt.UTC()
 }
 
-// plainTextSummary reduces authored Markdown to a compact, text-only feed
-// summary. It replaces Markdown links with their human-readable labels before
-// removing the remaining markup and normalising whitespace.
+// plainTextSummary reduces authored Markdown to compact plain text. It keeps
+// Markdown link labels while removing their destinations, bare absolute URLs,
+// remaining markup, and excess whitespace.
 func plainTextSummary(markdown string, maxRunes int) string {
 	withoutLinks := markdownLink.ReplaceAllString(markdown, "$1")
-	text := strings.Join(strings.Fields(stripMarkdown(stripTags(withoutLinks))), " ")
+	withoutURLs := bareAbsoluteURL.ReplaceAllString(stripTags(withoutLinks), "")
+	text := strings.Join(strings.Fields(stripMarkdown(withoutURLs)), " ")
 	text = whitespaceBeforePunctuation.ReplaceAllString(text, "$1")
 	if maxRunes < 1 || utf8.RuneCountInString(text) <= maxRunes {
 		return text

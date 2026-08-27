@@ -33,11 +33,11 @@ type decodedRSSChannel struct {
 }
 
 type decodedRSSItem struct {
-	Title       string         `xml:"title"`
-	Link        string         `xml:"link"`
-	GUID        decodedRSSGUID `xml:"guid"`
-	PubDate     string         `xml:"pubDate"`
-	Description string         `xml:"description"`
+	Title       string          `xml:"title"`
+	Link        string          `xml:"link"`
+	GUID        *decodedRSSGUID `xml:"guid"`
+	PubDate     string          `xml:"pubDate"`
+	Description string          `xml:"description"`
 }
 
 type decodedRSSGUID struct {
@@ -105,6 +105,17 @@ func TestRenderSitemap_ContainsOnlyCanonicalPublishedPages(t *testing.T) {
 	}
 	if !reflect.DeepEqual(locations, want) {
 		t.Errorf("locations = %v, want %v", locations, want)
+	}
+}
+
+func TestRenderSitemap_WithoutSiteURLOmitsCanonicalLocations(t *testing.T) {
+	conn := setupTestDB(t)
+	seedGame(t, conn, "Public Game", "public-game", true, false, "")
+	seedPost(t, conn, "Public Post", "public-post", "Body", "2026-06-02", true, nil)
+
+	document := renderSitemapForTest(t, newTestSite(t, conn))
+	if len(document.URLs) != 0 {
+		t.Errorf("sitemap invented locations without site_url: %+v", document.URLs)
 	}
 }
 
@@ -190,7 +201,7 @@ func TestRenderRSS_ProducesValidXMLAndSafePlainTextDescriptions(t *testing.T) {
 		t.Fatalf("items = %d, want 2", len(feed.Channel.Items))
 	}
 	for _, item := range feed.Channel.Items {
-		if item.GUID.IsPermaLink != "true" || item.GUID.Value != item.Link {
+		if item.GUID == nil || item.GUID.IsPermaLink != "true" || item.GUID.Value != item.Link {
 			t.Errorf("GUID = %+v, link = %q", item.GUID, item.Link)
 		}
 		if _, err := time.Parse(time.RFC1123Z, item.PubDate); err != nil {
@@ -209,6 +220,59 @@ func TestRenderRSS_ProducesValidXMLAndSafePlainTextDescriptions(t *testing.T) {
 	fallbackDate := feed.Channel.Items[1].PubDate
 	if want := "Fri, 03 Apr 2026 14:15:16 +0000"; fallbackDate != want {
 		t.Errorf("fallback pubDate = %q, want %q", fallbackDate, want)
+	}
+}
+
+func TestRenderRSS_SanitizesConfiguredChannelDescription(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{
+		"site_url":  "https://pixabros.com",
+		"site_name": "Pixabros",
+		"org_description": "A **bold** [studio](https://markdown.example) with " +
+			"<em>HTML</em>, bare https://bare.example and <https://auto.example>.",
+	})
+
+	description := renderRSSForTest(t, newTestSite(t, conn)).Channel.Description
+	if !strings.Contains(description, "A bold studio with HTML") {
+		t.Errorf("channel description lost its readable text: %q", description)
+	}
+	for _, unsafe := range []string{"**", "](https", "<em>", "</em>", "https://"} {
+		if strings.Contains(description, unsafe) {
+			t.Errorf("channel description retained %q: %q", unsafe, description)
+		}
+	}
+}
+
+func TestRenderRSS_WithoutSiteURLOmitsCanonicalLinksAndGUIDs(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedPost(t, conn, "Public Post", "public-post", "Body", "2026-06-02", true, nil)
+
+	body, _, err := newTestSite(t, conn).renderRSS(PageRSS)
+	if err != nil {
+		t.Fatalf("renderRSS() error = %v", err)
+	}
+	for _, element := range []string{"<link>", "<guid"} {
+		if strings.Contains(string(body), element) {
+			t.Errorf("RSS retained %s without site_url:\n%s", element, body)
+		}
+	}
+	var feed decodedRSS
+	if err := xml.Unmarshal(body, &feed); err != nil {
+		t.Fatalf("RSS is invalid XML: %v\n%s", err, body)
+	}
+	if feed.Channel.Link != "" {
+		t.Errorf("channel link = %q, want empty without site_url", feed.Channel.Link)
+	}
+	if len(feed.Channel.Items) != 1 {
+		t.Fatalf("items = %+v, want one published post", feed.Channel.Items)
+	}
+	item := feed.Channel.Items[0]
+	if item.Link != "" {
+		t.Errorf("item link = %q, want empty without site_url", item.Link)
+	}
+	if item.GUID != nil {
+		t.Errorf("item GUID = %+v, want omitted without site_url", item.GUID)
 	}
 }
 
@@ -278,11 +342,22 @@ func TestRenderLLMS_LinksPublishedContentAndFeedsOnly(t *testing.T) {
 		}
 	}
 
-	blankOriginBody, _, err := newTestSite(t, setupTestDB(t)).renderLLMS(PageLLMS)
+	blankOriginConn := setupTestDB(t)
+	seedSiteSettings(t, blankOriginConn, map[string]string{
+		"org_description": "A [studio](https://markdown.example), " +
+			"https://bare.example, and <https://auto.example>.",
+	})
+	blankOriginBody, _, err := newTestSite(t, blankOriginConn).renderLLMS(PageLLMS)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(blankOriginBody), "](http") {
-		t.Errorf("llms.txt invented an absolute origin:\n%s", blankOriginBody)
+	blankOriginText := string(blankOriginBody)
+	if !strings.Contains(blankOriginText, "A studio") {
+		t.Errorf("llms.txt lost the readable description:\n%s", blankOriginBody)
+	}
+	for _, unwanted := range []string{"http://", "https://", "](http", "<http"} {
+		if strings.Contains(blankOriginText, unwanted) {
+			t.Errorf("llms.txt retained %q without site_url:\n%s", unwanted, blankOriginBody)
+		}
 	}
 }

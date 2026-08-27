@@ -45,6 +45,7 @@ type discoveryTestSystem struct {
 	posts     *devlog.Repo
 	settings  *settings.Repo
 	post      devlog.Post
+	draft     devlog.Post
 }
 
 type discoveryResponse struct {
@@ -88,6 +89,14 @@ func newDiscoveryTestSystem(t *testing.T) *discoveryTestSystem {
 	})
 	if err != nil {
 		t.Fatalf("seed published post: %v", err)
+	}
+	draft, err := postsRepo.Create(devlog.CreateInput{
+		Title:           "UNPUBLISHED SENTINEL Q7Z9",
+		ContentMarkdown: "This draft must never reach discovery output.",
+		IsPublished:     false,
+	})
+	if err != nil {
+		t.Fatalf("seed unpublished post: %v", err)
 	}
 
 	assetsDir := filepath.Join(dataDir, "assets")
@@ -142,6 +151,7 @@ func newDiscoveryTestSystem(t *testing.T) *discoveryTestSystem {
 		posts:     postsRepo,
 		settings:  settingsRepo,
 		post:      post,
+		draft:     draft,
 	}
 }
 
@@ -189,6 +199,15 @@ func (s *discoveryTestSystem) enqueueAndDrain(t *testing.T, tag string) {
 	}
 	if status != "done" {
 		t.Fatalf("%q job status = %q, want done", tag, status)
+	}
+}
+
+func assertDraftExcluded(t *testing.T, pageKey string, response discoveryResponse, draft devlog.Post) {
+	t.Helper()
+	for _, forbidden := range []string{draft.Title, draft.Slug} {
+		if strings.Contains(response.body, forbidden) {
+			t.Errorf("%s leaked unpublished post marker %q:\n%s", pageKey, forbidden, response.body)
+		}
 	}
 }
 
@@ -243,6 +262,9 @@ func TestDiscoveryResources_EndToEnd(t *testing.T) {
 					t.Errorf("GET /%s body missing %q:\n%s", test.key, fragment, got.body)
 				}
 			}
+			if test.key == site.PageLLMS || test.key == site.PageSitemap || test.key == site.PageRSS {
+				assertDraftExcluded(t, test.key, got, system.draft)
+			}
 		})
 	}
 }
@@ -274,6 +296,7 @@ func TestDiscoveryResources_Regenerate(t *testing.T) {
 		t.Error("robots.txt ETag changed after only a published post changed")
 	}
 	for _, key := range []string{site.PageLLMS, site.PageSitemap, site.PageRSS} {
+		assertDraftExcluded(t, key, afterPostUpdate[key], system.draft)
 		if afterPostUpdate[key].etag == beforePostUpdate[key].etag {
 			t.Errorf("%s ETag did not change after a published post changed", key)
 		}
@@ -296,6 +319,9 @@ func TestDiscoveryResources_Regenerate(t *testing.T) {
 
 	for _, key := range keys {
 		afterSiteURLUpdate := system.get(t, key)
+		if key == site.PageLLMS || key == site.PageSitemap || key == site.PageRSS {
+			assertDraftExcluded(t, key, afterSiteURLUpdate, system.draft)
+		}
 		if afterSiteURLUpdate.etag == afterPostUpdate[key].etag {
 			t.Errorf("%s ETag did not change after site_url changed", key)
 		}

@@ -202,6 +202,11 @@ func wrapRobotsResponseWriter(w http.ResponseWriter) http.ResponseWriter {
 		features |= hasPusher
 	}
 
+	// The sixteen combinations are laid out by hand rather than delegated to a
+	// library, on purpose. What keeps this table honest is the exhaustive mask
+	// test in security_test.go: it asserts every combination forwards every
+	// optional interface the underlying writer has -- and invents none it has
+	// not.
 	switch features {
 	case hasFlusher:
 		return struct {

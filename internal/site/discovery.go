@@ -45,6 +45,13 @@ func CrawlerExclusions() []string {
 
 const rssSummaryMaxRunes = 300
 
+// The link and URL patterns are deliberately crude, and two authored forms
+// pass through imperfectly: a destination containing parentheses
+// (`https://en.wikipedia.org/wiki/A_(b)`) leaves its closing paren behind,
+// and an autolink (`<https://example.com>`) is swallowed whole by the tag
+// stripper along with its brackets. Both degrade to cosmetic noise in a
+// summary, never to live markup, so a real Markdown parser is not worth its
+// weight here.
 var (
 	markdownLink                = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
 	bareAbsoluteURL             = regexp.MustCompile(`https?://[^\s<>()]+`)
@@ -160,12 +167,20 @@ func writeLLMSLinks(body *strings.Builder, heading string, links []llmsLink) {
 		body.WriteString("- [")
 		body.WriteString(markdownLabel(link.label))
 		body.WriteString("](")
-		body.WriteString(link.url)
+		body.WriteString(llmsLinkTarget(link.url))
 		body.WriteString(")\n")
 	}
 	if wroteHeading {
 		body.WriteByte('\n')
 	}
+}
+
+// llmsLinkTarget percent-escapes the few characters that would end a Markdown
+// link destination early. Real slugs are [a-z0-9-] and site_url is configured
+// by hand, so this is hardening rather than a fix -- but a stray space or
+// bracket in an address should not be able to break out of its own link.
+func llmsLinkTarget(target string) string {
+	return strings.NewReplacer("(", "%28", ")", "%29", " ", "%20").Replace(target)
 }
 
 func markdownLabel(label string) string {
@@ -230,14 +245,30 @@ func (s *Site) renderSitemap(_ string) ([]byte, []string, error) {
 type rssDocument struct {
 	XMLName xml.Name   `xml:"rss"`
 	Version string     `xml:"version,attr"`
+	AtomNS  string     `xml:"xmlns:atom,attr,omitempty"`
 	Channel rssChannel `xml:"channel"`
 }
 
 type rssChannel struct {
-	Title       string    `xml:"title"`
-	Link        string    `xml:"link,omitempty"`
-	Description string    `xml:"description"`
-	Items       []rssItem `xml:"item"`
+	Title       string `xml:"title"`
+	Link        string `xml:"link,omitempty"`
+	Description string `xml:"description"`
+	Language    string `xml:"language,omitempty"`
+	// LastBuildDate is the most recent edit among the posts carried, not the
+	// moment of rendering: the feed is regenerated whenever a dependency
+	// changes and the store computes the ETag from these bytes, so a build
+	// timestamp would churn the ETag on every regeneration rather than when
+	// the content actually moved.
+	LastBuildDate string       `xml:"lastBuildDate,omitempty"`
+	SelfLink      *rssSelfLink `xml:"http://www.w3.org/2005/Atom link,omitempty"`
+	Items         []rssItem    `xml:"item"`
+}
+
+// rssSelfLink is the channel's own address, as an Atom element. Readers use it
+// to tell the feed's canonical home from a copy scraped somewhere else.
+type rssSelfLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
 }
 
 type rssItem struct {
@@ -271,7 +302,10 @@ func (s *Site) renderRSS(_ string) ([]byte, []string, error) {
 		Title:       chrome.Name + " Devlog",
 		Link:        canonicalURL(chrome.URL, PageDevlog),
 		Description: description,
+		// The site is English only, so there is no locale to consult.
+		Language: "en",
 	}
+	var changed time.Time
 	for _, post := range posts {
 		link := canonicalURL(chrome.URL, DevlogPagePrefix+post.Slug)
 		item := rssItem{
@@ -283,10 +317,23 @@ func (s *Site) renderRSS(_ string) ([]byte, []string, error) {
 		if link != "" {
 			item.GUID = &rssGUID{IsPermaLink: "true", Value: link}
 		}
+		if changed.Before(post.UpdatedAt) {
+			changed = post.UpdatedAt
+		}
 		channel.Items = append(channel.Items, item)
 	}
+	if !changed.IsZero() {
+		channel.LastBuildDate = changed.UTC().Format(time.RFC1123Z)
+	}
+	if self := canonicalURL(chrome.URL, PageRSS); self != "" {
+		channel.SelfLink = &rssSelfLink{Href: self, Rel: "self"}
+	}
 
-	body, err := xml.Marshal(rssDocument{Version: "2.0", Channel: channel})
+	body, err := xml.Marshal(rssDocument{
+		Version: "2.0",
+		AtomNS:  "http://www.w3.org/2005/Atom",
+		Channel: channel,
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal RSS: %w", err)
 	}

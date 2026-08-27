@@ -236,7 +236,7 @@ func TestDiscoveryResources_EndToEnd(t *testing.T) {
 		{
 			key:         site.PageRSS,
 			contentType: "application/rss+xml; charset=utf-8",
-			contains:    []string{`<rss version="2.0">`, `<title>First Post</title>`, `<link>https://old.example/devlog/first-post</link>`},
+			contains:    []string{`<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">`, `<title>First Post</title>`, `<link>https://old.example/devlog/first-post</link>`},
 		},
 	}
 

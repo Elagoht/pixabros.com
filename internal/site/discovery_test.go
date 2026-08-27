@@ -26,10 +26,40 @@ type decodedRSS struct {
 }
 
 type decodedRSSChannel struct {
-	Title       string           `xml:"title"`
-	Link        string           `xml:"link"`
-	Description string           `xml:"description"`
-	Items       []decodedRSSItem `xml:"item"`
+	Title string `xml:"title"`
+	// encoding/xml matches a namespace-less field against an element in any
+	// namespace, so the Atom self link lands here too, as an empty entry.
+	Links         []string         `xml:"link"`
+	Description   string           `xml:"description"`
+	Language      string           `xml:"language"`
+	LastBuildDate string           `xml:"lastBuildDate"`
+	Items         []decodedRSSItem `xml:"item"`
+}
+
+// channelLink is the channel's own address: the first link that says anything.
+func (c decodedRSSChannel) channelLink() string {
+	for _, link := range c.Links {
+		if link != "" {
+			return link
+		}
+	}
+	return ""
+}
+
+// decodedRSSSelfLink cannot live in decodedRSSChannel: encoding/xml matches a
+// namespace-less field against an element in any namespace, so a plain `link`
+// field and the Atom `link` field in one struct corrupt each other's decode.
+// The channel is read a second time through decodedRSSSelf, where the Atom
+// link is the only `link` in sight.
+type decodedRSSSelfLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
+}
+
+type decodedRSSSelf struct {
+	Channel struct {
+		SelfLink *decodedRSSSelfLink `xml:"http://www.w3.org/2005/Atom link"`
+	} `xml:"channel"`
 }
 
 type decodedRSSItem struct {
@@ -69,6 +99,19 @@ func renderRSSForTest(t *testing.T, site *Site) decodedRSS {
 		t.Fatalf("RSS is invalid XML: %v\n%s", err, body)
 	}
 	return feed
+}
+
+func renderRSSSelfForTest(t *testing.T, site *Site) *decodedRSSSelfLink {
+	t.Helper()
+	body, _, err := site.renderRSS(PageRSS)
+	if err != nil {
+		t.Fatalf("renderRSS() error = %v", err)
+	}
+	var document decodedRSSSelf
+	if err := xml.Unmarshal(body, &document); err != nil {
+		t.Fatalf("RSS is invalid XML: %v\n%s", err, body)
+	}
+	return document.Channel.SelfLink
 }
 
 func setDiscoveryTimes(t *testing.T, conn *sql.DB, table, slug, createdAt, updatedAt string) {
@@ -171,7 +214,7 @@ func TestRenderRSS_ContainsOnlyPublishedPostsNewestFirst(t *testing.T) {
 	if feed.Version != "2.0" {
 		t.Errorf("RSS version = %q, want 2.0", feed.Version)
 	}
-	if feed.Channel.Title != "Pixabros Devlog" || feed.Channel.Link != "https://pixabros.com/devlog" || feed.Channel.Description != "Two brothers making independent games." {
+	if feed.Channel.Title != "Pixabros Devlog" || feed.Channel.channelLink() != "https://pixabros.com/devlog" || feed.Channel.Description != "Two brothers making independent games." {
 		t.Errorf("channel = %+v", feed.Channel)
 	}
 	if len(feed.Channel.Items) != 2 {
@@ -223,6 +266,46 @@ func TestRenderRSS_ProducesValidXMLAndSafePlainTextDescriptions(t *testing.T) {
 	}
 }
 
+// The channel says what language it is written in and when its content last
+// changed, and points readers at its own address -- the bits feed validators
+// ask for that the items alone do not carry.
+func TestRenderRSS_StatesItsLanguageLatestChangeAndAddress(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{
+		"site_url":  "https://pixabros.com",
+		"site_name": "Pixabros",
+	})
+	seedPost(t, conn, "Older Note", "older", "Older body", "2026-04-01", true, nil)
+	seedPost(t, conn, "Newer Note", "newer", "Newer body", "2026-05-01", true, nil)
+	setDiscoveryTimes(t, conn, "devlog_posts", "older", "2026-04-01T08:00:00.000Z", "2026-04-10T09:00:00.000Z")
+	setDiscoveryTimes(t, conn, "devlog_posts", "newer", "2026-05-01T08:00:00.000Z", "2026-05-10T10:00:00.000Z")
+
+	site := newTestSite(t, conn)
+	feed := renderRSSForTest(t, site)
+	if feed.Channel.Language != "en" {
+		t.Errorf("channel language = %q, want en", feed.Channel.Language)
+	}
+	if want := "Sun, 10 May 2026 10:00:00 +0000"; feed.Channel.LastBuildDate != want {
+		t.Errorf("lastBuildDate = %q, want %q", feed.Channel.LastBuildDate, want)
+	}
+	self := renderRSSSelfForTest(t, site)
+	if self == nil || self.Rel != "self" || self.Href != "https://pixabros.com/rss.xml" {
+		t.Errorf("atom self link = %+v", self)
+	}
+}
+
+// Without a site address there is no truthful address to point the channel at,
+// so the self link is left out entirely.
+func TestRenderRSS_WithoutSiteURLOmitsTheSelfLink(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	seedPost(t, conn, "A Note", "a-note", "Body", "2026-05-01", true, nil)
+
+	if self := renderRSSSelfForTest(t, newTestSite(t, conn)); self != nil {
+		t.Errorf("self link = %+v, want none without a site address", self)
+	}
+}
+
 func TestRenderRSS_SanitizesConfiguredChannelDescription(t *testing.T) {
 	conn := setupTestDB(t)
 	seedSiteSettings(t, conn, map[string]string{
@@ -261,8 +344,8 @@ func TestRenderRSS_WithoutSiteURLOmitsCanonicalLinksAndGUIDs(t *testing.T) {
 	if err := xml.Unmarshal(body, &feed); err != nil {
 		t.Fatalf("RSS is invalid XML: %v\n%s", err, body)
 	}
-	if feed.Channel.Link != "" {
-		t.Errorf("channel link = %q, want empty without site_url", feed.Channel.Link)
+	if got := feed.Channel.channelLink(); got != "" {
+		t.Errorf("channel link = %q, want empty without site_url", got)
 	}
 	if len(feed.Channel.Items) != 1 {
 		t.Fatalf("items = %+v, want one published post", feed.Channel.Items)
@@ -382,6 +465,25 @@ func TestRobotsTxt_DisallowsExactlyTheCrawlerExclusions(t *testing.T) {
 	}
 	if want := CrawlerExclusions(); !reflect.DeepEqual(disallowed, want) {
 		t.Errorf("robots.txt disallows %v, want exactly %v", disallowed, want)
+	}
+}
+
+// An address that would end a Markdown link destination early is
+// percent-escaped, so it stays one link instead of breaking out of its own
+// brackets.
+func TestLLMS_EscapesLinkTargetsThatWouldEndTheLinkEarly(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{
+		"site_url":  "https://pixabros.com/a (b)",
+		"site_name": "Pixabros",
+	})
+
+	body, _, err := newTestSite(t, conn).renderLLMS(PageLLMS)
+	if err != nil {
+		t.Fatalf("renderLLMS() error = %v", err)
+	}
+	if !strings.Contains(string(body), "](https://pixabros.com/a%20%28b%29/games)") {
+		t.Errorf("llms.txt did not escape the configured address:\n%s", body)
 	}
 }
 

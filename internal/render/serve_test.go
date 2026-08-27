@@ -93,6 +93,66 @@ func TestServePages_ReturnsNotModifiedOnMatchingETag(t *testing.T) {
 	}
 }
 
+func TestServePages_ContentTypes(t *testing.T) {
+	store, files := setupServeTest(t)
+
+	tests := map[string]string{
+		"index.html":  "text/html; charset=utf-8",
+		"robots.txt":  "text/plain; charset=utf-8",
+		"llms.txt":    "text/plain; charset=utf-8",
+		"sitemap.xml": "application/xml; charset=utf-8",
+		"rss.xml":     "application/rss+xml; charset=utf-8",
+	}
+
+	etags := make(map[string]string, len(tests))
+	for key := range tests {
+		body := []byte("body for " + key)
+		etag, err := store.RenderAndPersist(key, func(string) ([]byte, []string, error) {
+			return body, nil, nil
+		})
+		if err != nil {
+			t.Fatalf("RenderAndPersist(%q) error = %v", key, err)
+		}
+		etags[key] = etag
+	}
+
+	handler := ServePages(store, files)
+	for key, wantContentType := range tests {
+		wantBody := "body for " + key
+		wantETag := `"` + etags[key] + `"`
+
+		getRec := httptest.NewRecorder()
+		handler.ServeHTTP(getRec, httptest.NewRequest(http.MethodGet, "/"+key, nil))
+		if getRec.Code != http.StatusOK {
+			t.Fatalf("GET %s status = %d, want %d", key, getRec.Code, http.StatusOK)
+		}
+		if got := getRec.Header().Get("Content-Type"); got != wantContentType {
+			t.Errorf("GET %s Content-Type = %q, want %q", key, got, wantContentType)
+		}
+		if got := getRec.Header().Get("ETag"); got != wantETag {
+			t.Errorf("GET %s ETag = %q, want %q", key, got, wantETag)
+		}
+		if got := getRec.Body.String(); got != wantBody {
+			t.Errorf("GET %s body = %q, want %q", key, got, wantBody)
+		}
+
+		headRec := httptest.NewRecorder()
+		handler.ServeHTTP(headRec, httptest.NewRequest(http.MethodHead, "/"+key, nil))
+		if headRec.Code != http.StatusOK {
+			t.Fatalf("HEAD %s status = %d, want %d", key, headRec.Code, http.StatusOK)
+		}
+		if got := headRec.Header().Get("Content-Type"); got != wantContentType {
+			t.Errorf("HEAD %s Content-Type = %q, want %q", key, got, wantContentType)
+		}
+		if got := headRec.Header().Get("ETag"); got != wantETag {
+			t.Errorf("HEAD %s ETag = %q, want %q", key, got, wantETag)
+		}
+		if got := headRec.Body.String(); got != "" {
+			t.Errorf("HEAD %s body = %q, want empty body", key, got)
+		}
+	}
+}
+
 func TestServePages_UnknownPageReturns404(t *testing.T) {
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

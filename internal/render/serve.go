@@ -72,9 +72,13 @@ func ServePages(store *Store, files storage.Storage, opts ...ServeOption) http.H
 		quoted := `"` + etag + `"`
 		w.Header().Set("ETag", quoted)
 		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Content-Type", contentTypeForPageKey(pageKey))
 
 		if ifNoneMatchHas(r.Header.Get("If-None-Match"), quoted) {
 			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		if r.Method == http.MethodHead {
 			return
 		}
 
@@ -85,9 +89,21 @@ func ServePages(store *Store, files storage.Storage, opts ...ServeOption) http.H
 		}
 		defer body.Close()
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		io.Copy(w, body)
 	})
+}
+
+func contentTypeForPageKey(key string) string {
+	switch key {
+	case "robots.txt", "llms.txt":
+		return "text/plain; charset=utf-8"
+	case "sitemap.xml":
+		return "application/xml; charset=utf-8"
+	case "rss.xml":
+		return "application/rss+xml; charset=utf-8"
+	default:
+		return "text/html; charset=utf-8"
+	}
 }
 
 // ifNoneMatchHas reports whether header (a comma-separated If-None-Match

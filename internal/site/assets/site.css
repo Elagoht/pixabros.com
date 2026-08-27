@@ -1597,11 +1597,15 @@ a:hover {
   margin-top: 0.5rem;
 }
 
+.vision {
+  text-align: center;
+}
+
 .vision__content {
   color: var(--color-text-muted);
   font-size: 1.125rem;
   line-height: 1.7;
-  max-width: 44rem;
+  width: 100%;
 }
 
 /* Breadcrumb ------------------------------------------------------------- */

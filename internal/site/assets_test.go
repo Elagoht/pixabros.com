@@ -312,6 +312,28 @@ func TestStylesheet_IsDarkOnly(t *testing.T) {
 	}
 }
 
+func TestBuild_CentresVisionAcrossTheContentColumn(t *testing.T) {
+	dir := t.TempDir()
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	published, err := os.ReadFile(filepath.Join(dir, strings.TrimPrefix(bundle.URL("site.css"), "/assets/")))
+	if err != nil {
+		t.Fatalf("read published CSS: %v", err)
+	}
+	css := string(published)
+	if !strings.Contains(css, ".vision{text-align:center}") {
+		t.Error("the vision section does not centre its heading and content")
+	}
+	if !strings.Contains(css, ".vision__content{") ||
+		!strings.Contains(css, "width:100%") ||
+		strings.Contains(css, ".vision__content{color:var(--color-text-muted);font-size:1.125rem;line-height:1.7;max-width:44rem") {
+		t.Error("the vision content does not use the full content column")
+	}
+}
+
 func siteCSS(t *testing.T) []byte {
 	t.Helper()
 	source, err := assetFS.ReadFile("assets/site.css")

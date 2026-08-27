@@ -1597,6 +1597,13 @@ a:hover {
   margin-top: 0.5rem;
 }
 
+.vision__content {
+  color: var(--color-text-muted);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  max-width: 44rem;
+}
+
 /* Breadcrumb ------------------------------------------------------------- */
 
 .crumbs {
@@ -3071,6 +3078,47 @@ a:hover {
   image-rendering: pixelated;
   margin-bottom: 2rem;
   width: 100%;
+}
+
+.share-links {
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+}
+
+.share-links__label {
+  color: var(--on-dark-muted);
+  font-family: var(--font-osd);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.share-link {
+  appearance: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.45rem 0.75rem;
+  text-decoration: none;
+}
+
+.share-link:hover,
+.share-link:focus-visible {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.share-links__status {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
 }
 
 /* Prose: the only place the site renders authored HTML. */

@@ -99,6 +99,33 @@ func TestRenderDevlogPost_RendersMarkdown(t *testing.T) {
 	}
 }
 
+func TestRenderDevlogPost_OffersNativeXAndTelegramSharing(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{
+		"site_name": "Pixabros",
+		"site_url":  "https://pixabros.com",
+	})
+	seedPost(t, conn, "A Sharp Update", "sharp-update", "Body", "2026-04-20", true, nil)
+
+	html, _, err := newTestSite(t, conn).renderDevlogPost(DevlogPagePrefix + "sharp-update")
+	if err != nil {
+		t.Fatalf("renderDevlogPost() error = %v", err)
+	}
+	body := string(html)
+
+	for _, want := range []string{
+		`data-share-native`,
+		`https://x.com/intent/post?`,
+		`https://t.me/share/url?`,
+		`https%3A%2F%2Fpixabros.com%2Fdevlog%2Fsharp-update`,
+		`share.`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the post sharing controls are missing %q", want)
+		}
+	}
+}
+
 // goldmark runs without WithUnsafe(), so raw HTML in a post is dropped. That
 // is the entire XSS defence -- there is no separate sanitiser to fall back on.
 func TestRenderDevlogPost_DropsRawHTMLFromTheBody(t *testing.T) {

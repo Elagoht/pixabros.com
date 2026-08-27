@@ -101,6 +101,8 @@ type landingAwardView struct {
 
 type landingPage struct {
 	Hero            heroView
+	VisionTitle     string
+	VisionContent   string
 	PortfolioTitle  string
 	Slides          []slideView
 	SalesTitle      string
@@ -202,6 +204,8 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 
 	page := landingPage{
 		Hero:            s.buildHero(copyValues, images),
+		VisionTitle:     copyValues["vision_title"],
+		VisionContent:   copyValues["vision_content"],
 		PortfolioTitle:  fallback(copyValues["portfolio_section_title"], "Our games"),
 		Slides:          slides,
 		SalesTitle:      fallback(copyValues["sales_section_title"], "Available now"),
@@ -219,7 +223,7 @@ func (s *Site) renderLanding(pageKey string) ([]byte, []string, error) {
 	page.HasAchievements = len(page.Achievements) > 0
 
 	html, err := s.renderer.render("landing.html", pageData{
-		Title:       "Two brothers making small, sharp games you can play right now",
+		Title:       "Two Brothers Making Games",
 		Description: fallback(copyValues["hero_description"], "Games made by "+chrome.Name+"."),
 		Path:        "/",
 		PageClass:   "landing",

@@ -88,7 +88,7 @@
                   <img
                     class="slide__image slide__image--shot slide__image--shot-{{$index}}"
                     src="{{$shot.URL}}"
-                    alt=""
+                    alt="{{$shot.Alt}}"
                     aria-hidden="true"
                     loading="lazy"
                   />
@@ -119,7 +119,7 @@
                   <div class="thumbs">
                     {{range $index, $shot := .Shots}}
                       <span class="thumb thumb--{{$index}}">
-                        <img src="{{$shot.URL}}" alt="{{$shot.Alt}}" loading="lazy" />
+                        <img src="{{$shot.URL}}" alt="{{$shot.Alt}} thumbnail" loading="lazy" />
                       </span>
                     {{end}}
                   </div>
@@ -143,6 +143,13 @@
           </nav>
         {{end}}
       </div>
+    </section>
+  {{end}}
+
+  {{if and .Data.VisionTitle .Data.VisionContent}}
+    <section class="section vision" aria-labelledby="vision-heading">
+      <h2 class="section__title" id="vision-heading">{{.Data.VisionTitle}}</h2>
+      <p class="vision__content">{{.Data.VisionContent}}</p>
     </section>
   {{end}}
 

@@ -390,6 +390,29 @@ func TestRenderGame_MarksTheStoreLinks(t *testing.T) {
 	}
 }
 
+func TestRenderGame_KeepsStoreLinksOutsideProse(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+	gameID := seedGame(t, conn, "Linked", "linked", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET full_description = 'Description.',
+		 external_links_json = '[{"label":"itch.io","url":"https://itch.io/x"}]'
+		 WHERE id = ?;`, gameID,
+	); err != nil {
+		t.Fatalf("set game content: %v", err)
+	}
+
+	html, _, err := newTestSite(t, conn).renderGame(GamePagePrefix + "linked")
+	if err != nil {
+		t.Fatalf("renderGame() error = %v", err)
+	}
+	body := string(html)
+	proseEnd := strings.Index(body, `</div><div class=store-links>`)
+	if proseEnd == -1 {
+		t.Error("the store links are not a sibling immediately after the prose content")
+	}
+}
+
 // A screenshot in the narrow side column is too small to read, so it opens
 // full size the way an award's badge does.
 func TestRenderGame_OpensAScreenshotFullSize(t *testing.T) {

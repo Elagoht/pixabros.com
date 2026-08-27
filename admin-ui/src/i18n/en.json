@@ -115,6 +115,8 @@
       "hero_description": "Hero description",
       "hero_cta_text": "Button text",
       "hero_cta_link": "Button link",
+      "vision_title": "Vision title",
+      "vision_content": "Vision content",
       "portfolio_section_title": "Portfolio section title",
       "sales_section_title": "For-sale section title",
       "members_section_title": "Team section title",

@@ -136,6 +136,46 @@ func TestRenderLanding_UsesHomepageCopy(t *testing.T) {
 	}
 }
 
+func TestRenderLanding_ShowsTheConfiguredVision(t *testing.T) {
+	conn := setupTestDB(t)
+	if _, err := conn.Exec(
+		`INSERT INTO homepage_settings (key, value, value_type) VALUES
+		 ('vision_title', 'Our vision', 'text'),
+		 ('vision_content', 'We want every game to leave one sharp idea behind.', 'text');`,
+	); err != nil {
+		t.Fatalf("seed homepage vision: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	for _, want := range []string{"Our vision", "We want every game to leave one sharp idea behind."} {
+		if !strings.Contains(html, want) {
+			t.Errorf("landing page is missing vision copy %q", want)
+		}
+	}
+}
+
+func TestRenderLanding_UsesAltTextForCarouselImagesAndLabelsThumbnails(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Alt Game", "alt-game", true, false, "")
+	shotID := seedMedia(t, conn, "media/screenshot/alt-game.webp", "A tactical battle")
+	if _, err := conn.Exec(
+		`INSERT INTO game_screenshots (id, game_id, media_id, display_order)
+		 VALUES (?, ?, ?, 0);`, id.New(), gameID, shotID,
+	); err != nil {
+		t.Fatalf("seed screenshot: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, `alt="A tactical battle" aria-hidden=true`) {
+		t.Error("the large carousel screenshot does not use its CMS alt text")
+	}
+	if !strings.Contains(html, `alt="A tactical battle thumbnail"`) {
+		t.Error("the carousel thumbnail is not distinguished from the large screenshot")
+	}
+}
+
 // A call to action with nowhere to go is a button that does nothing.
 func TestRenderLanding_HidesTheCTAWithoutALink(t *testing.T) {
 	conn := setupTestDB(t)

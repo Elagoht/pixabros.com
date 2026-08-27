@@ -103,6 +103,8 @@ var homepage = Group{
 		{Key: "hero_description", Kind: KindText, Multiline: true},
 		{Key: "hero_cta_text", Kind: KindText},
 		{Key: "hero_cta_link", Kind: KindLink},
+		{Key: "vision_title", Kind: KindText},
+		{Key: "vision_content", Kind: KindText, Multiline: true},
 		{Key: "portfolio_section_title", Kind: KindText},
 		{Key: "sales_section_title", Kind: KindText},
 		{Key: "members_section_title", Kind: KindText},

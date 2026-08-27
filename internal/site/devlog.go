@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -62,12 +63,15 @@ type devlogIndexPage struct {
 }
 
 type devlogPostPage struct {
-	Title    string
-	Date     string
-	GameName string
-	GameSlug string
-	Image    imageView
-	Body     template.HTML
+	Title         string
+	Date          string
+	GameName      string
+	GameSlug      string
+	Image         imageView
+	Body          template.HTML
+	ShareURL      string
+	XShare        string
+	TelegramShare string
 }
 
 // renderDevlogIndex builds /devlog.
@@ -216,6 +220,13 @@ func (s *Site) renderDevlogPost(pageKey string) ([]byte, []string, error) {
 		Image: lookupImage(images, post.OGImageID, post.Title),
 		Body:  body,
 	}
+	page.ShareURL = canonicalURL(chrome.URL, pageKey)
+	if page.ShareURL != "" {
+		encodedURL := url.QueryEscape(page.ShareURL)
+		encodedTitle := url.QueryEscape(post.Title)
+		page.XShare = "https://x.com/intent/post?text=" + encodedTitle + "&url=" + encodedURL
+		page.TelegramShare = "https://t.me/share/url?url=" + encodedURL + "&text=" + encodedTitle
+	}
 
 	tags := []string{"devlog:" + post.ID, siteSettingsTag}
 	if post.GameID != nil {
@@ -239,6 +250,7 @@ func (s *Site) renderDevlogPost(pageKey string) ([]byte, []string, error) {
 		OGType:      "article",
 		OGImage:     page.Image.URL,
 		Schema:      s.devlogPostSchema(chrome, post, page),
+		Scripts:     []string{s.renderer.bundle.URL("share.js")},
 		Site:        chrome,
 		Data:        page,
 	})

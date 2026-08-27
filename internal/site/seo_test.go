@@ -45,19 +45,23 @@ func TestBuildTitle_LeadsWithTheSiteName(t *testing.T) {
 	}
 }
 
-// A title too short for a search result to be worth reading gets the tagline;
-// one already long enough does not, because it would only push the subject out
-// of the visible part.
-func TestBuildTitle_PadsOnlyAShortTitle(t *testing.T) {
-	short := buildTitle("Pixabros", "Brothers Makes Games", "Awards")
-	if !strings.HasSuffix(short, " | Brothers Makes Games") {
-		t.Errorf("a short title was not padded: %q", short)
+func TestBuildTitle_DoesNotPadAConciseTitle(t *testing.T) {
+	got := buildTitle("Pixabros", "Brothers Makes Games", "Awards")
+	if got != "Pixabros | Awards" {
+		t.Errorf("buildTitle() = %q, want a concise title without tagline padding", got)
 	}
+}
 
-	long := buildTitle("Pixabros", "Brothers Makes Games",
-		"Games you can play right here in your browser, and the whole rest of it")
-	if strings.Contains(long, "Brothers Makes Games") {
-		t.Errorf("a title already long enough was padded anyway: %q", long)
+func TestRenderLanding_UsesAConciseSearchTitle(t *testing.T) {
+	conn := setupTestDB(t)
+	seedSiteSettings(t, conn, map[string]string{"site_name": "Pixabros"})
+
+	html, _, err := newTestSite(t, conn).renderLanding(PageLanding)
+	if err != nil {
+		t.Fatalf("renderLanding() error = %v", err)
+	}
+	if got := titleOf(t, string(html)); got != "Pixabros | Two Brothers Making Games" {
+		t.Errorf("landing title = %q, want the concise homepage title", got)
 	}
 }
 
@@ -108,9 +112,9 @@ func TestPages_TitlesObeyTheLengthRule(t *testing.T) {
 		if !strings.HasPrefix(title, "Pixabros | ") {
 			t.Errorf("%s title does not lead with the site's name: %q", key, title)
 		}
-		if length < titleMinLength || length > titleMaxLength {
-			t.Errorf("%s title is %d characters, want %d to %d: %q",
-				key, length, titleMinLength, titleMaxLength, title)
+		if length > titleMaxLength {
+			t.Errorf("%s title is %d characters, want at most %d: %q",
+				key, length, titleMaxLength, title)
 		}
 	}
 }

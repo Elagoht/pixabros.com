@@ -18,38 +18,25 @@ import (
 // Title and description lengths. A search engine truncates what is too long and
 // skips what says too little, so both are a floor as well as a ceiling.
 const (
-	titleMinLength = 65
-	titleMaxLength = 100
+	titleMaxLength = 60
 
 	descriptionMinLength = 75
 	descriptionMaxLength = 155
 )
 
-// defaultTagline is what a title too short to be useful is padded with when the
-// studio has not set one of its own.
-const defaultTagline = "Brothers Makes Games"
-
 // buildTitle assembles a page's title.
 //
 // Always the site's name first, so a tab or a result row is recognisable before
-// it is read. Then the page's own subject. A result that would still be short
-// gets the tagline, because a search engine skips a title that says too little.
-// Anything past the ceiling is cut on a word and closed with an ellipsis, so it
-// ends somewhere deliberate rather than mid-word where the browser would cut it.
-func buildTitle(siteName, tagline, subject string) string {
+// it is read. Then the page's own subject. Anything past the ceiling is cut on
+// a word and closed with an ellipsis, so it ends somewhere deliberate rather
+// than mid-word where the browser would cut it.
+func buildTitle(siteName, _ string, subject string) string {
 	if siteName == "" {
 		siteName = "Pixabros"
 	}
-	if tagline == "" {
-		tagline = defaultTagline
-	}
-
 	title := siteName
 	if subject = strings.TrimSpace(subject); subject != "" {
 		title += " | " + subject
-	}
-	if utf8.RuneCountInString(title) < titleMinLength {
-		title += " | " + tagline
 	}
 	return truncateRunes(title, titleMaxLength)
 }

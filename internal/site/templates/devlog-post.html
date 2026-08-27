@@ -24,5 +24,21 @@
     {{/* Body is already HTML: goldmark ran without WithUnsafe(), so raw HTML
          in the source was dropped rather than passed through. */}}
     <div class="prose">{{.Data.Body}}</div>
+
+    {{if .Data.ShareURL}}
+      <nav class="share-links" aria-label="Share this post">
+        <span class="share-links__label">Share</span>
+        <button
+          class="share-link"
+          type="button"
+          data-share-native
+          data-share-title="{{.Data.Title}}"
+          data-share-url="{{.Data.ShareURL}}"
+        >Share</button>
+        <a class="share-link" href="{{.Data.XShare}}" target="_blank" rel="noopener noreferrer">X</a>
+        <a class="share-link" href="{{.Data.TelegramShare}}" target="_blank" rel="noopener noreferrer">Telegram</a>
+        <span class="share-links__status" data-share-status aria-live="polite"></span>
+      </nav>
+    {{end}}
   </article>
 {{end}}

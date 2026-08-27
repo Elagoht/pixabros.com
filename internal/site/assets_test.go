@@ -176,6 +176,40 @@ func TestBuild_PublishesTheMarkAndIconsUnderHashedNames(t *testing.T) {
 	}
 }
 
+// Browsers that cannot read the vector mark still ask the well-known path for
+// an icon, so the repository carries a raster .ico beside the vector one and
+// the build publishes it like any other asset.
+func TestBuild_PublishesTheFaviconICO(t *testing.T) {
+	dir := t.TempDir()
+
+	bundle, err := Build(dir)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	url := bundle.URL("favicon.ico")
+	hashed := regexp.MustCompile(`^/assets/build/favicon\.[0-9a-f]{` + fmt.Sprint(hashLength) + `}\.ico$`)
+	if !hashed.MatchString(url) {
+		t.Fatalf("URL(favicon.ico) = %q, want /assets/build/favicon.<hash>.ico", url)
+	}
+	published, err := os.ReadFile(filepath.Join(dir, strings.TrimPrefix(url, "/assets/")))
+	if err != nil {
+		t.Fatalf("read published icon: %v", err)
+	}
+
+	// An ICO opens with its directory: two reserved zero bytes, then the type
+	// (1 = icon) and the image count, both little-endian. A file that lost
+	// this header would still carry the right extension.
+	if len(published) < 22 || published[0] != 0 || published[1] != 0 || published[2] != 1 || published[3] != 0 {
+		t.Fatalf("the published favicon is not an ICO file (first bytes: % x)", published[:4])
+	}
+	// Vista and later read a PNG entry out of an ICO, which is how one file
+	// carries the same drawing the rest of the site uses.
+	if !bytes.Contains(published, []byte("\x89PNG\r\n\x1a\n")) {
+		t.Error("the favicon.ico embeds no PNG image")
+	}
+}
+
 // The mark is a pixel-art drawing built from one path per colour, which is
 // several times larger as source than it needs to be on the wire.
 func TestBuild_MinifiesTheMark(t *testing.T) {

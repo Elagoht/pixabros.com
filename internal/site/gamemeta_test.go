@@ -356,6 +356,11 @@ func TestRender_LinksTheManifestFromEveryPage(t *testing.T) {
 		if want := "rel=apple-touch-icon href=" + site.renderer.bundle.URL("icon-192.png"); !strings.Contains(string(html), want) {
 			t.Errorf("the %s page has no apple-touch-icon (%s)", name, want)
 		}
+		// The .ico is the fallback for browsers that cannot read the vector
+		// mark, so like the manifest it belongs on every page.
+		if want := "rel=icon type=image/x-icon href=" + site.renderer.bundle.URL("favicon.ico"); !strings.Contains(string(html), want) {
+			t.Errorf("the %s page has no .ico icon fallback (%s)", name, want)
+		}
 	}
 }
 

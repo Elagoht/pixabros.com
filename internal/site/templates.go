@@ -121,6 +121,9 @@ type pageData struct {
 	// vector, and a home screen icon has to be a raster.
 	AppleIcon string
 	Manifest  string
+	// FaviconICO is the raster fallback for browsers that cannot read the
+	// vector mark, filled in by the renderer on every page.
+	FaviconICO string
 	// Canonical is the page's own address, and Path above is only the nav
 	// highlight, which is why they are separate: a game's page highlights
 	// Games but is canonical to itself.
@@ -237,6 +240,7 @@ func (r *renderer) render(templateName string, data pageData) ([]byte, error) {
 		data.Favicon = r.bundle.URL("logo.svg")
 	}
 	data.AppleIcon = r.bundle.URL("icon-192.png")
+	data.FaviconICO = r.bundle.URL("favicon.ico")
 	data.Manifest = ManifestPath
 
 	var raw bytes.Buffer

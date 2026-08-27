@@ -72,10 +72,14 @@
                    swallowed by it. */}}
               <a class="slide__media" href="/games/{{.Slug}}" aria-label="{{.Title}}">
                 {{if .Cover.URL}}
+                  {{/* The dimensions let the browser reserve the image's place
+                       before it loads, which is what keeps the slide from
+                       shifting under the visitor. */}}
                   <img
                     class="slide__image slide__image--cover"
                     src="{{.Cover.URL}}"
                     alt="{{.Cover.Alt}}"
+                    {{if .Cover.Width}}width="{{.Cover.Width}}" height="{{.Cover.Height}}"{{end}}
                     loading="lazy"
                   />
                 {{else}}
@@ -89,6 +93,7 @@
                     class="slide__image slide__image--shot slide__image--shot-{{$index}}"
                     src="{{$shot.URL}}"
                     alt="{{$shot.Alt}}"
+                    {{if $shot.Width}}width="{{$shot.Width}}" height="{{$shot.Height}}"{{end}}
                     aria-hidden="true"
                     loading="lazy"
                   />
@@ -119,7 +124,12 @@
                   <div class="thumbs">
                     {{range $index, $shot := .Shots}}
                       <span class="thumb thumb--{{$index}}">
-                        <img src="{{$shot.URL}}" alt="{{$shot.Alt}} thumbnail" loading="lazy" />
+                        <img
+                          src="{{$shot.URL}}"
+                          alt="{{$shot.Alt}} thumbnail"
+                          {{if $shot.Width}}width="{{$shot.Width}}" height="{{$shot.Height}}"{{end}}
+                          loading="lazy"
+                        />
                       </span>
                     {{end}}
                   </div>

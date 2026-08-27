@@ -16,6 +16,11 @@ import (
 type imageView struct {
 	URL string
 	Alt string
+	// Width and Height are the stored pixel dimensions. The template turns
+	// them into attributes so the browser can reserve the image's place
+	// before it arrives; a picture with no stored size omits them.
+	Width  int
+	Height int
 }
 
 type heroView struct {
@@ -284,7 +289,12 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 				break
 			}
 			if image, ok := images[shot.MediaID]; ok {
-				views = append(views, imageView{URL: mediaURL(image.Path), Alt: altOr(image, game.Title+" screenshot")})
+				views = append(views, imageView{
+					URL:    mediaURL(image.Path),
+					Alt:    altOr(image, game.Title+" screenshot"),
+					Width:  image.Width,
+					Height: image.Height,
+				})
 			}
 		}
 
@@ -376,7 +386,12 @@ func lookupImage(images map[string]media.Media, id *string, fallbackAlt string) 
 	if !ok {
 		return imageView{}
 	}
-	return imageView{URL: mediaURL(image.Path), Alt: altOr(image, fallbackAlt)}
+	return imageView{
+		URL:    mediaURL(image.Path),
+		Alt:    altOr(image, fallbackAlt),
+		Width:  image.Width,
+		Height: image.Height,
+	}
 }
 
 func altOr(image media.Media, fallbackAlt string) string {

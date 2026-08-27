@@ -204,7 +204,7 @@ func main() {
 		PlayDir:       cfg.DataDir + "/games",
 		AssetsDir:     cfg.DataDir + "/assets",
 		Manifest:      publicSite.ManifestHandler(),
-		FaviconURL:    assets.URL("logo.svg"),
+		FaviconURL:    assets.URL("favicon.ico"),
 		ServiceWorker: serviceWorker,
 		Shell:         publicSite.ShellHandler(),
 	})

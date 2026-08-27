@@ -192,7 +192,8 @@ func TestRenderLanding_UsesAltTextForCarouselImagesAndLabelsThumbnails(t *testin
 
 	html, _ := renderLandingPage(t, newTestSite(t, conn))
 
-	if !strings.Contains(html, `alt="A tactical battle" aria-hidden=true`) {
+	media := html[strings.Index(html, "slide__media"):strings.Index(html, "slide__info")]
+	if !strings.Contains(media, `alt="A tactical battle"`) {
 		t.Error("the large carousel screenshot does not use its CMS alt text")
 	}
 	if !strings.Contains(html, `alt="A tactical battle thumbnail"`) {
@@ -352,6 +353,63 @@ func TestRenderLanding_CarouselPrefersTheOpenGraphImage(t *testing.T) {
 	}
 	if strings.Contains(slide, "2026-tall.webp") {
 		t.Error("the portrait cover art is still filling the 16:9 media area")
+	}
+}
+
+// Artwork arriving late must not shove the slide around: every carousel image
+// carries the dimensions stored beside it, so the browser reserves its place
+// before a single byte of the picture has landed.
+func TestRenderLanding_CarouselImagesCarryTheirStoredDimensions(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Sized Game", "sized", true, false, "")
+	coverID := seedMedia(t, conn, "media/og/sized-wide.webp", "Wide art")
+	shotID := seedMedia(t, conn, "media/screenshot/sized-one.webp", "A screenshot")
+	if _, err := conn.Exec(`UPDATE media SET width = 1200, height = 630 WHERE id = ?;`, coverID); err != nil {
+		t.Fatalf("resize cover: %v", err)
+	}
+	if _, err := conn.Exec(
+		`UPDATE games SET og_image_id = ? WHERE id = ?;`, coverID, gameID,
+	); err != nil {
+		t.Fatalf("set art: %v", err)
+	}
+	if _, err := conn.Exec(
+		`INSERT INTO game_screenshots (id, game_id, media_id, display_order)
+		 VALUES (?, ?, ?, 0);`, id.New(), gameID, shotID,
+	); err != nil {
+		t.Fatalf("seed screenshot: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "width=1200 height=630") {
+		t.Error("the carousel cover does not carry its stored dimensions")
+	}
+	// The screenshot paints twice, large and as a thumbnail; both need the
+	// reservation.
+	if got := strings.Count(html, "width=320 height=320"); got < 2 {
+		t.Errorf("dimensioned screenshot images = %d, want the large one and its thumbnail", got)
+	}
+}
+
+// A picture whose dimensions were never stored renders without the
+// attributes: width=0 would tell the browser there is nothing to see.
+func TestRenderLanding_OmitsDimensionsItDoesNotHave(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Unsized Game", "unsized", true, false, "")
+	coverID := seedMedia(t, conn, "media/og/unsized.webp", "Wide art")
+	if _, err := conn.Exec(`UPDATE media SET width = 0, height = 0 WHERE id = ?;`, coverID); err != nil {
+		t.Fatalf("resize cover: %v", err)
+	}
+	if _, err := conn.Exec(
+		`UPDATE games SET og_image_id = ? WHERE id = ?;`, coverID, gameID,
+	); err != nil {
+		t.Fatalf("set art: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "width=0") {
+		t.Error("an image without stored dimensions still rendered a width")
 	}
 }
 

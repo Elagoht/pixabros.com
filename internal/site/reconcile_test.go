@@ -2,10 +2,64 @@ package site
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"pixabros/internal/render"
 )
+
+func TestSite_RegisterResolvesDiscoveryDocumentsWithTheirDependencies(t *testing.T) {
+	conn := setupTestDB(t)
+	site := newTestSite(t, conn)
+	registry := render.NewRegistry()
+	site.Register(registry)
+
+	tests := []struct {
+		key  string
+		tags []string
+	}{
+		{key: PageRobots, tags: []string{siteSettingsTag}},
+		{key: PageLLMS, tags: []string{siteSettingsTag, gameListTag, devlogListTag}},
+		{key: PageSitemap, tags: []string{siteSettingsTag, gameListTag, devlogListTag}},
+		{key: PageRSS, tags: []string{siteSettingsTag, devlogListTag}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.key, func(t *testing.T) {
+			renderer, ok := registry.Resolve(test.key)
+			if !ok {
+				t.Fatalf("no renderer registered for %q", test.key)
+			}
+			_, tags, err := renderer(test.key)
+			if err != nil {
+				t.Fatalf("render %q: %v", test.key, err)
+			}
+			if !reflect.DeepEqual(tags, test.tags) {
+				t.Errorf("tags = %v, want %v", tags, test.tags)
+			}
+		})
+	}
+}
+
+func TestDesiredPagesIncludesEveryDiscoveryDocumentExactlyOnce(t *testing.T) {
+	conn := setupTestDB(t)
+	pages, err := newTestSite(t, conn).DesiredPages()
+	if err != nil {
+		t.Fatalf("DesiredPages() error = %v", err)
+	}
+
+	for _, key := range []string{PageRobots, PageLLMS, PageSitemap, PageRSS} {
+		count := 0
+		for _, page := range pages {
+			if page == key {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Errorf("%q appears %d times, want exactly once", key, count)
+		}
+	}
+}
 
 func newTestReconciler(t *testing.T, s *Site, store *render.Store) (*Reconciler, *[]error) {
 	t.Helper()

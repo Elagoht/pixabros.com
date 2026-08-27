@@ -13,7 +13,7 @@ import (
 // longer here. As dynamic pages land -- one per game, one per devlog post --
 // they are appended here from the database.
 func (s *Site) DesiredPages() ([]string, error) {
-	defs := s.pages()
+	defs := s.registeredPages()
 	keys := make([]string, 0, len(defs))
 	for _, page := range defs {
 		keys = append(keys, page.Key)

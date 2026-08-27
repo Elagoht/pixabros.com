@@ -88,10 +88,19 @@ func (s *Site) pages() []pageDef {
 	}
 }
 
+// registeredPages is the authoritative set of exact page keys. Keeping the
+// HTML pages and machine-readable discovery documents in separate groups
+// makes both lists legible while Register and DesiredPages still consume the
+// same combined definition.
+func (s *Site) registeredPages() []pageDef {
+	pages := s.pages()
+	return append(pages, s.discoveryPages()...)
+}
+
 // Register wires every page key to its renderer. Registration is a
 // startup-only phase by convention, so this must run before the worker does.
 func (s *Site) Register(registry *render.Registry) {
-	for _, page := range s.pages() {
+	for _, page := range s.registeredPages() {
 		registry.Register(page.Key, page.Render)
 	}
 	// One renderer serves every game detail page; the key carries the slug.

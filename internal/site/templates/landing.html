@@ -112,12 +112,17 @@
                   </p>
                 {{end}}
                 {{if .Tags}}
-                  <ul class="tags tags--tight tags--clamped">
+                  {{/* One row, not the cards' two: the description under it
+                       needs the row more than a second line of pills does. */}}
+                  <ul class="tags tags--tight tags--single">
                     {{range .Tags}}<li class="tag">{{.}}</li>{{end}}
                     {{if .MoreTags}}
                       <li class="tag tag--count">+{{.MoreTags}}</li>
                     {{end}}
                   </ul>
+                {{end}}
+                {{if .Description}}
+                  <p class="slide__description">{{.Description}}</p>
                 {{end}}
 
                 {{if .Shots}}

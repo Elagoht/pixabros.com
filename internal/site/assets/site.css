@@ -951,6 +951,16 @@ a:hover {
   overflow: hidden;
 }
 
+/* One row, never two. The carousel slide spends the row a second line of
+ * pills would take on its short description instead; the same caveat as above
+ * applies -- pills that lose the row hide whole, the counter among them, and
+ * the game page holds the full list. */
+.tags--single {
+  --tag-row: calc(var(--tag-line) + 2 * var(--tag-pad-block) + 2px);
+  max-height: var(--tag-row);
+  overflow: hidden;
+}
+
 /* The pill that stands for the tags a card left out. Quieter than a real tag:
    it is a count, not something the game is tagged with. */
 .tag--count {
@@ -1327,6 +1337,18 @@ a:hover {
 }
 
 @media (max-width: 48rem) {
+  .carousel__arrow {
+    /* A thumb, not a cursor: 44px is the smallest target a phone forgives,
+       and the key drawn for the mouse reads as a speck beside the artwork. */
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+
+  .carousel__arrow svg {
+    height: 1.35rem;
+    width: 1.35rem;
+  }
+
   .carousel__arrow--prev {
     inset-inline-start: 0.25rem;
   }
@@ -1355,6 +1377,11 @@ a:hover {
 
 .slide__link:hover {
   color: var(--color-accent);
+}
+
+.slide__description {
+  color: var(--color-text-muted);
+  margin: 0.35rem 0 0;
 }
 
 /* The artwork is a link, so it needs the same focus ring everything else has

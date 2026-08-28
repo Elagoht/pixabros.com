@@ -4,7 +4,40 @@
 // rather than on each card, so they need to know where the track is scrolled
 // to. Without JavaScript they stay hidden and the track is still an ordinary
 // scroller, with the dots as anchors.
-(function () {
+//
+// The dots are driven by intent, not by the scroll position: a click marks
+// its target the moment it lands, so the pager answers while the smooth
+// scroll is still on its way, and a swipe hands control back to the track
+// once it settles.
+(function (window, document) {
+  // The pager on its own, without the page: the tests load this file and
+  // drive it with no carousel in sight. createPager(count, initial) keeps the
+  // index navigation is aimed at and wraps at both ends. go(step) steps from
+  // the current target and answers the new one at once; goTo(index) takes one
+  // directly, which is how a settled scroll hands control back to where the
+  // track really is.
+  window.CarouselLogic = {
+    createPager: function (count, initial) {
+      var current = initial || 0;
+      var wrap = function (index) {
+        return ((index % count) + count) % count;
+      };
+      return {
+        current: function () {
+          return current;
+        },
+        go: function (step) {
+          current = wrap(current + step);
+          return current;
+        },
+        goTo: function (index) {
+          current = wrap(index);
+          return current;
+        },
+      };
+    },
+  };
+
   var carousel = document.querySelector(".carousel");
   if (!carousel) {
     return;
@@ -51,10 +84,11 @@
     return best;
   }
 
+  var pager = window.CarouselLogic.createPager(slides.length, currentIndex());
+
   // The dots say which slide you are on. aria-current carries it, so the
   // styling and what a screen reader announces come from the same attribute.
-  function markCurrent() {
-    var index = currentIndex();
+  function markIndex(index) {
     Array.prototype.forEach.call(dots, function (dot, i) {
       if (i === index) {
         dot.setAttribute("aria-current", "true");
@@ -65,8 +99,8 @@
   }
 
   function go(step) {
-    // Wraps, so the last card's next arrow returns to the first.
-    var index = (currentIndex() + step + slides.length) % slides.length;
+    var index = pager.go(step);
+    markIndex(index);
     track.scrollTo({ left: centreOf(slides[index]), behavior: "smooth" });
   }
 
@@ -81,16 +115,20 @@
     });
   }
 
-  markCurrent();
+  markIndex(pager.current());
 
   // Following the scroll rather than only the clicks, so dragging or swiping
-  // the track updates the dots too.
+  // the track updates the dots too. The debounce keeps a settling scroll from
+  // repainting the pager once per frame; by the time it fires, a click's own
+  // scroll has long been marked by hand.
   var pending = null;
   track.addEventListener("scroll", function () {
     if (pending) {
       window.clearTimeout(pending);
     }
-    pending = window.setTimeout(markCurrent, 90);
+    pending = window.setTimeout(function () {
+      markIndex(pager.goTo(currentIndex()));
+    }, 90);
   });
 
   // The dots are anchors, so following one would scroll the page vertically to
@@ -105,6 +143,8 @@
       return;
     }
     event.preventDefault();
+    var index = pager.goTo(Array.prototype.indexOf.call(slides, slide));
+    markIndex(index);
     track.scrollTo({ left: centreOf(slide), behavior: "smooth" });
   });
-})();
+})(window, document);

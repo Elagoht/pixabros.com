@@ -53,9 +53,10 @@ func cardTags(raw string, limit int) ([]string, int) {
 // slideView is one game in the portfolio carousel.
 type slideView struct {
 	gameMeta
-	Title string
-	Slug  string
-	Tags  []string
+	Title       string
+	Slug        string
+	Description string
+	Tags        []string
 	// MoreTags is how many tags did not fit, drawn as a "+3" pill.
 	MoreTags int
 	Cover    imageView
@@ -303,7 +304,11 @@ func (s *Site) buildSlides(published []games.Game, images map[string]media.Media
 			gameMeta: metaFor(game),
 			Title:    game.Title,
 			Slug:     game.Slug,
-			Tags:     slideTags,
+			// A taste, the way the system log's blurbs are: the panel stores a
+			// short description per game and the slide cuts it at a word
+			// boundary rather than let it push the thumbnails off the card.
+			Description: excerpt(game.ShortDescription, 140),
+			Tags:        slideTags,
 			MoreTags: slideMore,
 			// The OG image comes first here: it is the wide 1200x630 one, and
 			// the carousel's media area is 16:9. Cover art is portrait, so it

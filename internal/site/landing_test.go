@@ -413,6 +413,73 @@ func TestRenderLanding_OmitsDimensionsItDoesNotHave(t *testing.T) {
 	}
 }
 
+// A slide sells the game in a sentence: the short description sits under the
+// tags, which give up their second row to make the room.
+func TestRenderLanding_ShowsTheShortDescriptionUnderTheTags(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Described Game", "described", true, false, "puzzle, retro")
+	if _, err := conn.Exec(
+		`UPDATE games SET short_description = 'A tidy puzzle about falling shapes.' WHERE id = ?;`,
+		gameID,
+	); err != nil {
+		t.Fatalf("set description: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	info := html[strings.Index(html, "slide__info"):strings.Index(html, "</article>")]
+	if !strings.Contains(info, "A tidy puzzle about falling shapes.") {
+		t.Error("the slide does not show the game's short description")
+	}
+	if !strings.Contains(info, "slide__description") {
+		t.Error("the short description is not marked up as a slide description")
+	}
+	// Under the tags, and they give up their second row to make the room.
+	tags := strings.Index(info, "tags--single")
+	description := strings.Index(info, "slide__description")
+	if tags == -1 || description == -1 || description < tags {
+		t.Error("the slide description does not sit under a single-row tag list")
+	}
+}
+
+// A game with no short description must not leave an empty paragraph in the
+// slide.
+func TestRenderLanding_OmitsAnEmptySlideDescription(t *testing.T) {
+	conn := setupTestDB(t)
+	seedGame(t, conn, "Undescribed Game", "undescribed", true, false, "")
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if strings.Contains(html, "slide__description") {
+		t.Error("a slide with no short description still rendered one")
+	}
+}
+
+// The description is a taste, not the pitch: a long one is cut at a word
+// boundary rather than pushing the thumbnails off the slide.
+func TestRenderLanding_TrimsALongSlideDescription(t *testing.T) {
+	conn := setupTestDB(t)
+	gameID := seedGame(t, conn, "Wordy Game", "wordy", true, false, "")
+	if _, err := conn.Exec(
+		`UPDATE games SET short_description = ? WHERE id = ?;`,
+		strings.TrimSpace(strings.Repeat("word ", 39))+" zeta", gameID,
+	); err != nil {
+		t.Fatalf("set description: %v", err)
+	}
+
+	html, _ := renderLandingPage(t, newTestSite(t, conn))
+
+	if !strings.Contains(html, "slide__description") {
+		t.Fatal("the slide lost its description entirely")
+	}
+	if strings.Contains(html, "zeta") {
+		t.Error("an overlong short description was not trimmed")
+	}
+	if !strings.Contains(html, "…") {
+		t.Error("the trimmed description does not announce the cut")
+	}
+}
+
 // With no OG image it still falls back, rather than showing a bare title.
 func TestRenderLanding_CarouselFallsBackToCoverArt(t *testing.T) {
 	conn := setupTestDB(t)
@@ -545,9 +612,14 @@ func TestRenderLanding_CapsTheTagsOnACard(t *testing.T) {
 	if strings.Contains(body, ">metal music<") {
 		t.Error("a tag past the cap still reached a card")
 	}
-	// Both lists are clamped, which is the guarantee a count alone cannot make.
-	if strings.Count(body, "tags--clamped") != 2 {
-		t.Errorf("wanted both card tag lists clamped, got %d",
+	// Both lists are clamped, which is the guarantee a count alone cannot
+	// make -- the slide to a single row, the sale card to two.
+	if strings.Count(body, "tags--single") != 1 {
+		t.Errorf("wanted the slide's tag list clamped to one row, got %d",
+			strings.Count(body, "tags--single"))
+	}
+	if strings.Count(body, "tags--clamped") != 1 {
+		t.Errorf("wanted the sale card's tag list clamped to two rows, got %d",
 			strings.Count(body, "tags--clamped"))
 	}
 }

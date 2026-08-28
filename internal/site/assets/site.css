@@ -954,10 +954,16 @@ a:hover {
 /* One row, never two. The carousel slide spends the row a second line of
  * pills would take on its short description instead; the same caveat as above
  * applies -- pills that lose the row hide whole, the counter among them, and
- * the game page holds the full list. */
+ * the game page holds the full list.
+ *
+ * flex-shrink: 0 is not optional here. The slide's info column is a flex
+ * column whose height the artwork fixes, and a flex item with hidden overflow
+ * has no content-based minimum -- without it the tag row is the one thing the
+ * column is free to squeeze away, and a tight clamp shrinks to a hairline. */
 .tags--single {
   --tag-row: calc(var(--tag-line) + 2 * var(--tag-pad-block) + 2px);
   max-height: var(--tag-row);
+  flex-shrink: 0;
   overflow: hidden;
 }
 
@@ -1220,26 +1226,49 @@ a:hover {
 @media (min-width: 48rem) {
   .slide {
     flex-basis: min(92%, 60rem);
-    grid-template-columns: 65fr 35fr;
+    /* minmax(0, ...) is load-bearing. A bare fr track's minimum is the
+       item's min-content width, and the media's is derived from its aspect
+       ratio against a row height the other column's content sets -- the two
+       feed each other, and at mid widths the feedback squeezes the info
+       column out of the card entirely, its text clipped at the artwork's
+       edge. Zero floors make the split a pure proportion again. */
+    grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
   }
 
   /* Side by side, the artwork fills its half however tall the card turns out
-     to be. Its aspect ratio sets the card's height when the artwork is the
+     to be. Its padding box sets the card's height when the artwork is the
      taller of the two, and gives way when the column beside it is: otherwise
      a game with a long title leaves a strip of empty card under its picture.
      The image inside is absolutely positioned and covers, so it follows. */
-  .slide__media {
-    height: 100%;
+}
+
+/* Wide enough to be generous again: the artwork takes back its two thirds
+   once the card has the room to spare. */
+@media (min-width: 60rem) {
+  .slide {
+    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
   }
 }
 
 .slide__media {
   /* The OpenGraph image's own shape (internal/imaging targets it at 1200x630),
      so the artwork the carousel leads with fills the area exactly instead of
-     being cropped to 16:9. */
-  aspect-ratio: 1200 / 630;
+     being cropped to 16:9.
+     The shape is a padding box on a pseudo rather than the aspect-ratio
+     property on purpose: at desktop widths the media fills a row whose
+     height the text column helped set, and an aspect-ratio on a definite
+     height transfers that height into a width -- a width that ignores the
+     grid track, so the artwork grew sideways over the text and its opaque
+     background swallowed it. Flow content contributes its height to the row
+     and can never reach back for the width. */
   background-color: #0b0d11;
   position: relative;
+}
+
+.slide__media::before {
+  content: "";
+  display: block;
+  padding-top: 52.5%; /* 630/1200 */
 }
 
 .slide__image {

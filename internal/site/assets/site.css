@@ -1236,10 +1236,13 @@ a:hover {
   }
 
   /* Side by side, the artwork fills its half however tall the card turns out
-     to be. Its padding box sets the card's height when the artwork is the
+     to be. Its aspect ratio sets the card's height when the artwork is the
      taller of the two, and gives way when the column beside it is: otherwise
      a game with a long title leaves a strip of empty card under its picture.
      The image inside is absolutely positioned and covers, so it follows. */
+  .slide__media {
+    height: 100%;
+  }
 }
 
 /* Wide enough to be generous again: the artwork takes back its two thirds
@@ -1254,27 +1257,26 @@ a:hover {
   /* The OpenGraph image's own shape (internal/imaging targets it at 1200x630),
      so the artwork the carousel leads with fills the area exactly instead of
      being cropped to 16:9.
-     The shape is a padding box on a pseudo rather than the aspect-ratio
-     property on purpose: at desktop widths the media fills a row whose
-     height the text column helped set, and an aspect-ratio on a definite
-     height transfers that height into a width -- a width that ignores the
-     grid track, so the artwork grew sideways over the text and its opaque
-     background swallowed it. Flow content contributes its height to the row
-     and can never reach back for the width. */
-  background-color: #0b0d11;
+     max-width is the leash: at desktop widths the media takes a definite
+     row height, and the aspect ratio transfers that height into a width -- a
+     width that would ignore the grid track and let the artwork grow sideways
+     over the text, its opaque background swallowing it. The clamp holds the
+     box to its column; object-fit: cover absorbs the shape inside it. */
+  aspect-ratio: 1200 / 630;
+  /* Pure black, and fixed rather than themed: the letterbox a contained
+     artwork sits on, the same black whatever the room's light. */
+  background-color: #000;
+  max-width: 100%;
   position: relative;
-}
-
-.slide__media::before {
-  content: "";
-  display: block;
-  padding-top: 52.5%; /* 630/1200 */
 }
 
 .slide__image {
   height: 100%;
   inset: 0;
-  object-fit: cover;
+  /* Contained, not covered: a screenshot that survived the fit whole beats
+     one cropped to fill, and the black behind it reads as the tube's own
+     letterbox rather than a hole in the card. */
+  object-fit: contain;
   position: absolute;
   width: 100%;
 }
